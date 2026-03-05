@@ -4,6 +4,9 @@ using BuildingBlocks.Infrastructure.Modules;
 using BuildingBlocks.Infrastructure.Persistence;
 using Cart.Api;
 using Catalog.Api;
+using FluentValidation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OpenTelemetry.Trace;
 using Orders.Api;
@@ -20,9 +23,31 @@ builder.Host.UseSerilog((context, services, configuration) =>
         .WriteTo.Console();
 });
 
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddApplicationCore();
 builder.Services.AddSharedInfrastructure(builder.Configuration);
+
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
+if (string.IsNullOrWhiteSpace(redisConnectionString))
+{
+    builder.Services.AddDistributedMemoryCache();
+}
+else
+{
+    builder.Services.AddStackExchangeRedisCache(options => options.Configuration = redisConnectionString);
+}
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = builder.Configuration["Authentication:Jwt:Authority"];
+        options.Audience = builder.Configuration["Authentication:Jwt:Audience"];
+        options.RequireHttpsMetadata = true;
+    });
+
+builder.Services.AddAuthorization();
 
 var moduleInstallers = ModuleInfrastructureLoader.LoadInstallers();
 foreach (var installer in moduleInstallers)
@@ -51,6 +76,8 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 app.UseSerilogRequestLogging();
+app.UseAuthentication();
+app.UseAuthorization();
 
 await app.Services.InitializeSharedInfrastructureAsync(app.Lifetime.ApplicationStopping);
 await moduleInstallers.InitializeModulesAsync(app.Services, app.Lifetime.ApplicationStopping);

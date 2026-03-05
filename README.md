@@ -118,13 +118,34 @@ curl http://localhost:8080/api/v1/cart/customer-123
 ### 4) Checkout: create Order from Cart
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/orders/checkout/customer-123
+curl -X POST http://localhost:8080/api/v1/orders/checkout/customer-123 \
+  -H "Idempotency-Key: checkout-customer-123-001"
 ```
 
 ### 5) Fetch created order
 
 ```bash
 curl http://localhost:8080/api/v1/orders/PUT_ORDER_ID_HERE
+```
+
+## Checkout Idempotency
+
+- The checkout endpoint requires `Idempotency-Key` header.
+- Reusing the same key for the same customer returns the same `orderId` and does not create a duplicate order.
+- Reusing the same key for a different customer returns a business error.
+
+### Example
+
+```bash
+# First call creates an order
+curl -X POST http://localhost:8080/api/v1/orders/checkout/customer-123 \
+  -H "Idempotency-Key: checkout-customer-123-001"
+```
+
+```bash
+# Second call with the same key returns the same order id
+curl -X POST http://localhost:8080/api/v1/orders/checkout/customer-123 \
+  -H "Idempotency-Key: checkout-customer-123-001"
 ```
 
 ## Add a Migration

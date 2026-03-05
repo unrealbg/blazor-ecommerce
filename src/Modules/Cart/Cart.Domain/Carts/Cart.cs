@@ -16,9 +16,12 @@ public sealed class Cart : AggregateRoot<Guid>
     {
         Id = id;
         CustomerId = customerId;
+        RowVersion = 0L;
     }
 
     public string CustomerId { get; private set; } = string.Empty;
+
+    public long RowVersion { get; private set; }
 
     public IReadOnlyCollection<CartLine> Lines => _lines.AsReadOnly();
 
@@ -53,15 +56,23 @@ public sealed class Cart : AggregateRoot<Guid>
         if (existingLine is not null)
         {
             existingLine.IncreaseQuantity(quantity);
+            IncrementRowVersion();
             return Result.Success();
         }
 
         _lines.Add(CartLine.Create(productId, productName.Trim(), unitPrice, quantity));
+        IncrementRowVersion();
         return Result.Success();
     }
 
     public void Clear()
     {
         _lines.Clear();
+        IncrementRowVersion();
+    }
+
+    private void IncrementRowVersion()
+    {
+        RowVersion++;
     }
 }

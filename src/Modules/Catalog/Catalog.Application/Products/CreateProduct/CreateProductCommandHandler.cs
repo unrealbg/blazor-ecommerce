@@ -7,6 +7,7 @@ namespace Catalog.Application.Products.CreateProduct;
 
 public sealed class CreateProductCommandHandler(
     IProductRepository productRepository,
+    IProductListCache productListCache,
     ICatalogUnitOfWork unitOfWork)
     : ICommandHandler<CreateProductCommand, Guid>
 {
@@ -28,6 +29,7 @@ public sealed class CreateProductCommandHandler(
 
         await productRepository.AddAsync(product, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await productListCache.InvalidateAsync(cancellationToken);
 
         return Result<Guid>.Success(product.Id);
     }

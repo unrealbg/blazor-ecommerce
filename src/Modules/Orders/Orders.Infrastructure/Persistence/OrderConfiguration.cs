@@ -19,6 +19,11 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(order => order.PlacedAtUtc)
             .IsRequired();
 
+        builder.Property(order => order.RowVersion)
+            .HasColumnName("row_version")
+            .IsConcurrencyToken()
+            .IsRequired();
+
         builder.Property(order => order.Status)
             .HasConversion<string>()
             .HasMaxLength(32)

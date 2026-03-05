@@ -16,6 +16,11 @@ internal sealed class ShoppingCartConfiguration : IEntityTypeConfiguration<CartA
             .IsRequired()
             .HasMaxLength(128);
 
+        builder.Property(cart => cart.RowVersion)
+            .HasColumnName("row_version")
+            .IsConcurrencyToken()
+            .IsRequired();
+
         builder.HasIndex(cart => cart.CustomerId)
             .IsUnique();
 

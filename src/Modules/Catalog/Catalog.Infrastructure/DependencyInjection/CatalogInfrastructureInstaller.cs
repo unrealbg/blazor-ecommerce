@@ -22,6 +22,7 @@ public sealed class CatalogInfrastructureInstaller : IModuleInfrastructureInstal
                 npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "catalog")));
 
         services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IProductListCache, ProductListCache>();
         services.AddScoped<IProductCatalogReader, ProductCatalogReader>();
         services.AddScoped<ICatalogUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<CatalogDbContext>());
     }

@@ -3,56 +3,108 @@ using BuildingBlocks.Application.Contracts;
 using BuildingBlocks.Domain.Abstractions;
 using BuildingBlocks.Domain.Results;
 using BuildingBlocks.Domain.Shared;
+using Orders.Application.Orders;
 using Orders.Domain.Orders;
 
 namespace Orders.Application.Orders.Checkout;
 
 public sealed class CheckoutCommandHandler(
     ICartCheckoutAccessor cartCheckoutAccessor,
+    ICheckoutIdempotencyRepository idempotencyRepository,
     IOrderRepository orderRepository,
     IOrdersUnitOfWork unitOfWork,
     IClock clock)
     : ICommandHandler<CheckoutCommand, Guid>
 {
-    public Task<Result<Guid>> Handle(CheckoutCommand request, CancellationToken cancellationToken)
+    public async Task<Result<Guid>> Handle(CheckoutCommand request, CancellationToken cancellationToken)
     {
-        return unitOfWork.ExecuteInTransactionAsync(
-            async innerCancellationToken =>
-            {
-                var cart = await cartCheckoutAccessor.GetByCustomerIdAsync(
-                    request.CustomerId,
-                    innerCancellationToken);
+        var normalizedKey = request.IdempotencyKey.Trim();
 
-                if (cart is null || cart.Lines.Count == 0)
-                {
-                    return Result<Guid>.Failure(
-                        new Error("orders.checkout.cart_empty", "Cannot checkout an empty cart."));
-                }
+        var existingRecord = await idempotencyRepository.GetByKeyAsync(normalizedKey, cancellationToken);
+        if (existingRecord is not null)
+        {
+            return ResolveExistingRecord(existingRecord, request.CustomerId);
+        }
 
-                var lineData = new List<OrderLineData>(cart.Lines.Count);
-                foreach (var line in cart.Lines)
+        try
+        {
+            return await unitOfWork.ExecuteInTransactionAsync(
+                async innerCancellationToken =>
                 {
-                    var moneyResult = Money.Create(line.Currency, line.UnitAmount);
-                    if (moneyResult.IsFailure)
+                    var recordInTransaction = await idempotencyRepository.GetByKeyAsync(
+                        normalizedKey,
+                        innerCancellationToken);
+
+                    if (recordInTransaction is not null)
                     {
-                        return Result<Guid>.Failure(moneyResult.Error);
+                        return ResolveExistingRecord(recordInTransaction, request.CustomerId);
                     }
 
-                    lineData.Add(new OrderLineData(line.ProductId, line.Name, moneyResult.Value, line.Quantity));
-                }
+                    var cart = await cartCheckoutAccessor.GetByCustomerIdAsync(
+                        request.CustomerId,
+                        innerCancellationToken);
 
-                var orderResult = Order.Create(cart.CustomerId, lineData, clock.UtcNow);
-                if (orderResult.IsFailure)
-                {
-                    return Result<Guid>.Failure(orderResult.Error);
-                }
+                    if (cart is null || cart.Lines.Count == 0)
+                    {
+                        return Result<Guid>.Failure(
+                            new Error("orders.checkout.cart_empty", "Cannot checkout an empty cart."));
+                    }
 
-                await orderRepository.AddAsync(orderResult.Value, innerCancellationToken);
-                await cartCheckoutAccessor.ClearCartAsync(cart.CartId, innerCancellationToken);
-                await unitOfWork.SaveChangesAsync(innerCancellationToken);
+                    var lineData = new List<OrderLineData>(cart.Lines.Count);
+                    foreach (var line in cart.Lines)
+                    {
+                        var moneyResult = Money.Create(line.Currency, line.UnitAmount);
+                        if (moneyResult.IsFailure)
+                        {
+                            return Result<Guid>.Failure(moneyResult.Error);
+                        }
 
-                return Result<Guid>.Success(orderResult.Value.Id);
-            },
-            cancellationToken);
+                        lineData.Add(new OrderLineData(line.ProductId, line.Name, moneyResult.Value, line.Quantity));
+                    }
+
+                    var orderResult = Order.Create(cart.CustomerId, lineData, clock.UtcNow);
+                    if (orderResult.IsFailure)
+                    {
+                        return Result<Guid>.Failure(orderResult.Error);
+                    }
+
+                    await orderRepository.AddAsync(orderResult.Value, innerCancellationToken);
+                    await idempotencyRepository.AddAsync(
+                        normalizedKey,
+                        request.CustomerId,
+                        orderResult.Value.Id,
+                        clock.UtcNow,
+                        innerCancellationToken);
+                    await cartCheckoutAccessor.ClearCartAsync(cart.CartId, innerCancellationToken);
+                    await unitOfWork.SaveChangesAsync(innerCancellationToken);
+
+                    return Result<Guid>.Success(orderResult.Value.Id);
+                },
+                cancellationToken);
+        }
+        catch (Exception)
+        {
+            var recordAfterConflict = await idempotencyRepository.GetByKeyAsync(normalizedKey, cancellationToken);
+            if (recordAfterConflict is not null)
+            {
+                return ResolveExistingRecord(recordAfterConflict, request.CustomerId);
+            }
+
+            throw;
+        }
+    }
+
+    private static Result<Guid> ResolveExistingRecord(
+        CheckoutIdempotencyRecord existingRecord,
+        string customerId)
+    {
+        if (!string.Equals(existingRecord.CustomerId, customerId, StringComparison.Ordinal))
+        {
+            return Result<Guid>.Failure(new Error(
+                "orders.checkout.idempotency_key.conflict",
+                "Idempotency key has already been used for another customer."));
+        }
+
+        return Result<Guid>.Success(existingRecord.OrderId);
     }
 }
