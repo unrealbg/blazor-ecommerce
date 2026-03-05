@@ -29,7 +29,7 @@ public sealed class OutboxMessage
             Id = domainEvent.EventId,
             OccurredOnUtc = domainEvent.OccurredOnUtc,
             Type = serialized.Type,
-            Payload = serialized.Payload
+            Payload = serialized.Payload,
         };
     }
 

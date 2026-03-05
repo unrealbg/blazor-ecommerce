@@ -7,7 +7,7 @@ public sealed class SystemTextJsonEventSerializer : IEventSerializer
 {
     private static readonly JsonSerializerOptions JsonSerializerOptions = new(JsonSerializerDefaults.Web)
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
     public SerializedDomainEvent Serialize(DomainEvent domainEvent)
