@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Catalog\Catalog.Api\Catalog.Api.csproj" />
+    <ProjectReference Include="..\Modules\Cart\Cart.Api\Cart.Api.csproj" />
+    <ProjectReference Include="..\Modules\Orders\Orders.Api\Orders.Api.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+    <PackageReference Include="OpenTelemetry.Exporter.Console" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="StackExchange.Redis" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InfrastructureProject Include="..\Modules\Catalog\Catalog.Infrastructure\Catalog.Infrastructure.csproj" />
+    <InfrastructureProject Include="..\Modules\Cart\Cart.Infrastructure\Cart.Infrastructure.csproj" />
+    <InfrastructureProject Include="..\Modules\Orders\Orders.Infrastructure\Orders.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <Target Name="BuildInfrastructureProjects" BeforeTargets="Build">
+    <MSBuild Projects="@(InfrastructureProject)"
+             Targets="Restore;Build"
+             Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework)" />
+  </Target>
+
+  <Target Name="CopyInfrastructureAssemblies" AfterTargets="Build">
+    <ItemGroup>
+      <InfrastructureOutputs Include="..\Modules\Catalog\Catalog.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Catalog.Infrastructure.*" />
+      <InfrastructureOutputs Include="..\Modules\Cart\Cart.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Cart.Infrastructure.*" />
+      <InfrastructureOutputs Include="..\Modules\Orders\Orders.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Orders.Infrastructure.*" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(InfrastructureOutputs)"
+          DestinationFolder="$(OutDir)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('%(InfrastructureOutputs.Identity)')" />
+  </Target>
+
+  <Target Name="CopyInfrastructureAssembliesForPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <InfrastructureOutputs Include="..\Modules\Catalog\Catalog.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Catalog.Infrastructure.*" />
+      <InfrastructureOutputs Include="..\Modules\Cart\Cart.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Cart.Infrastructure.*" />
+      <InfrastructureOutputs Include="..\Modules\Orders\Orders.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Orders.Infrastructure.*" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(InfrastructureOutputs)"
+          DestinationFolder="$(PublishDir)"
+          SkipUnchangedFiles="true"
+          Condition="Exists('%(InfrastructureOutputs.Identity)')" />
+  </Target>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+</Project>
+

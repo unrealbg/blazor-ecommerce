@@ -1,0 +1,34 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AppHost/AppHost.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/BuildingBlocks.Application/BuildingBlocks.Application.csproj" />
+    <Project Path="src/BuildingBlocks/BuildingBlocks.Domain/BuildingBlocks.Domain.csproj" />
+    <Project Path="src/BuildingBlocks/BuildingBlocks.Infrastructure/BuildingBlocks.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Cart/">
+    <Project Path="src/Modules/Cart/Cart.Api/Cart.Api.csproj" />
+    <Project Path="src/Modules/Cart/Cart.Application/Cart.Application.csproj" />
+    <Project Path="src/Modules/Cart/Cart.Domain/Cart.Domain.csproj" />
+    <Project Path="src/Modules/Cart/Cart.Infrastructure/Cart.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Catalog/">
+    <Project Path="src/Modules/Catalog/Catalog.Api/Catalog.Api.csproj" />
+    <Project Path="src/Modules/Catalog/Catalog.Application/Catalog.Application.csproj" />
+    <Project Path="src/Modules/Catalog/Catalog.Domain/Catalog.Domain.csproj" />
+    <Project Path="src/Modules/Catalog/Catalog.Infrastructure/Catalog.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Orders/">
+    <Project Path="src/Modules/Orders/Orders.Api/Orders.Api.csproj" />
+    <Project Path="src/Modules/Orders/Orders.Application/Orders.Application.csproj" />
+    <Project Path="src/Modules/Orders/Orders.Domain/Orders.Domain.csproj" />
+    <Project Path="src/Modules/Orders/Orders.Infrastructure/Orders.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Cart.Tests/Cart.Tests.csproj" />
+    <Project Path="tests/Catalog.Tests/Catalog.Tests.csproj" />
+    <Project Path="tests/Orders.Tests/Orders.Tests.csproj" />
+  </Folder>
+</Solution>
