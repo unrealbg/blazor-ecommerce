@@ -1,0 +1,29 @@
+@implements IDisposable
+@inject Storefront.Web.Services.Api.IStoreApiClient StoreApiClient
+@inject Storefront.Web.Services.Customer.ICustomerContext CustomerContext
+@inject Storefront.Web.Services.CartState CartState
+
+<span class="cart-count" aria-live="polite">@CartState.ItemCount</span>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        CartState.Changed += HandleCartChanged;
+
+        var customerId = CustomerContext.GetCustomerId();
+        var cart = await StoreApiClient.GetCartAsync(customerId, CancellationToken.None);
+        var itemCount = cart?.Lines.Sum(line => line.Quantity) ?? 0;
+
+        CartState.SetItemCount(itemCount);
+    }
+
+    public void Dispose()
+    {
+        CartState.Changed -= HandleCartChanged;
+    }
+
+    private void HandleCartChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+}

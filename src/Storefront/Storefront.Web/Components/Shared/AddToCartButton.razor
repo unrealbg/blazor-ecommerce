@@ -1,0 +1,45 @@
+@inject Storefront.Web.Services.Api.IStoreApiClient StoreApiClient
+@inject Storefront.Web.Services.Customer.ICustomerContext CustomerContext
+@inject Storefront.Web.Services.CartState CartState
+
+<div class="add-to-cart">
+    <label>
+        Qty
+        <input type="number" min="1" @bind="quantity" />
+    </label>
+    <button type="button" class="btn-primary" @onclick="AddToCartAsync">Add to Cart</button>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <p class="status-message">@message</p>
+}
+
+@code {
+    private int quantity = 1;
+    private string? message;
+
+    [Parameter]
+    public Guid ProductId { get; set; }
+
+    private async Task AddToCartAsync()
+    {
+        if (quantity <= 0)
+        {
+            message = "Quantity must be greater than zero.";
+            return;
+        }
+
+        var customerId = CustomerContext.GetCustomerId();
+        var success = await StoreApiClient.AddItemToCartAsync(customerId, ProductId, quantity, CancellationToken.None);
+
+        if (!success)
+        {
+            message = "Could not add item to cart.";
+            return;
+        }
+
+        CartState.Increase(quantity);
+        message = "Item added to cart.";
+    }
+}

@@ -65,6 +65,47 @@ public sealed class Cart : AggregateRoot<Guid>
         return Result.Success();
     }
 
+    public Result UpdateItemQuantity(Guid productId, int quantity)
+    {
+        if (productId == Guid.Empty)
+        {
+            return Result.Failure(new Error("cart.item.product.required", "Product id is required."));
+        }
+
+        if (quantity <= 0)
+        {
+            return Result.Failure(new Error("cart.item.quantity.invalid", "Quantity must be greater than zero."));
+        }
+
+        var existingLine = _lines.FirstOrDefault(line => line.ProductId == productId);
+        if (existingLine is null)
+        {
+            return Result.Failure(new Error("cart.item.not_found", "Cart item was not found."));
+        }
+
+        existingLine.SetQuantity(quantity);
+        IncrementRowVersion();
+        return Result.Success();
+    }
+
+    public Result RemoveItem(Guid productId)
+    {
+        if (productId == Guid.Empty)
+        {
+            return Result.Failure(new Error("cart.item.product.required", "Product id is required."));
+        }
+
+        var existingLine = _lines.FirstOrDefault(line => line.ProductId == productId);
+        if (existingLine is null)
+        {
+            return Result.Failure(new Error("cart.item.not_found", "Cart item was not found."));
+        }
+
+        _lines.Remove(existingLine);
+        IncrementRowVersion();
+        return Result.Success();
+    }
+
     public void Clear()
     {
         _lines.Clear();

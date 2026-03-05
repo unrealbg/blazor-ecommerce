@@ -1,0 +1,64 @@
+@page "/"
+@using Storefront.Web.Services.Api
+@using Storefront.Web.Services.Seo
+@inject IStoreApiClient StoreApiClient
+@inject IPageMetadataService MetadataService
+
+<SeoHead Metadata="metadata" />
+
+<section class="hero">
+    <h1>Shop the latest picks</h1>
+    <p>Discover featured products and add them to your cart in a few clicks.</p>
+</section>
+
+<section class="grid">
+    @if (isLoading)
+    {
+        <p>Loading products...</p>
+    }
+    else if (featuredProducts.Count == 0)
+    {
+        <p>No products available yet.</p>
+    }
+    else
+    {
+        @foreach (var product in featuredProducts)
+        {
+            <article class="card">
+                <h2>
+                    <a href="/product/@product.Slug">@product.Name</a>
+                </h2>
+                <p>@(string.IsNullOrWhiteSpace(product.Description) ? "No description provided." : product.Description)</p>
+                <p class="price">@FormatPrice(product.Amount, product.Currency)</p>
+                <a class="btn-link" href="/product/@product.Slug">View details</a>
+            </article>
+        }
+    }
+</section>
+
+@code {
+    private PageMetadata metadata = new("Storefront Home", "Discover featured products and shop online in EUR.", "/");
+    private readonly List<StoreProduct> featuredProducts = [];
+    private bool isLoading = true;
+
+    protected override void OnInitialized()
+    {
+        metadata = MetadataService.ForHome();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var products = await StoreApiClient.GetProductsAsync(CancellationToken.None);
+        featuredProducts.AddRange(
+            products
+                .Where(product => product.IsActive)
+                .Where(product => string.Equals(product.Currency, "EUR", StringComparison.Ordinal))
+                .Take(8));
+        isLoading = false;
+    }
+
+    private static string FormatPrice(decimal amount, string currency)
+    {
+        return $"{amount:0.00} {currency}";
+    }
+}

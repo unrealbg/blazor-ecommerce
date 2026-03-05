@@ -1,0 +1,78 @@
+@page "/category/{Slug}"
+@using Storefront.Web.Services.Api
+@using Storefront.Web.Services.Seo
+@inject IStoreApiClient StoreApiClient
+@inject IPageMetadataService MetadataService
+
+<SeoHead Metadata="metadata" />
+
+<section>
+    <h1>@categoryTitle</h1>
+    <p>Showing products for this category.</p>
+</section>
+
+<section class="grid">
+    @if (isLoading)
+    {
+        <p>Loading products...</p>
+    }
+    else if (products.Count == 0)
+    {
+        <p>No products found.</p>
+    }
+    else
+    {
+        @foreach (var product in products)
+        {
+            <article class="card">
+                <h2>
+                    <a href="/product/@product.Slug">@product.Name</a>
+                </h2>
+                <p>@(string.IsNullOrWhiteSpace(product.Description) ? "No description provided." : product.Description)</p>
+                <p class="price">@FormatPrice(product.Amount, product.Currency)</p>
+            </article>
+        }
+    }
+</section>
+
+@code {
+    [Parameter]
+    public string Slug { get; set; } = "all-products";
+
+    private PageMetadata metadata = new("Category", "Browse products by category.", "/");
+    private string categoryTitle = "All Products";
+    private bool isLoading = true;
+    private List<StoreProduct> products = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        categoryTitle = SlugToTitle(Slug);
+        metadata = MetadataService.ForCategory(categoryTitle, Slug);
+
+        var allProducts = await StoreApiClient.GetProductsAsync(CancellationToken.None);
+        products = allProducts
+            .Where(product => product.IsActive)
+            .Where(product => string.Equals(product.Currency, "EUR", StringComparison.Ordinal))
+            .ToList();
+        isLoading = false;
+    }
+
+    private static string FormatPrice(decimal amount, string currency)
+    {
+        return $"{amount:0.00} {currency}";
+    }
+
+    private static string SlugToTitle(string slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            return "All Products";
+        }
+
+        var words = slug
+            .Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(word => char.ToUpperInvariant(word[0]) + word[1..]);
+
+        return string.Join(' ', words);
+    }
+}

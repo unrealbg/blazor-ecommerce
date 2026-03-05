@@ -7,10 +7,12 @@ Production-oriented modular monolith starter with strict module boundaries and c
 - Catalog
 - Cart
 - Orders
+- Storefront.Web (SSR Blazor UI)
 
 ## Architecture
 
 - **Host**: `src/AppHost` (ASP.NET Core minimal API)
+- **Storefront**: `src/Storefront/Storefront.Web` (Blazor Web App, SSR + interactive components)
 - **Building blocks**:
   - `BuildingBlocks.Domain` (domain primitives, `Result`, `Money`, `IClock`)
   - `BuildingBlocks.Application` (CQRS abstractions, handlers, validation pipeline, cross-module contracts)
@@ -49,19 +51,34 @@ Production-oriented modular monolith starter with strict module boundaries and c
 
 ## Run
 
-### Option 1: Full stack with Docker Compose (postgres + redis + app)
+### Option 1: Full stack with Docker Compose (postgres + redis + app + storefront)
 
 ```bash
 docker compose up --build
 ```
 
-App: `http://localhost:8080`
+App API: `http://localhost:8080`
+Storefront: `http://localhost:5100`
+
+### Option 1B: Start storefront UI from source
+
+```bash
+dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
+```
+
+Storefront: `http://localhost:5100` (default in appsettings)
+
+Storefront configuration:
+
+- `Api:BaseUrl` -> AppHost API base URL (default `http://localhost:8080`)
+- `Seo:SiteBaseUrl` -> absolute public storefront URL used for canonical/sitemap/robots
 
 ### Option 2: Infra in containers, app from `dotnet`
 
 ```bash
 docker compose up -d postgres redis
 dotnet run --project src/AppHost/AppHost.csproj
+dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 ```
 
 ## Health Endpoints
@@ -73,10 +90,31 @@ dotnet run --project src/AppHost/AppHost.csproj
 
 - `POST /api/v1/catalog/products`
 - `GET /api/v1/catalog/products`
+- `GET /api/v1/catalog/products/by-slug/{slug}`
 - `POST /api/v1/cart/{customerId}/items`
 - `GET /api/v1/cart/{customerId}`
+- `PATCH /api/v1/cart/{customerId}/items/{productId}`
+- `DELETE /api/v1/cart/{customerId}/items/{productId}`
 - `POST /api/v1/orders/checkout/{customerId}`
 - `GET /api/v1/orders/{orderId}`
+
+## Storefront Routes
+
+- `GET /` (Home, SSR)
+- `GET /category/{slug}` (Category, SSR)
+- `GET /product/{slug}` (Product, SSR)
+- `GET /search?q=...` (Search, SSR)
+- `GET /cart` (interactive)
+- `GET /checkout` (interactive)
+- `GET /robots.txt`
+- `GET /sitemap.xml`
+
+## Storefront SEO Notes
+
+- Each SEO route sets non-empty title and meta description.
+- Canonical URLs are generated from `Seo:SiteBaseUrl`.
+- `robots.txt` allows all crawlers and points to `/sitemap.xml`.
+- `sitemap.xml` is generated dynamically and includes `/` and active EUR product URLs.
 
 ## Sample End-to-End Flow (curl)
 
@@ -88,7 +126,7 @@ curl -X POST http://localhost:8080/api/v1/catalog/products \
   -d '{
     "name": "Keyboard",
     "description": "Mechanical keyboard",
-    "currency": "USD",
+    "currency": "EUR",
     "amount": 99.99,
     "isActive": true
   }'
@@ -133,6 +171,7 @@ curl http://localhost:8080/api/v1/orders/PUT_ORDER_ID_HERE
 - The checkout endpoint requires `Idempotency-Key` header.
 - Reusing the same key for the same customer returns the same `orderId` and does not create a duplicate order.
 - Reusing the same key for a different customer returns a business error.
+- Storefront checkout (`/checkout`) sends an `Idempotency-Key` automatically per submit.
 
 ### Example
 

@@ -33,4 +33,9 @@ public sealed class CartLine
     {
         Quantity += quantity;
     }
+
+    internal void SetQuantity(int quantity)
+    {
+        Quantity = quantity;
+    }
 }

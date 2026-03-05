@@ -1,0 +1,132 @@
+@page "/cart"
+@rendermode InteractiveServer
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+@inject Storefront.Web.Services.Customer.ICustomerContext CustomerContext
+@inject Storefront.Web.Services.CartState CartState
+
+<PageTitle>Your Cart</PageTitle>
+
+<h1>Your Cart</h1>
+
+@if (isLoading)
+{
+    <p>Loading cart...</p>
+}
+else if (cart is null || cart.Lines.Count == 0)
+{
+    <p>Your cart is empty.</p>
+}
+else
+{
+    <table class="cart-table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Unit Price</th>
+                <th>Quantity</th>
+                <th>Line Total</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var line in cart.Lines)
+            {
+                <tr>
+                    <td>@line.ProductName</td>
+                    <td>@FormatPrice(line.Amount, line.Currency)</td>
+                    <td>
+                        <input
+                            type="number"
+                            min="1"
+                            value="@GetQuantityValue(line.ProductId)"
+                            @onchange="args => UpdateLocalQuantity(line.ProductId, args.Value?.ToString())" />
+                    </td>
+                    <td>@FormatPrice(line.Amount * line.Quantity, line.Currency)</td>
+                    <td class="cart-actions">
+                        <button type="button" class="btn-link" @onclick="() => UpdateQuantityAsync(line.ProductId)">Update</button>
+                        <button type="button" class="btn-link danger" @onclick="() => RemoveItemAsync(line.ProductId)">Remove</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <p class="cart-total">Total: @FormatPrice(totalAmount, "EUR")</p>
+    <a class="btn-primary" href="/checkout">Proceed to checkout</a>
+}
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <p class="status-message">@message</p>
+}
+
+@code {
+    private StoreCart? cart;
+    private bool isLoading = true;
+    private string? message;
+    private decimal totalAmount;
+    private string customerId = string.Empty;
+    private Dictionary<Guid, int> quantities = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        customerId = CustomerContext.GetCustomerId();
+        await ReloadCartAsync();
+    }
+
+    private async Task UpdateQuantityAsync(Guid productId)
+    {
+        if (!quantities.TryGetValue(productId, out var quantity) || quantity <= 0)
+        {
+            message = "Quantity must be greater than zero.";
+            return;
+        }
+
+        var updated = await StoreApiClient.UpdateCartItemQuantityAsync(
+            customerId,
+            productId,
+            quantity,
+            CancellationToken.None);
+
+        message = updated ? "Quantity updated." : "Could not update quantity.";
+        await ReloadCartAsync();
+    }
+
+    private async Task RemoveItemAsync(Guid productId)
+    {
+        var removed = await StoreApiClient.RemoveCartItemAsync(customerId, productId, CancellationToken.None);
+        message = removed ? "Item removed." : "Could not remove item.";
+        await ReloadCartAsync();
+    }
+
+    private async Task ReloadCartAsync()
+    {
+        isLoading = true;
+        cart = await StoreApiClient.GetCartAsync(customerId, CancellationToken.None);
+        quantities = cart?.Lines.ToDictionary(line => line.ProductId, line => line.Quantity) ?? [];
+        totalAmount = cart?.Lines.Sum(line => line.Amount * line.Quantity) ?? 0m;
+        CartState.SetItemCount(cart?.Lines.Sum(line => line.Quantity) ?? 0);
+        isLoading = false;
+    }
+
+    private void UpdateLocalQuantity(Guid productId, string? rawValue)
+    {
+        if (!int.TryParse(rawValue, out var quantity))
+        {
+            return;
+        }
+
+        quantities[productId] = quantity;
+    }
+
+    private int GetQuantityValue(Guid productId)
+    {
+        return quantities.TryGetValue(productId, out var quantity) ? quantity : 1;
+    }
+
+    private static string FormatPrice(decimal amount, string currency)
+    {
+        return $"{amount:0.00} {currency}";
+    }
+}

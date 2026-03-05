@@ -1,0 +1,51 @@
+@page "/product/{Slug}"
+@using Storefront.Web.Services.Api
+@using Storefront.Web.Services.Seo
+@inject IStoreApiClient StoreApiClient
+@inject IPageMetadataService MetadataService
+
+<SeoHead Metadata="metadata" />
+
+@if (isLoading)
+{
+    <p>Loading product...</p>
+}
+else if (product is null || !product.IsActive || !string.Equals(product.Currency, "EUR", StringComparison.Ordinal))
+{
+    <h1>Product not found</h1>
+    <p>The product could not be found.</p>
+}
+else
+{
+    <article class="product-details">
+        <h1>@product.Name</h1>
+        <p>@(string.IsNullOrWhiteSpace(product.Description) ? "No description provided." : product.Description)</p>
+        <p class="price">@FormatPrice(product.Amount, product.Currency)</p>
+        <AddToCartButton ProductId="product.Id" @rendermode="InteractiveServer" />
+    </article>
+}
+
+@code {
+    [Parameter]
+    public string Slug { get; set; } = string.Empty;
+
+    private PageMetadata metadata = new("Product", "Product details page.", "/");
+    private StoreProduct? product;
+    private bool isLoading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        product = await StoreApiClient.GetProductBySlugAsync(Slug, CancellationToken.None);
+        metadata = product is null
+            ? new PageMetadata("Product not found", "Requested product does not exist.", MetadataService.BuildAbsoluteUrl($"/product/{Slug}"))
+            : MetadataService.ForProduct(product.Name, product.Description, product.Slug);
+
+        isLoading = false;
+    }
+
+    private static string FormatPrice(decimal amount, string currency)
+    {
+        return $"{amount:0.00} {currency}";
+    }
+}
