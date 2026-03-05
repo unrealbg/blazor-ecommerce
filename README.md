@@ -109,12 +109,51 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `GET /robots.txt`
 - `GET /sitemap.xml`
 
-## Storefront SEO Notes
+## Storefront SEO Notes (SSR)
 
-- Each SEO route sets non-empty title and meta description.
-- Canonical URLs are generated from `Seo:SiteBaseUrl`.
+- All public storefront routes are SSR (`/`, `/category/{slug}`, `/product/{slug}`, `/search`) and return indexable HTML.
+- Per page head tags are rendered with:
+  - `<title>`
+  - `<meta name="description">`
+  - `<link rel="canonical">`
+  - `<link rel="prev">` and `<link rel="next">` for paginated pages
+- Canonical and sitemap absolute URLs are generated from `Seo:SiteBaseUrl`.
 - `robots.txt` allows all crawlers and points to `/sitemap.xml`.
 - `sitemap.xml` is generated dynamically and includes `/` and active EUR product URLs.
+
+### Canonical Rules
+
+- Tracking parameters are never canonicalized (`utm_*`, `gclid`, `fbclid`, etc.).
+- Category canonical:
+  - `page=1` -> `/category/{slug}`
+  - `page>1` -> `/category/{slug}?page=N`
+- Search canonical:
+  - keeps only `q` and `page` (`page` only when `>1`)
+  - excludes `sort` and `pageSize`
+  - `page=1` -> `/search?q=...`
+  - `page>1` -> `/search?q=...&page=N`
+
+### Structured Data (JSON-LD)
+
+- Home: `WebSite` + `SearchAction`
+- Category/Search: `BreadcrumbList`
+- Product:
+  - `Product` with `name`, `description`, optional `sku`, optional `brand`, optional `image`
+  - `offers` with EUR price, availability, canonical product URL, and `NewCondition`
+  - `BreadcrumbList`
+
+### SiteBaseUrl Configuration
+
+- Configure `Seo:SiteBaseUrl` to the public storefront origin used by crawlers (for example `https://shop.example.com`).
+- In development:
+
+```json
+{
+  "Seo": {
+    "SiteBaseUrl": "http://localhost:5100"
+  }
+}
+```
 
 ## Sample End-to-End Flow (curl)
 
@@ -125,6 +164,12 @@ curl -X POST http://localhost:8080/api/v1/catalog/products \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Keyboard",
+    "brand": "Contoso",
+    "sku": "KEY-001",
+    "imageUrl": "/images/keyboard.png",
+    "isInStock": true,
+    "categorySlug": "keyboards",
+    "categoryName": "Keyboards",
     "description": "Mechanical keyboard",
     "currency": "EUR",
     "amount": 99.99,

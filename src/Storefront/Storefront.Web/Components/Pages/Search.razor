@@ -1,15 +1,35 @@
 @page "/search"
-@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Http
+@using Microsoft.Extensions.Primitives
 @using Storefront.Web.Services.Api
 @using Storefront.Web.Services.Seo
+@inject NavigationManager NavigationManager
 @inject IStoreApiClient StoreApiClient
 @inject IPageMetadataService MetadataService
+@inject ICanonicalUrlService CanonicalUrlService
+@inject IStructuredDataService StructuredDataService
 
-<SeoHead Metadata="metadata" />
+<SeoHead
+    Metadata="metadata"
+    PrevUrl="@canonicalUrls?.PrevUrl"
+    NextUrl="@canonicalUrls?.NextUrl"
+    JsonLdScripts="jsonLdScripts" />
+
+<Breadcrumbs Items="breadcrumbs" />
 
 <section>
     <h1>Search results</h1>
-    <p>Query: <strong>@query</strong></p>
+    <p>Query: <strong>@displayQuery</strong></p>
+</section>
+
+<section class="toolbar">
+    <label for="search-sort">Sort:</label>
+    <select id="search-sort" value="@currentSort" @onchange="OnSortChanged">
+        <option value="name">Name (A-Z)</option>
+        <option value="name-desc">Name (Z-A)</option>
+        <option value="price-asc">Price (Low to High)</option>
+        <option value="price-desc">Price (High to Low)</option>
+    </select>
 </section>
 
 <section class="grid">
@@ -34,40 +54,182 @@
     }
 </section>
 
+<Pagination CurrentPage="currentPage" TotalPages="totalPages" BuildUrl="BuildPageUrl" />
+
 @code {
+    private const int FixedPageSize = 24;
+    private const string DefaultSort = "name";
+
     [SupplyParameterFromQuery(Name = "q")]
     public string Query { get; set; } = string.Empty;
 
+    [SupplyParameterFromQuery(Name = "page")]
+    public int? Page { get; set; }
+
+    [SupplyParameterFromQuery(Name = "sort")]
+    public string? Sort { get; set; }
+
     private PageMetadata metadata = new("Search", "Search products.", "/search");
-    private string query = string.Empty;
+    private CanonicalUrls? canonicalUrls;
+    private IReadOnlyCollection<string> jsonLdScripts = [];
+    private IReadOnlyList<BreadcrumbItem> breadcrumbs = [];
+    private string displayQuery = "all";
+    private string currentSort = DefaultSort;
     private bool isLoading = true;
+    private int currentPage = 1;
+    private int totalPages;
     private List<StoreProduct> products = [];
 
     protected override async Task OnParametersSetAsync()
     {
-        query = Query?.Trim() ?? string.Empty;
-        metadata = MetadataService.ForSearch(string.IsNullOrWhiteSpace(query) ? "all" : query);
+        isLoading = true;
+
+        displayQuery = string.IsNullOrWhiteSpace(Query) ? "all" : Query.Trim();
+        currentSort = NormalizeSort(Sort);
+        currentPage = NormalizePage(Page);
 
         var allProducts = await StoreApiClient.GetProductsAsync(CancellationToken.None);
-        products = string.IsNullOrWhiteSpace(query)
-            ? allProducts
-                .Where(product => product.IsActive)
-                .Where(product => string.Equals(product.Currency, "EUR", StringComparison.Ordinal))
-                .ToList()
-            : allProducts
-                .Where(product => product.IsActive)
-                .Where(product => string.Equals(product.Currency, "EUR", StringComparison.Ordinal))
-                .Where(product =>
-                    product.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                    (!string.IsNullOrWhiteSpace(product.Description) &&
-                     product.Description.Contains(query, StringComparison.OrdinalIgnoreCase)))
-                .ToList();
+        var filteredProducts = allProducts
+            .Where(product => product.IsActive)
+            .Where(product => string.Equals(product.Currency, "EUR", StringComparison.Ordinal))
+            .Where(product => MatchesSearch(product, displayQuery))
+            .ToList();
+
+        var sortedProducts = SortProducts(filteredProducts, currentSort);
+        totalPages = Math.Max(1, (int)Math.Ceiling(sortedProducts.Count / (double)FixedPageSize));
+        currentPage = Math.Min(currentPage, totalPages);
+
+        products = sortedProducts
+            .Skip((currentPage - 1) * FixedPageSize)
+            .Take(FixedPageSize)
+            .ToList();
+
+        var hasNextPage = currentPage < totalPages;
+        canonicalUrls = CanonicalUrlService.Build(
+            "/search",
+            BuildCanonicalQuery(displayQuery, currentPage),
+            hasNextPage);
+
+        metadata = MetadataService.ForSearch(displayQuery) with
+        {
+            CanonicalUrl = canonicalUrls.CanonicalUrl,
+        };
+
+        breadcrumbs =
+        [
+            new BreadcrumbItem("Home", "/"),
+            new BreadcrumbItem("Search", "/search"),
+        ];
+
+        jsonLdScripts =
+        [
+            StructuredDataService.BuildBreadcrumbJsonLd(ToAbsoluteBreadcrumbs(breadcrumbs)),
+        ];
 
         isLoading = false;
+    }
+
+    private Task OnSortChanged(ChangeEventArgs args)
+    {
+        var selectedSort = args.Value?.ToString();
+        var targetUrl = BuildPageUrl(1, selectedSort);
+
+        NavigationManager.NavigateTo(targetUrl);
+        return Task.CompletedTask;
+    }
+
+    private string BuildPageUrl(int targetPage)
+    {
+        return BuildPageUrl(targetPage, currentSort);
+    }
+
+    private string BuildPageUrl(int targetPage, string? sort)
+    {
+        var queryParameters = new List<KeyValuePair<string, string?>>(3);
+
+        if (!string.Equals(displayQuery, "all", StringComparison.Ordinal))
+        {
+            queryParameters.Add(new KeyValuePair<string, string?>("q", displayQuery));
+        }
+
+        if (targetPage > 1)
+        {
+            queryParameters.Add(new KeyValuePair<string, string?>("page", targetPage.ToString()));
+        }
+
+        var normalizedSort = NormalizeSort(sort);
+        if (!string.Equals(normalizedSort, DefaultSort, StringComparison.Ordinal))
+        {
+            queryParameters.Add(new KeyValuePair<string, string?>("sort", normalizedSort));
+        }
+
+        return queryParameters.Count == 0
+            ? "/search"
+            : $"/search{QueryString.Create(queryParameters)}";
+    }
+
+    private static List<StoreProduct> SortProducts(IEnumerable<StoreProduct> source, string sort)
+    {
+        return sort switch
+        {
+            "name-desc" => source.OrderByDescending(product => product.Name).ToList(),
+            "price-asc" => source.OrderBy(product => product.Amount).ThenBy(product => product.Name).ToList(),
+            "price-desc" => source.OrderByDescending(product => product.Amount).ThenBy(product => product.Name).ToList(),
+            _ => source.OrderBy(product => product.Name).ToList(),
+        };
+    }
+
+    private static bool MatchesSearch(StoreProduct product, string query)
+    {
+        if (string.Equals(query, "all", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        return product.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+               (!string.IsNullOrWhiteSpace(product.Description) &&
+                product.Description.Contains(query, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static int NormalizePage(int? page)
+    {
+        return page is null || page < 1 ? 1 : page.Value;
+    }
+
+    private static string NormalizeSort(string? sort)
+    {
+        return sort switch
+        {
+            "name-desc" => "name-desc",
+            "price-asc" => "price-asc",
+            "price-desc" => "price-desc",
+            _ => DefaultSort,
+        };
     }
 
     private static string FormatPrice(decimal amount, string currency)
     {
         return $"{amount:0.00} {currency}";
+    }
+
+    private static IReadOnlyDictionary<string, StringValues> BuildCanonicalQuery(string query, int page)
+    {
+        var values = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase);
+        if (!string.Equals(query, "all", StringComparison.Ordinal))
+        {
+            values["q"] = query;
+        }
+
+        if (page > 1)
+        {
+            values["page"] = page.ToString();
+        }
+
+        return values;
+    }
+
+    private IEnumerable<BreadcrumbItem> ToAbsoluteBreadcrumbs(IEnumerable<BreadcrumbItem> source)
+    {
+        return source.Select(item => new BreadcrumbItem(item.Name, MetadataService.BuildAbsoluteUrl(item.Url)));
     }
 }

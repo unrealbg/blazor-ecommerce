@@ -16,7 +16,8 @@ internal sealed class ProductCatalogReader(CatalogDbContext dbContext) : IProduc
                 product.Description,
                 product.Price.Currency,
                 product.Price.Amount,
-                product.IsActive))
+                product.IsActive,
+                product.IsInStock))
             .SingleOrDefaultAsync(cancellationToken);
     }
 }

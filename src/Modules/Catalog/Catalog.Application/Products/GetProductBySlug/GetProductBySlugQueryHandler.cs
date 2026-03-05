@@ -20,6 +20,12 @@ public sealed class GetProductBySlugQueryHandler(IProductRepository productRepos
             product.Slug,
             product.Name,
             product.Description,
+            product.Brand,
+            product.Sku,
+            product.ImageUrl,
+            product.IsInStock,
+            product.CategorySlug,
+            product.CategoryName,
             product.Price.Currency,
             product.Price.Amount,
             product.IsActive);

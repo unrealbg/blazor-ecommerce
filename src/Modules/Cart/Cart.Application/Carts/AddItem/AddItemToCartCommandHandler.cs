@@ -16,7 +16,7 @@ public sealed class AddItemToCartCommandHandler(
     public async Task<Result<Guid>> Handle(AddItemToCartCommand request, CancellationToken cancellationToken)
     {
         var product = await productCatalogReader.GetByIdAsync(request.ProductId, cancellationToken);
-        if (product is null || !product.IsActive)
+        if (product is null || !product.IsActive || !product.IsInStock)
         {
             return Result<Guid>.Failure(new Error("cart.product.not_found", "Product was not found."));
         }

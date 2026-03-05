@@ -1,0 +1,30 @@
+@using Storefront.Web.Services.Seo
+
+@if (Items.Count > 0)
+{
+    <nav aria-label="Breadcrumb" class="breadcrumb-nav">
+        <ol class="breadcrumb-list">
+            @for (var i = 0; i < Items.Count; i++)
+            {
+                var item = Items[i];
+                var isLast = i == Items.Count - 1;
+
+                <li class="breadcrumb-item">
+                    @if (isLast)
+                    {
+                        <span aria-current="page">@item.Name</span>
+                    }
+                    else
+                    {
+                        <a href="@item.Url">@item.Name</a>
+                    }
+                </li>
+            }
+        </ol>
+    </nav>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<BreadcrumbItem> Items { get; set; } = [];
+}

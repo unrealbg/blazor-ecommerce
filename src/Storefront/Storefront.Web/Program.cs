@@ -14,7 +14,9 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICanonicalUrlService, CanonicalUrlService>();
 builder.Services.AddScoped<IPageMetadataService, PageMetadataService>();
+builder.Services.AddScoped<IStructuredDataService, StructuredDataService>();
 builder.Services.AddScoped<ISitemapService, SitemapService>();
 builder.Services.AddScoped<ICustomerContext, CookieCustomerContext>();
 builder.Services.AddScoped<CartState>();

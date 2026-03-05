@@ -6,4 +6,5 @@ public sealed record ProductSnapshot(
     string? Description,
     string Currency,
     decimal Amount,
-    bool IsActive);
+    bool IsActive,
+    bool IsInStock);
