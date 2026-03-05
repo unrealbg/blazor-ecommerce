@@ -2,7 +2,7 @@
 bin/
 obj/
 
-# publish outputs
+# publish outputs / local artifacts
 publish/
 .artifacts/
 
