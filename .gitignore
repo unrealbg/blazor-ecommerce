@@ -1,5 +1,15 @@
 bin/
 obj/
+
+publish/
+.artifacts/
+
 .vs/
+.idea/
 *.user
 *.suo
+
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
