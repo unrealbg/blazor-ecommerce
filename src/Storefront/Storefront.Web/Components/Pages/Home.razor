@@ -1,10 +1,13 @@
 @page "/"
 @using Storefront.Web.Services.Api
 @using Storefront.Web.Services.Seo
+@using Microsoft.Extensions.Options
 @inject IStoreApiClient StoreApiClient
 @inject IPageMetadataService MetadataService
+@inject IStructuredDataService StructuredDataService
+@inject IOptions<SeoOptions> SeoOptions
 
-<SeoHead Metadata="metadata" />
+<SeoHead Metadata="metadata" JsonLdScripts="jsonLdScripts" />
 
 <section class="hero">
     <h1>Shop the latest picks</h1>
@@ -39,11 +42,16 @@
 @code {
     private PageMetadata metadata = new("Storefront Home", "Discover featured products and shop online in EUR.", "/");
     private readonly List<StoreProduct> featuredProducts = [];
+    private IReadOnlyCollection<string> jsonLdScripts = [];
     private bool isLoading = true;
 
     protected override void OnInitialized()
     {
         metadata = MetadataService.ForHome();
+        jsonLdScripts =
+        [
+            StructuredDataService.BuildWebSiteSearchJsonLd(SeoOptions.Value.SiteBaseUrl),
+        ];
     }
 
     protected override async Task OnInitializedAsync()

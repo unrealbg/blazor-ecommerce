@@ -29,17 +29,7 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
 
     private sealed class FakeStoreApiClient : IStoreApiClient
     {
-        private static readonly StoreProduct[] Products =
-        [
-            new StoreProduct(
-                Guid.Parse("6d4bf032-1b4f-4daa-8902-90f268cb378b"),
-                "mechanical-keyboard",
-                "Mechanical Keyboard",
-                "RGB mechanical keyboard for gamers.",
-                "EUR",
-                89.00m,
-                true),
-        ];
+        private static readonly IReadOnlyCollection<StoreProduct> Products = BuildProducts();
 
         public Task<bool> AddItemToCartAsync(
             string customerId,
@@ -83,6 +73,64 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
             CancellationToken cancellationToken)
         {
             return Task.FromResult(true);
+        }
+
+        private static IReadOnlyCollection<StoreProduct> BuildProducts()
+        {
+            var products = new List<StoreProduct>
+            {
+                new(
+                    Guid.Parse("6d4bf032-1b4f-4daa-8902-90f268cb378b"),
+                    "mechanical-keyboard",
+                    "Mechanical Keyboard",
+                    "RGB mechanical keyboard for gamers.",
+                    "Contoso",
+                    "KEY-0001",
+                    "/images/mechanical-keyboard.png",
+                    true,
+                    "keyboards",
+                    "Keyboards",
+                    "EUR",
+                    89.00m,
+                    true),
+            };
+
+            for (var index = 2; index <= 56; index++)
+            {
+                products.Add(
+                    new StoreProduct(
+                        Guid.NewGuid(),
+                        $"keyboard-{index}",
+                        $"Keyboard {index}",
+                        $"Keyboard model {index} with tactile switches.",
+                        "Contoso",
+                        $"KEY-{index:0000}",
+                        $"/images/keyboard-{index}.png",
+                        true,
+                        "keyboards",
+                        "Keyboards",
+                        "EUR",
+                        70 + index,
+                        true));
+            }
+
+            products.Add(
+                new StoreProduct(
+                    Guid.NewGuid(),
+                    "wireless-mouse",
+                    "Wireless Mouse",
+                    "Compact wireless mouse.",
+                    "Fabrikam",
+                    "MOU-0001",
+                    "/images/wireless-mouse.png",
+                    true,
+                    "mice",
+                    "Mice",
+                    "EUR",
+                    39.00m,
+                    true));
+
+            return products;
         }
     }
 }

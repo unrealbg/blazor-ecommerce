@@ -1,14 +1,35 @@
 @page "/category/{Slug}"
+@using Microsoft.AspNetCore.Http
+@using Microsoft.Extensions.Primitives
 @using Storefront.Web.Services.Api
 @using Storefront.Web.Services.Seo
+@inject NavigationManager NavigationManager
 @inject IStoreApiClient StoreApiClient
 @inject IPageMetadataService MetadataService
+@inject ICanonicalUrlService CanonicalUrlService
+@inject IStructuredDataService StructuredDataService
 
-<SeoHead Metadata="metadata" />
+<SeoHead
+    Metadata="metadata"
+    PrevUrl="@canonicalUrls?.PrevUrl"
+    NextUrl="@canonicalUrls?.NextUrl"
+    JsonLdScripts="jsonLdScripts" />
+
+<Breadcrumbs Items="breadcrumbs" />
 
 <section>
     <h1>@categoryTitle</h1>
     <p>Showing products for this category.</p>
+</section>
+
+<section class="toolbar">
+    <label for="category-sort">Sort:</label>
+    <select id="category-sort" value="@currentSort" @onchange="OnSortChanged">
+        <option value="name">Name (A-Z)</option>
+        <option value="name-desc">Name (Z-A)</option>
+        <option value="price-asc">Price (Low to High)</option>
+        <option value="price-desc">Price (High to Low)</option>
+    </select>
 </section>
 
 <section class="grid">
@@ -35,31 +56,167 @@
     }
 </section>
 
+<Pagination CurrentPage="currentPage" TotalPages="totalPages" BuildUrl="BuildPageUrl" />
+
 @code {
+    private const int FixedPageSize = 24;
+    private const string DefaultSort = "name";
+
     [Parameter]
     public string Slug { get; set; } = "all-products";
 
+    [SupplyParameterFromQuery(Name = "page")]
+    public int? Page { get; set; }
+
+    [SupplyParameterFromQuery(Name = "sort")]
+    public string? Sort { get; set; }
+
     private PageMetadata metadata = new("Category", "Browse products by category.", "/");
+    private CanonicalUrls? canonicalUrls;
+    private IReadOnlyCollection<string> jsonLdScripts = [];
+    private IReadOnlyList<BreadcrumbItem> breadcrumbs = [];
     private string categoryTitle = "All Products";
     private bool isLoading = true;
+    private string currentSort = DefaultSort;
+    private int currentPage = 1;
+    private int totalPages;
     private List<StoreProduct> products = [];
 
     protected override async Task OnParametersSetAsync()
     {
+        isLoading = true;
+
         categoryTitle = SlugToTitle(Slug);
-        metadata = MetadataService.ForCategory(categoryTitle, Slug);
+        currentSort = NormalizeSort(Sort);
+        currentPage = NormalizePage(Page);
 
         var allProducts = await StoreApiClient.GetProductsAsync(CancellationToken.None);
-        products = allProducts
+        var filteredProducts = allProducts
             .Where(product => product.IsActive)
             .Where(product => string.Equals(product.Currency, "EUR", StringComparison.Ordinal))
+            .Where(product => IsProductInCategory(product, Slug))
             .ToList();
+
+        var sortedProducts = SortProducts(filteredProducts, currentSort);
+        totalPages = Math.Max(1, (int)Math.Ceiling(sortedProducts.Count / (double)FixedPageSize));
+        currentPage = Math.Min(currentPage, totalPages);
+
+        products = sortedProducts
+            .Skip((currentPage - 1) * FixedPageSize)
+            .Take(FixedPageSize)
+            .ToList();
+
+        var hasNextPage = currentPage < totalPages;
+        canonicalUrls = CanonicalUrlService.Build(
+            $"/category/{Slug}",
+            BuildCanonicalQuery(currentPage),
+            hasNextPage);
+
+        metadata = MetadataService.ForCategory(categoryTitle, Slug) with
+        {
+            CanonicalUrl = canonicalUrls.CanonicalUrl,
+        };
+
+        breadcrumbs =
+        [
+            new BreadcrumbItem("Home", "/"),
+            new BreadcrumbItem(categoryTitle, $"/category/{Slug}"),
+        ];
+
+        jsonLdScripts =
+        [
+            StructuredDataService.BuildBreadcrumbJsonLd(ToAbsoluteBreadcrumbs(breadcrumbs)),
+        ];
+
         isLoading = false;
+    }
+
+    private Task OnSortChanged(ChangeEventArgs args)
+    {
+        var selectedSort = args.Value?.ToString();
+        var targetUrl = BuildPageUrl(1, selectedSort);
+
+        NavigationManager.NavigateTo(targetUrl);
+        return Task.CompletedTask;
+    }
+
+    private string BuildPageUrl(int targetPage)
+    {
+        return BuildPageUrl(targetPage, currentSort);
+    }
+
+    private string BuildPageUrl(int targetPage, string? sort)
+    {
+        var queryParameters = new List<KeyValuePair<string, string?>>(2);
+
+        if (targetPage > 1)
+        {
+            queryParameters.Add(new KeyValuePair<string, string?>("page", targetPage.ToString()));
+        }
+
+        var normalizedSort = NormalizeSort(sort);
+        if (!string.Equals(normalizedSort, DefaultSort, StringComparison.Ordinal))
+        {
+            queryParameters.Add(new KeyValuePair<string, string?>("sort", normalizedSort));
+        }
+
+        var basePath = $"/category/{Slug}";
+        return queryParameters.Count == 0
+            ? basePath
+            : $"{basePath}{QueryString.Create(queryParameters)}";
+    }
+
+    private static List<StoreProduct> SortProducts(IEnumerable<StoreProduct> source, string sort)
+    {
+        return sort switch
+        {
+            "name-desc" => source.OrderByDescending(product => product.Name).ToList(),
+            "price-asc" => source.OrderBy(product => product.Amount).ThenBy(product => product.Name).ToList(),
+            "price-desc" => source.OrderByDescending(product => product.Amount).ThenBy(product => product.Name).ToList(),
+            _ => source.OrderBy(product => product.Name).ToList(),
+        };
+    }
+
+    private static bool IsProductInCategory(StoreProduct product, string categorySlug)
+    {
+        if (string.Equals(categorySlug, "all-products", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return string.Equals(product.CategorySlug, categorySlug, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static int NormalizePage(int? page)
+    {
+        return page is null || page < 1 ? 1 : page.Value;
+    }
+
+    private static string NormalizeSort(string? sort)
+    {
+        return sort switch
+        {
+            "name-desc" => "name-desc",
+            "price-asc" => "price-asc",
+            "price-desc" => "price-desc",
+            _ => DefaultSort,
+        };
     }
 
     private static string FormatPrice(decimal amount, string currency)
     {
         return $"{amount:0.00} {currency}";
+    }
+
+    private static IReadOnlyDictionary<string, StringValues> BuildCanonicalQuery(int page)
+    {
+        var values = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase);
+        if (page > 1)
+        {
+            values["page"] = page.ToString();
+        }
+
+        return values;
     }
 
     private static string SlugToTitle(string slug)
@@ -74,5 +231,10 @@
             .Select(word => char.ToUpperInvariant(word[0]) + word[1..]);
 
         return string.Join(' ', words);
+    }
+
+    private IEnumerable<BreadcrumbItem> ToAbsoluteBreadcrumbs(IEnumerable<BreadcrumbItem> source)
+    {
+        return source.Select(item => new BreadcrumbItem(item.Name, MetadataService.BuildAbsoluteUrl(item.Url)));
     }
 }

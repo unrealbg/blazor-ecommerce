@@ -20,10 +20,17 @@ public sealed class CreateProductCommandHandler(
         }
 
         var slug = await GenerateUniqueSlugAsync(request.Name, cancellationToken);
+        var categorySlug = NormalizeCategorySlug(request.CategorySlug, request.CategoryName);
         var productResult = Product.Create(
             request.Name,
             slug,
             request.Description,
+            request.Brand,
+            request.Sku,
+            request.ImageUrl,
+            request.IsInStock,
+            categorySlug,
+            request.CategoryName,
             moneyResult.Value,
             request.IsActive);
         if (productResult.IsFailure)
@@ -53,5 +60,15 @@ public sealed class CreateProductCommandHandler(
         }
 
         return candidate;
+    }
+
+    private string? NormalizeCategorySlug(string? categorySlug, string? categoryName)
+    {
+        if (!string.IsNullOrWhiteSpace(categorySlug))
+        {
+            return SlugGenerator.Generate(categorySlug);
+        }
+
+        return string.IsNullOrWhiteSpace(categoryName) ? null : SlugGenerator.Generate(categoryName);
     }
 }

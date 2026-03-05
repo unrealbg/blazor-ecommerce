@@ -6,13 +6,40 @@
     <HeadContent>
         <meta name="description" content="@Metadata.Description" />
         <link rel="canonical" href="@Metadata.CanonicalUrl" />
+        @if (!string.IsNullOrWhiteSpace(PrevUrl))
+        {
+            <link rel="prev" href="@PrevUrl" />
+        }
+
+        @if (!string.IsNullOrWhiteSpace(NextUrl))
+        {
+            <link rel="next" href="@NextUrl" />
+        }
+
         <meta property="og:title" content="@Metadata.Title" />
         <meta property="og:description" content="@Metadata.Description" />
         <meta property="og:url" content="@Metadata.CanonicalUrl" />
     </HeadContent>
 }
 
+@if (JsonLdScripts is not null)
+{
+    @foreach (var jsonLdScript in JsonLdScripts)
+    {
+        <script type="application/ld+json">@((MarkupString)jsonLdScript)</script>
+    }
+}
+
 @code {
     [Parameter]
     public PageMetadata? Metadata { get; set; }
+
+    [Parameter]
+    public string? PrevUrl { get; set; }
+
+    [Parameter]
+    public string? NextUrl { get; set; }
+
+    [Parameter]
+    public IReadOnlyCollection<string>? JsonLdScripts { get; set; }
 }

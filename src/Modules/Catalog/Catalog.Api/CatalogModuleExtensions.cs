@@ -29,6 +29,12 @@ public static class CatalogModuleExtensions
             var command = new CreateProductCommand(
                 request.Name,
                 request.Description,
+                request.Brand,
+                request.Sku,
+                request.ImageUrl,
+                request.IsInStock,
+                request.CategorySlug,
+                request.CategoryName,
                 request.Currency,
                 request.Amount,
                 request.IsActive);
@@ -70,7 +76,13 @@ public static class CatalogModuleExtensions
     public sealed record CreateProductRequest(
         string Name,
         string? Description,
-        string Currency,
-        decimal Amount,
-        bool IsActive = true);
+        string Currency = "EUR",
+        decimal Amount = 0m,
+        bool IsActive = true,
+        string? Brand = null,
+        string? Sku = null,
+        string? ImageUrl = null,
+        bool IsInStock = true,
+        string? CategorySlug = null,
+        string? CategoryName = null);
 }

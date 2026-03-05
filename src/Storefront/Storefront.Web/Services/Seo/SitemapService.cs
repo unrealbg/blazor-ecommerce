@@ -20,9 +20,23 @@ public sealed class SitemapService(
 
         urlSet.Add(CreateUrlElement(ns, $"{baseUrl}/"));
 
-        foreach (var product in products
-                     .Where(product => product.IsActive)
-                     .Where(product => string.Equals(product.Currency, "EUR", StringComparison.Ordinal)))
+        var activeProducts = products
+            .Where(product => product.IsActive)
+            .Where(product => string.Equals(product.Currency, "EUR", StringComparison.Ordinal))
+            .ToList();
+
+        var categorySlugs = activeProducts
+            .Where(product => !string.IsNullOrWhiteSpace(product.CategorySlug))
+            .Select(product => product.CategorySlug!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(slug => slug, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var categorySlug in categorySlugs)
+        {
+            urlSet.Add(CreateUrlElement(ns, $"{baseUrl}/category/{categorySlug}"));
+        }
+
+        foreach (var product in activeProducts)
         {
             urlSet.Add(CreateUrlElement(ns, $"{baseUrl}/product/{product.Slug}"));
         }

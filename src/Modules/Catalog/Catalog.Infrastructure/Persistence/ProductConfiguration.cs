@@ -23,6 +23,27 @@ internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(product => product.Description)
             .HasMaxLength(2000);
 
+        builder.Property(product => product.Brand)
+            .HasMaxLength(120);
+
+        builder.Property(product => product.Sku)
+            .HasMaxLength(64);
+
+        builder.Property(product => product.ImageUrl)
+            .HasMaxLength(2000);
+
+        builder.Property(product => product.IsInStock)
+            .HasColumnName("is_in_stock")
+            .IsRequired();
+
+        builder.Property(product => product.CategorySlug)
+            .HasColumnName("category_slug")
+            .HasMaxLength(120);
+
+        builder.Property(product => product.CategoryName)
+            .HasColumnName("category_name")
+            .HasMaxLength(120);
+
         builder.Property(product => product.IsActive)
             .IsRequired();
 
@@ -41,5 +62,7 @@ internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
 
         builder.HasIndex(product => product.Slug)
             .IsUnique();
+
+        builder.HasIndex(product => product.CategorySlug);
     }
 }
