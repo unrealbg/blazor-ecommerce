@@ -2,9 +2,9 @@ using Microsoft.Extensions.Options;
 
 namespace Storefront.Web.Services.Seo;
 
-public sealed class PageMetadataService(IOptions<SeoOptions> options) : IPageMetadataService
+public sealed class PageMetadataService(IOptions<SiteOptions> options) : IPageMetadataService
 {
-    private readonly string baseUrl = NormalizeBaseUrl(options.Value.SiteBaseUrl);
+    private readonly string baseUrl = NormalizeBaseUrl(options.Value.BaseUrl);
 
     public PageMetadata ForHome()
     {

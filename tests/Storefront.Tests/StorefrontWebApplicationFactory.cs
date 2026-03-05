@@ -1,5 +1,10 @@
+using System.Net;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -10,6 +15,11 @@ namespace Storefront.Tests;
 
 public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Program>
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    };
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.ConfigureAppConfiguration((_, configurationBuilder) =>
@@ -17,10 +27,11 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
             configurationBuilder.AddInMemoryCollection(
             [
                 new KeyValuePair<string, string?>("Api:BaseUrl", "http://localhost:8080"),
-                new KeyValuePair<string, string?>("Cms:CmsBaseUrl", "http://localhost:8055"),
-                new KeyValuePair<string, string?>("Cms:CmsApiKey", string.Empty),
+                new KeyValuePair<string, string?>("Cms:BaseUrl", "http://localhost:8055"),
+                new KeyValuePair<string, string?>("Cms:ApiToken", "test-token"),
                 new KeyValuePair<string, string?>("Cms:CacheSeconds", "60"),
-                new KeyValuePair<string, string?>("Seo:SiteBaseUrl", "https://shop.example.com"),
+                new KeyValuePair<string, string?>("Site:BaseUrl", "https://shop.example.com"),
+                new KeyValuePair<string, string?>("ConnectionStrings:Redis", string.Empty),
             ]);
         });
 
@@ -29,7 +40,11 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
             services.RemoveAll<IStoreApiClient>();
             services.RemoveAll<IContentClient>();
             services.AddSingleton<IStoreApiClient, FakeStoreApiClient>();
-            services.AddSingleton<IContentClient, FakeContentClient>();
+            services.AddHttpClient<IContentClient, DirectusContentClient>(client =>
+                {
+                    client.BaseAddress = new Uri("http://localhost:8055");
+                })
+                .ConfigurePrimaryHttpMessageHandler(() => new FakeCmsHttpMessageHandler());
         });
     }
 
@@ -140,75 +155,195 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
         }
     }
 
-    private sealed class FakeContentClient : IContentClient
+    private sealed class FakeCmsHttpMessageHandler : HttpMessageHandler
     {
-        private static readonly IReadOnlyCollection<BlogPostContent> BlogPosts =
+        private static readonly DateTimeOffset PublishedAt = DateTimeOffset.UtcNow.AddDays(-5);
+        private static readonly DateTimeOffset UpdatedAt = DateTimeOffset.UtcNow.AddDays(-3);
+
+        private static readonly IReadOnlyCollection<CmsBlogPost> BlogPosts =
         [
-            new BlogPostContent(
+            new CmsBlogPost(
+                "published",
                 "Shipping Checklist for 2026",
                 "shipping-checklist-2026",
                 "Practical shipping checklist to reduce cart abandonment and improve delivery reliability.",
                 "Use this checklist before every campaign:\n1. Verify carrier cut-off.\n2. Update ETAs.\n3. Prepare fallback carrier options.",
                 "/images/blog/shipping-checklist.jpg",
                 "Alex Mercer",
-                DateTimeOffset.UtcNow.AddDays(-5),
-                DateTimeOffset.UtcNow.AddDays(-3),
+                PublishedAt,
+                UpdatedAt,
                 ["shipping", "operations"],
                 "Shipping Checklist for 2026",
                 "Practical shipping checklist for modern e-commerce teams.",
                 null,
                 false),
+            new CmsBlogPost(
+                "published",
+                "Private SEO Note",
+                "private-seo-note",
+                "Internal SEO article that is noindex.",
+                "This post is published but should not appear in sitemap.",
+                null,
+                "Editorial Team",
+                PublishedAt,
+                UpdatedAt,
+                ["seo"],
+                null,
+                null,
+                null,
+                true),
         ];
 
-        private static readonly IReadOnlyCollection<LandingPageContent> Pages =
+        private static readonly IReadOnlyCollection<CmsPage> Pages =
         [
-            new LandingPageContent(
+            new CmsPage(
+                "published",
                 "Wholesale Program",
                 "wholesale-program",
                 "Partner with us and unlock volume pricing for your retail chain.",
+                UpdatedAt,
                 "Wholesale Program",
                 "Volume pricing and dedicated support for wholesale partners.",
                 null,
                 false),
         ];
 
-        public Task<ContentFetchResult<IReadOnlyCollection<BlogPostContent>>> GetBlogPosts(
-            int page,
-            int pageSize,
-            CancellationToken cancellationToken)
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            var normalizedPage = Math.Max(1, page);
-            var normalizedPageSize = Math.Max(1, pageSize);
-            var items = BlogPosts
-                .OrderByDescending(post => post.PublishedAt)
-                .Skip((normalizedPage - 1) * normalizedPageSize)
-                .Take(normalizedPageSize)
-                .ToArray();
+            var uri = request.RequestUri;
+            if (uri is null)
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadRequest));
+            }
 
-            return Task.FromResult(ContentFetchResult<IReadOnlyCollection<BlogPostContent>>.Success(items));
+            var path = uri.AbsolutePath.TrimEnd('/');
+            var query = QueryHelpers.ParseQuery(uri.Query);
+
+            if (path.EndsWith("/items/blog_posts", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult(this.BuildBlogResponse(query));
+            }
+
+            if (path.EndsWith("/items/pages", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult(this.BuildPageResponse(query));
+            }
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
         }
 
-        public Task<ContentFetchResult<BlogPostContent>> GetBlogPostBySlug(string slug, CancellationToken cancellationToken)
+        private HttpResponseMessage BuildBlogResponse(IReadOnlyDictionary<string, Microsoft.Extensions.Primitives.StringValues> query)
         {
-            var item = BlogPosts.SingleOrDefault(post => string.Equals(post.Slug, slug, StringComparison.Ordinal));
-            return Task.FromResult(
-                item is null
-                    ? ContentFetchResult<BlogPostContent>.NotFound()
-                    : ContentFetchResult<BlogPostContent>.Success(item));
+            var items = BlogPosts.AsEnumerable();
+
+            if (query.TryGetValue("filter[status][_eq]", out var status))
+            {
+                items = items.Where(item => string.Equals(item.Status, status.ToString(), StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (query.TryGetValue("filter[slug][_eq]", out var slug))
+            {
+                items = items.Where(item => string.Equals(item.Slug, slug.ToString(), StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (query.TryGetValue("filter[published_at][_nnull]", out var publishedNotNull) &&
+                string.Equals(publishedNotNull.ToString(), "true", StringComparison.OrdinalIgnoreCase))
+            {
+                items = items.Where(item => item.PublishedAt is not null);
+            }
+
+            if (query.TryGetValue("filter[no_index][_eq]", out var noIndexFilter) &&
+                bool.TryParse(noIndexFilter.ToString(), out var noIndex))
+            {
+                items = items.Where(item => item.NoIndex == noIndex);
+            }
+
+            var pagedItems = this.ApplyPaging(items, query).ToList();
+            return this.BuildJsonResponse(new DirectusEnvelope<IEnumerable<CmsBlogPost>>(pagedItems));
         }
 
-        public Task<ContentFetchResult<IReadOnlyCollection<LandingPageContent>>> GetPages(CancellationToken cancellationToken)
+        private HttpResponseMessage BuildPageResponse(IReadOnlyDictionary<string, Microsoft.Extensions.Primitives.StringValues> query)
         {
-            return Task.FromResult(ContentFetchResult<IReadOnlyCollection<LandingPageContent>>.Success(Pages));
+            var items = Pages.AsEnumerable();
+
+            if (query.TryGetValue("filter[status][_eq]", out var status))
+            {
+                items = items.Where(item => string.Equals(item.Status, status.ToString(), StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (query.TryGetValue("filter[slug][_eq]", out var slug))
+            {
+                items = items.Where(item => string.Equals(item.Slug, slug.ToString(), StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (query.TryGetValue("filter[no_index][_eq]", out var noIndexFilter) &&
+                bool.TryParse(noIndexFilter.ToString(), out var noIndex))
+            {
+                items = items.Where(item => item.NoIndex == noIndex);
+            }
+
+            var pagedItems = this.ApplyPaging(items, query).ToList();
+            return this.BuildJsonResponse(new DirectusEnvelope<IEnumerable<CmsPage>>(pagedItems));
         }
 
-        public Task<ContentFetchResult<LandingPageContent>> GetPageBySlug(string slug, CancellationToken cancellationToken)
+        private IEnumerable<T> ApplyPaging<T>(
+            IEnumerable<T> source,
+            IReadOnlyDictionary<string, Microsoft.Extensions.Primitives.StringValues> query)
         {
-            var item = Pages.SingleOrDefault(page => string.Equals(page.Slug, slug, StringComparison.Ordinal));
-            return Task.FromResult(
-                item is null
-                    ? ContentFetchResult<LandingPageContent>.NotFound()
-                    : ContentFetchResult<LandingPageContent>.Success(item));
+            if (query.TryGetValue("limit", out var limitValue) &&
+                int.TryParse(limitValue.ToString(), out var limit) &&
+                limit > 0)
+            {
+                var page = 1;
+                if (query.TryGetValue("page", out var pageValue) &&
+                    int.TryParse(pageValue.ToString(), out var parsedPage) &&
+                    parsedPage > 0)
+                {
+                    page = parsedPage;
+                }
+
+                return source.Skip((page - 1) * limit).Take(limit);
+            }
+
+            return source;
         }
+
+        private HttpResponseMessage BuildJsonResponse<T>(T payload)
+        {
+            var json = JsonSerializer.Serialize(payload, JsonOptions);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json"),
+            };
+        }
+
+        private sealed record DirectusEnvelope<T>([property: JsonPropertyName("data")] T Data);
+
+        private sealed record CmsBlogPost(
+            [property: JsonPropertyName("status")] string Status,
+            [property: JsonPropertyName("title")] string Title,
+            [property: JsonPropertyName("slug")] string Slug,
+            [property: JsonPropertyName("excerpt")] string Excerpt,
+            [property: JsonPropertyName("content")] string Content,
+            [property: JsonPropertyName("cover_image_url")] string? CoverImageUrl,
+            [property: JsonPropertyName("author_name")] string AuthorName,
+            [property: JsonPropertyName("published_at")] DateTimeOffset? PublishedAt,
+            [property: JsonPropertyName("updated_at")] DateTimeOffset? UpdatedAt,
+            [property: JsonPropertyName("tags")] IReadOnlyCollection<string> Tags,
+            [property: JsonPropertyName("seo_title")] string? SeoTitle,
+            [property: JsonPropertyName("seo_description")] string? SeoDescription,
+            [property: JsonPropertyName("canonical_url")] string? CanonicalUrl,
+            [property: JsonPropertyName("no_index")] bool NoIndex);
+
+        private sealed record CmsPage(
+            [property: JsonPropertyName("status")] string Status,
+            [property: JsonPropertyName("title")] string Title,
+            [property: JsonPropertyName("slug")] string Slug,
+            [property: JsonPropertyName("content")] string Content,
+            [property: JsonPropertyName("updated_at")] DateTimeOffset? UpdatedAt,
+            [property: JsonPropertyName("seo_title")] string? SeoTitle,
+            [property: JsonPropertyName("seo_description")] string? SeoDescription,
+            [property: JsonPropertyName("canonical_url")] string? CanonicalUrl,
+            [property: JsonPropertyName("no_index")] bool NoIndex);
     }
 }

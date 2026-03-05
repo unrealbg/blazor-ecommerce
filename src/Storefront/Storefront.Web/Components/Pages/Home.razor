@@ -5,7 +5,7 @@
 @inject IStoreApiClient StoreApiClient
 @inject IPageMetadataService MetadataService
 @inject IStructuredDataService StructuredDataService
-@inject IOptions<SeoOptions> SeoOptions
+@inject IOptions<SiteOptions> SiteOptions
 
 <SeoHead Metadata="metadata" JsonLdScripts="jsonLdScripts" />
 
@@ -50,7 +50,7 @@
         metadata = MetadataService.ForHome();
         jsonLdScripts =
         [
-            StructuredDataService.BuildWebSiteSearchJsonLd(SeoOptions.Value.SiteBaseUrl),
+            StructuredDataService.BuildWebSiteSearchJsonLd(SiteOptions.Value.BaseUrl),
         ];
     }
 

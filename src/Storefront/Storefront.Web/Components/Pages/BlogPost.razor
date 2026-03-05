@@ -152,7 +152,7 @@ else
             return seoDescription.Trim();
         }
 
-        return excerpt.Length <= 240 ? excerpt : excerpt[..240];
+        return excerpt.Length <= 160 ? excerpt : excerpt[..160];
     }
 
     private IEnumerable<BreadcrumbItem> ToAbsoluteBreadcrumbs(IEnumerable<BreadcrumbItem> source)

@@ -11,10 +11,13 @@ public interface IContentClient
         string slug,
         CancellationToken cancellationToken);
 
-    Task<ContentFetchResult<IReadOnlyCollection<LandingPageContent>>> GetPages(
-        CancellationToken cancellationToken);
-
     Task<ContentFetchResult<LandingPageContent>> GetPageBySlug(
         string slug,
+        CancellationToken cancellationToken);
+
+    Task<ContentFetchResult<IReadOnlyCollection<string>>> GetAllPublishedBlogSlugs(
+        CancellationToken cancellationToken);
+
+    Task<ContentFetchResult<IReadOnlyCollection<string>>> GetAllPublishedPageSlugs(
         CancellationToken cancellationToken);
 }

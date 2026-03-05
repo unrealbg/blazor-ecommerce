@@ -8,10 +8,10 @@ namespace Storefront.Web.Services.Seo;
 public sealed class SitemapService(
     IStoreApiClient storeApiClient,
     IContentClient contentClient,
-    IOptions<SeoOptions> seoOptions)
+    IOptions<SiteOptions> siteOptions)
     : ISitemapService
 {
-    private readonly string baseUrl = NormalizeBaseUrl(seoOptions.Value.SiteBaseUrl);
+    private readonly string baseUrl = NormalizeBaseUrl(siteOptions.Value.BaseUrl);
 
     public async Task<string> BuildXmlAsync(CancellationToken cancellationToken)
     {
@@ -44,21 +44,21 @@ public sealed class SitemapService(
             urlSet.Add(CreateUrlElement(ns, $"{baseUrl}/product/{product.Slug}"));
         }
 
-        var blogResult = await contentClient.GetBlogPosts(1, 500, cancellationToken);
+        var blogResult = await contentClient.GetAllPublishedBlogSlugs(cancellationToken);
         if (blogResult.IsSuccess && blogResult.Value is not null)
         {
-            foreach (var post in blogResult.Value.Where(post => post.PublishedAt is not null))
+            foreach (var slug in blogResult.Value)
             {
-                urlSet.Add(CreateUrlElement(ns, $"{baseUrl}/blog/{post.Slug}"));
+                urlSet.Add(CreateUrlElement(ns, $"{baseUrl}/blog/{slug}"));
             }
         }
 
-        var pagesResult = await contentClient.GetPages(cancellationToken);
+        var pagesResult = await contentClient.GetAllPublishedPageSlugs(cancellationToken);
         if (pagesResult.IsSuccess && pagesResult.Value is not null)
         {
-            foreach (var page in pagesResult.Value.Where(page => !page.NoIndex))
+            foreach (var slug in pagesResult.Value)
             {
-                urlSet.Add(CreateUrlElement(ns, $"{baseUrl}/p/{page.Slug}"));
+                urlSet.Add(CreateUrlElement(ns, $"{baseUrl}/p/{slug}"));
             }
         }
 

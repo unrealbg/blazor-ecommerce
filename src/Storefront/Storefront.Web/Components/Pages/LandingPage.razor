@@ -124,7 +124,22 @@ else
             return "Read more details on this page.";
         }
 
-        var normalized = content.Trim();
+        var normalized = StripMarkdown(content).Trim();
         return normalized.Length <= 160 ? normalized : normalized[..160];
+    }
+
+    private static string StripMarkdown(string value)
+    {
+        var sanitized = value
+            .Replace("**", string.Empty, StringComparison.Ordinal)
+            .Replace("__", string.Empty, StringComparison.Ordinal)
+            .Replace("`", string.Empty, StringComparison.Ordinal)
+            .Replace("#", string.Empty, StringComparison.Ordinal)
+            .Replace("*", string.Empty, StringComparison.Ordinal)
+            .Replace("_", string.Empty, StringComparison.Ordinal)
+            .Replace(">", string.Empty, StringComparison.Ordinal)
+            .Replace("-", " ", StringComparison.Ordinal);
+
+        return sanitized;
     }
 }

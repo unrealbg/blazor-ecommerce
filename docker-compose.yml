@@ -17,12 +17,14 @@ services:
       retries: 10
 
   directus-db:
-    image: postgres:17-alpine
+    image: postgres:16
     container_name: blazor-ecommerce-directus-postgres
     environment:
       POSTGRES_DB: directus
       POSTGRES_USER: directus
       POSTGRES_PASSWORD: directus
+    ports:
+      - "5444:5432"
     volumes:
       - directus-postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -32,19 +34,20 @@ services:
       retries: 10
 
   directus:
-    image: directus/directus:11
+    image: directus/directus:latest
     container_name: blazor-ecommerce-directus
     environment:
-      KEY: please-change-directus-key
-      SECRET: please-change-directus-secret
-      ADMIN_EMAIL: admin@example.com
-      ADMIN_PASSWORD: admin1234
+      KEY: ${DIRECTUS_KEY}
+      SECRET: ${DIRECTUS_SECRET}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       DB_CLIENT: pg
       DB_HOST: directus-db
       DB_PORT: 5432
       DB_DATABASE: directus
       DB_USER: directus
       DB_PASSWORD: directus
+      WEBSOCKETS_ENABLED: "true"
     ports:
       - "8055:8055"
     volumes:
@@ -93,10 +96,10 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:5100
       Api__BaseUrl: http://app:8080
-      Cms__CmsBaseUrl: http://directus:8055
-      Cms__CmsApiKey: ""
+      Cms__BaseUrl: http://directus:8055
+      Cms__ApiToken: ""
       ConnectionStrings__Redis: redis:6379
-      Seo__SiteBaseUrl: http://localhost:5100
+      Site__BaseUrl: http://localhost:5100
     ports:
       - "5100:5100"
     depends_on:

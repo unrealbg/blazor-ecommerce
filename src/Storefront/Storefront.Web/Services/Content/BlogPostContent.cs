@@ -1,6 +1,7 @@
 namespace Storefront.Web.Services.Content;
 
 public sealed record BlogPostContent(
+    string Status,
     string Title,
     string Slug,
     string Excerpt,
