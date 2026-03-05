@@ -10,10 +10,11 @@ public sealed class ProductTests
     {
         var money = Money.Create("usd", 12.345m).Value;
 
-        var result = Product.Create("Product A", "Description", money, true);
+        var result = Product.Create("Product A", "product-a", "Description", money, true);
 
         Assert.True(result.IsSuccess);
         Assert.Equal("Product A", result.Value.Name);
+        Assert.Equal("product-a", result.Value.Slug);
         Assert.Equal("Description", result.Value.Description);
         Assert.Equal(12.34m, result.Value.Price.Amount);
         Assert.Equal("USD", result.Value.Price.Currency);
@@ -25,7 +26,7 @@ public sealed class ProductTests
     {
         var money = Money.Create("USD", 10m).Value;
 
-        var result = Product.Create(string.Empty, null, money, true);
+        var result = Product.Create(string.Empty, "product-a", null, money, true);
 
         Assert.True(result.IsFailure);
     }

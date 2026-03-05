@@ -16,6 +16,10 @@ internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
             .IsRequired()
             .HasMaxLength(200);
 
+        builder.Property(product => product.Slug)
+            .IsRequired()
+            .HasMaxLength(220);
+
         builder.Property(product => product.Description)
             .HasMaxLength(2000);
 
@@ -34,5 +38,8 @@ internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
                 .HasPrecision(18, 2)
                 .IsRequired();
         });
+
+        builder.HasIndex(product => product.Slug)
+            .IsUnique();
     }
 }

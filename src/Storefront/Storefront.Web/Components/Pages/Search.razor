@@ -1,0 +1,73 @@
+@page "/search"
+@using Microsoft.AspNetCore.Components.Routing
+@using Storefront.Web.Services.Api
+@using Storefront.Web.Services.Seo
+@inject IStoreApiClient StoreApiClient
+@inject IPageMetadataService MetadataService
+
+<SeoHead Metadata="metadata" />
+
+<section>
+    <h1>Search results</h1>
+    <p>Query: <strong>@query</strong></p>
+</section>
+
+<section class="grid">
+    @if (isLoading)
+    {
+        <p>Searching...</p>
+    }
+    else if (products.Count == 0)
+    {
+        <p>No products matched your query.</p>
+    }
+    else
+    {
+        @foreach (var product in products)
+        {
+            <article class="card">
+                <h2><a href="/product/@product.Slug">@product.Name</a></h2>
+                <p>@(string.IsNullOrWhiteSpace(product.Description) ? "No description provided." : product.Description)</p>
+                <p class="price">@FormatPrice(product.Amount, product.Currency)</p>
+            </article>
+        }
+    }
+</section>
+
+@code {
+    [SupplyParameterFromQuery(Name = "q")]
+    public string Query { get; set; } = string.Empty;
+
+    private PageMetadata metadata = new("Search", "Search products.", "/search");
+    private string query = string.Empty;
+    private bool isLoading = true;
+    private List<StoreProduct> products = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        query = Query?.Trim() ?? string.Empty;
+        metadata = MetadataService.ForSearch(string.IsNullOrWhiteSpace(query) ? "all" : query);
+
+        var allProducts = await StoreApiClient.GetProductsAsync(CancellationToken.None);
+        products = string.IsNullOrWhiteSpace(query)
+            ? allProducts
+                .Where(product => product.IsActive)
+                .Where(product => string.Equals(product.Currency, "EUR", StringComparison.Ordinal))
+                .ToList()
+            : allProducts
+                .Where(product => product.IsActive)
+                .Where(product => string.Equals(product.Currency, "EUR", StringComparison.Ordinal))
+                .Where(product =>
+                    product.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                    (!string.IsNullOrWhiteSpace(product.Description) &&
+                     product.Description.Contains(query, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
+        isLoading = false;
+    }
+
+    private static string FormatPrice(decimal amount, string currency)
+    {
+        return $"{amount:0.00} {currency}";
+    }
+}

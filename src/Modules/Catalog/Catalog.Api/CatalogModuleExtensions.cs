@@ -1,6 +1,7 @@
 using BuildingBlocks.Domain.Results;
 using Catalog.Application.DependencyInjection;
 using Catalog.Application.Products.CreateProduct;
+using Catalog.Application.Products.GetProductBySlug;
 using Catalog.Application.Products.GetProducts;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
@@ -43,6 +44,12 @@ public static class CatalogModuleExtensions
         {
             var products = await sender.Send(new GetProductsQuery(), cancellationToken);
             return Results.Ok(products);
+        });
+
+        group.MapGet("/products/by-slug/{slug}", async (string slug, ISender sender, CancellationToken cancellationToken) =>
+        {
+            var product = await sender.Send(new GetProductBySlugQuery(slug), cancellationToken);
+            return product is not null ? Results.Ok(product) : Results.NotFound();
         });
 
         return endpoints;

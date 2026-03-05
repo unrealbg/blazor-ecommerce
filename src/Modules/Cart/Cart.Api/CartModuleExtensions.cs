@@ -1,6 +1,8 @@
 using BuildingBlocks.Domain.Results;
 using Cart.Application.Carts.AddItem;
 using Cart.Application.Carts.GetCart;
+using Cart.Application.Carts.RemoveItem;
+using Cart.Application.Carts.UpdateItemQuantity;
 using Cart.Application.DependencyInjection;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
@@ -44,13 +46,46 @@ public static class CartModuleExtensions
             return cart is not null ? Results.Ok(cart) : Results.NotFound();
         });
 
+        group.MapPatch("/{customerId}/items/{productId:guid}", async (
+            string customerId,
+            Guid productId,
+            UpdateItemQuantityRequest request,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await sender.Send(
+                new UpdateCartItemQuantityCommand(customerId, productId, request.Quantity),
+                cancellationToken);
+
+            return result.IsSuccess
+                ? Results.Ok(new { id = result.Value })
+                : BusinessError(result.Error);
+        });
+
+        group.MapDelete("/{customerId}/items/{productId:guid}", async (
+            string customerId,
+            Guid productId,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await sender.Send(new RemoveCartItemCommand(customerId, productId), cancellationToken);
+
+            return result.IsSuccess
+                ? Results.NoContent()
+                : BusinessError(result.Error);
+        });
+
         return endpoints;
     }
 
     private static IResult BusinessError(Error error)
     {
+        var statusCode = error.Code.EndsWith(".not_found", StringComparison.Ordinal)
+            ? StatusCodes.Status404NotFound
+            : StatusCodes.Status400BadRequest;
+
         return Results.Problem(
-            statusCode: StatusCodes.Status400BadRequest,
+            statusCode: statusCode,
             title: "Business rule violation",
             detail: error.Message,
             extensions: new Dictionary<string, object?>
@@ -60,4 +95,6 @@ public static class CartModuleExtensions
     }
 
     public sealed record AddItemRequest(Guid ProductId, int Quantity);
+
+    public sealed record UpdateItemQuantityRequest(int Quantity);
 }

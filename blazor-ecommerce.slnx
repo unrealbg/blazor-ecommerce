@@ -26,9 +26,13 @@
     <Project Path="src/Modules/Orders/Orders.Domain/Orders.Domain.csproj" />
     <Project Path="src/Modules/Orders/Orders.Infrastructure/Orders.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/src/Storefront/">
+    <Project Path="src/Storefront/Storefront.Web/Storefront.Web.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Cart.Tests/Cart.Tests.csproj" />
     <Project Path="tests/Catalog.Tests/Catalog.Tests.csproj" />
     <Project Path="tests/Orders.Tests/Orders.Tests.csproj" />
+    <Project Path="tests/Storefront.Tests/Storefront.Tests.csproj" />
   </Folder>
 </Solution>

@@ -1,0 +1,77 @@
+@page "/checkout"
+@rendermode InteractiveServer
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+@inject Storefront.Web.Services.Customer.ICustomerContext CustomerContext
+@inject Storefront.Web.Services.CartState CartState
+
+<PageTitle>Checkout</PageTitle>
+
+<h1>Checkout</h1>
+
+<EditForm Model="model" OnValidSubmit="SubmitAsync">
+    <div class="form-grid">
+        <label>
+            Full Name
+            <InputText @bind-Value="model.FullName" />
+        </label>
+        <label>
+            Email
+            <InputText @bind-Value="model.Email" />
+        </label>
+        <label>
+            Shipping Address
+            <InputTextArea @bind-Value="model.ShippingAddress" />
+        </label>
+    </div>
+    <button class="btn-primary" type="submit" disabled="@isSubmitting">Place order</button>
+</EditForm>
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <p class="status-message">@message</p>
+}
+
+@if (orderId is not null)
+{
+    <p>Order created: <strong>@orderId</strong></p>
+}
+
+@code {
+    private readonly CheckoutModel model = new();
+    private bool isSubmitting;
+    private string? message;
+    private Guid? orderId;
+
+    private async Task SubmitAsync()
+    {
+        isSubmitting = true;
+        message = null;
+        orderId = null;
+
+        var customerId = CustomerContext.GetCustomerId();
+        var idempotencyKey = Guid.NewGuid().ToString("N");
+        var createdOrderId = await StoreApiClient.CheckoutAsync(customerId, idempotencyKey, CancellationToken.None);
+
+        if (createdOrderId is null)
+        {
+            message = "Checkout could not be completed.";
+            isSubmitting = false;
+            return;
+        }
+
+        orderId = createdOrderId;
+        message = "Order placed successfully.";
+        CartState.SetItemCount(0);
+        isSubmitting = false;
+    }
+
+    private sealed class CheckoutModel
+    {
+        public string FullName { get; set; } = string.Empty;
+
+        public string Email { get; set; } = string.Empty;
+
+        public string ShippingAddress { get; set; } = string.Empty;
+    }
+}

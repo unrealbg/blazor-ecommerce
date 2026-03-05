@@ -22,6 +22,7 @@ public sealed class GetProductsQueryHandler(
         var response = products
             .Select(product => new ProductDto(
                 product.Id,
+                product.Slug,
                 product.Name,
                 product.Description,
                 product.Price.Currency,

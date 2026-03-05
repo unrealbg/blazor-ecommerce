@@ -1,0 +1,25 @@
+@inherits LayoutComponentBase
+
+<div class="page">
+    <header class="site-header">
+        <div class="site-header-inner">
+            <a class="logo" href="/">Blazor Commerce</a>
+            <form class="search-form" method="get" action="/search">
+                <input type="search" name="q" placeholder="Search products..." aria-label="Search products" />
+                <button type="submit">Search</button>
+            </form>
+            <a class="cart-link" href="/cart">
+                Cart
+                <CartCountBadge @rendermode="InteractiveServer" />
+            </a>
+        </div>
+    </header>
+
+    <main class="content">
+        @Body
+    </main>
+
+    <footer class="site-footer">
+        <p>All prices are in EUR.</p>
+    </footer>
+</div>

@@ -1,0 +1,18 @@
+@using Storefront.Web.Services.Seo
+
+@if (Metadata is not null)
+{
+    <PageTitle>@Metadata.Title</PageTitle>
+    <HeadContent>
+        <meta name="description" content="@Metadata.Description" />
+        <link rel="canonical" href="@Metadata.CanonicalUrl" />
+        <meta property="og:title" content="@Metadata.Title" />
+        <meta property="og:description" content="@Metadata.Description" />
+        <meta property="og:url" content="@Metadata.CanonicalUrl" />
+    </HeadContent>
+}
+
+@code {
+    [Parameter]
+    public PageMetadata? Metadata { get; set; }
+}

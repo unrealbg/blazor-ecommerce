@@ -19,7 +19,13 @@ public sealed class CreateProductCommandHandler(
             return Result<Guid>.Failure(moneyResult.Error);
         }
 
-        var productResult = Product.Create(request.Name, request.Description, moneyResult.Value, request.IsActive);
+        var slug = await GenerateUniqueSlugAsync(request.Name, cancellationToken);
+        var productResult = Product.Create(
+            request.Name,
+            slug,
+            request.Description,
+            moneyResult.Value,
+            request.IsActive);
         if (productResult.IsFailure)
         {
             return Result<Guid>.Failure(productResult.Error);
@@ -32,5 +38,20 @@ public sealed class CreateProductCommandHandler(
         await productListCache.InvalidateAsync(cancellationToken);
 
         return Result<Guid>.Success(product.Id);
+    }
+
+    private async Task<string> GenerateUniqueSlugAsync(string productName, CancellationToken cancellationToken)
+    {
+        var baseSlug = SlugGenerator.Generate(productName);
+        var candidate = baseSlug;
+        var suffix = 2;
+
+        while (await productRepository.SlugExistsAsync(candidate, cancellationToken))
+        {
+            candidate = $"{baseSlug}-{suffix}";
+            suffix++;
+        }
+
+        return candidate;
     }
 }

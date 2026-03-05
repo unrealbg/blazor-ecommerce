@@ -11,11 +11,23 @@ internal sealed class ProductRepository(CatalogDbContext dbContext) : IProductRe
         return dbContext.Products.AddAsync(product, cancellationToken).AsTask();
     }
 
+    public Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken)
+    {
+        return dbContext.Products
+            .AsNoTracking()
+            .SingleOrDefaultAsync(product => product.Slug == slug, cancellationToken);
+    }
+
     public async Task<IReadOnlyCollection<Product>> ListAsync(CancellationToken cancellationToken)
     {
         return await dbContext.Products
             .AsNoTracking()
             .OrderBy(product => product.Name)
             .ToListAsync(cancellationToken);
+    }
+
+    public Task<bool> SlugExistsAsync(string slug, CancellationToken cancellationToken)
+    {
+        return dbContext.Products.AnyAsync(product => product.Slug == slug, cancellationToken);
     }
 }
