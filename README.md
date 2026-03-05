@@ -59,6 +59,7 @@ docker compose up --build
 
 App API: `http://localhost:8080`
 Storefront: `http://localhost:5100`
+Directus CMS Admin: `http://localhost:8055`
 
 ### Option 1B: Start storefront UI from source
 
@@ -71,12 +72,15 @@ Storefront: `http://localhost:5100` (default in appsettings)
 Storefront configuration:
 
 - `Api:BaseUrl` -> AppHost API base URL (default `http://localhost:8080`)
+- `Cms:CmsBaseUrl` -> Directus base URL (default `http://localhost:8055`)
+- `Cms:CmsApiKey` -> Directus static token / API key (optional if public read is enabled)
+- `ConnectionStrings:Redis` -> Redis connection used for CMS response cache (60s default)
 - `Seo:SiteBaseUrl` -> absolute public storefront URL used for canonical/sitemap/robots
 
 ### Option 2: Infra in containers, app from `dotnet`
 
 ```bash
-docker compose up -d postgres redis
+docker compose up -d postgres redis directus-db directus
 dotnet run --project src/AppHost/AppHost.csproj
 dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 ```
@@ -104,22 +108,29 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `GET /category/{slug}` (Category, SSR)
 - `GET /product/{slug}` (Product, SSR)
 - `GET /search?q=...` (Search, SSR)
+- `GET /blog` (Blog index, SSR)
+- `GET /blog/{slug}` (Blog post, SSR)
+- `GET /p/{slug}` (Landing page, SSR)
 - `GET /cart` (interactive)
 - `GET /checkout` (interactive)
 - `GET /robots.txt`
 - `GET /sitemap.xml`
+- `GET /rss.xml`
 
 ## Storefront SEO Notes (SSR)
 
-- All public storefront routes are SSR (`/`, `/category/{slug}`, `/product/{slug}`, `/search`) and return indexable HTML.
+- All public storefront routes are SSR (`/`, `/category/{slug}`, `/product/{slug}`, `/search`, `/blog`, `/blog/{slug}`, `/p/{slug}`) and return indexable HTML.
 - Per page head tags are rendered with:
   - `<title>`
   - `<meta name="description">`
   - `<link rel="canonical">`
   - `<link rel="prev">` and `<link rel="next">` for paginated pages
+  - `<meta name="robots" content="noindex,nofollow">` when CMS content has `noIndex=true`
+  - OpenGraph + Twitter basic tags
 - Canonical and sitemap absolute URLs are generated from `Seo:SiteBaseUrl`.
 - `robots.txt` allows all crawlers and points to `/sitemap.xml`.
-- `sitemap.xml` is generated dynamically and includes `/` and active EUR product URLs.
+- `sitemap.xml` is generated dynamically and includes `/`, `/blog`, active EUR product URLs, published blog post URLs, and landing page URLs where `noIndex=false`.
+- `rss.xml` is generated from published blog posts only.
 
 ### Canonical Rules
 
@@ -132,6 +143,9 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
   - excludes `sort` and `pageSize`
   - `page=1` -> `/search?q=...`
   - `page>1` -> `/search?q=...&page=N`
+- Blog/Page canonical:
+  - if CMS `canonicalUrl` exists, it is used
+  - otherwise canonical falls back to `SiteBaseUrl + current path`
 
 ### Structured Data (JSON-LD)
 
@@ -140,6 +154,9 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - Product:
   - `Product` with `name`, `description`, optional `sku`, optional `brand`, optional `image`
   - `offers` with EUR price, availability, canonical product URL, and `NewCondition`
+  - `BreadcrumbList`
+- Blog post:
+  - `BlogPosting` with headline, description, image, published/modified dates, author, and canonical `mainEntityOfPage`
   - `BreadcrumbList`
 
 ### SiteBaseUrl Configuration
@@ -154,6 +171,69 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
   }
 }
 ```
+
+## Directus CMS Setup
+
+1. Start services:
+
+```bash
+docker compose up -d directus-db directus
+```
+
+2. Open Directus Admin: `http://localhost:8055`
+3. Login with default bootstrap credentials from `docker-compose.yml`:
+   - email: `admin@example.com`
+   - password: `admin1234`
+4. Create content collections:
+   - `blog_posts`
+   - `pages`
+5. Add `blog_posts` fields:
+   - `title` (string)
+   - `slug` (string, unique)
+   - `excerpt` (string, 160-240 chars)
+   - `content` (text/markdown)
+   - `coverImageUrl` (string)
+   - `authorName` (string)
+   - `publishedAt` (datetime)
+   - `updatedAt` (datetime)
+   - `tags` (json array of strings, or relation)
+   - `seoTitle` (string)
+   - `seoDescription` (string)
+   - `canonicalUrl` (string, optional)
+   - `noIndex` (boolean, default false)
+6. Add `pages` fields:
+   - `title` (string)
+   - `slug` (string, unique)
+   - `content` (text/markdown)
+   - `seoTitle` (string)
+   - `seoDescription` (string)
+   - `canonicalUrl` (string, optional)
+   - `noIndex` (boolean, default false)
+7. Configure access:
+   - either allow read on `blog_posts` and `pages` for public role
+   - or generate a static token and set `Cms:CmsApiKey`
+
+Example config:
+
+```json
+{
+  "Cms": {
+    "CmsBaseUrl": "http://localhost:8055",
+    "CmsApiKey": "DIRECTUS_STATIC_TOKEN",
+    "CacheSeconds": 60
+  }
+}
+```
+
+## Sitemap and RSS
+
+- `/sitemap.xml` includes:
+  - `/`
+  - `/blog`
+  - `/product/{slug}` for active EUR products
+  - `/blog/{slug}` for published posts
+  - `/p/{slug}` for pages where `noIndex=false`
+- `/rss.xml` includes published blog posts only.
 
 ## Sample End-to-End Flow (curl)
 

@@ -60,4 +60,43 @@ public sealed class StorefrontSeoTests(StorefrontWebApplicationFactory factory) 
         Assert.Contains("rel=\"prev\"", html, StringComparison.Ordinal);
         Assert.Contains("rel=\"next\"", html, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task BlogIndex_Should_Return200()
+    {
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/blog");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("<h1>Blog</h1>", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task BlogPost_Should_Return200_AndContainJsonLd()
+    {
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/blog/shipping-checklist-2026");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Shipping Checklist for 2026", html, StringComparison.Ordinal);
+        Assert.Contains("application/ld&#x2B;json", html, StringComparison.Ordinal);
+        Assert.Contains("\"@type\":\"BlogPosting\"", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Rss_Should_Return200()
+    {
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/rss.xml");
+        var xml = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("<rss version=\"2.0\">", xml, StringComparison.Ordinal);
+        Assert.Contains("shipping-checklist-2026", xml, StringComparison.Ordinal);
+    }
 }

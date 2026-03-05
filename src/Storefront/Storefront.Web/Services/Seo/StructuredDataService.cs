@@ -48,6 +48,36 @@ public sealed class StructuredDataService(IPageMetadataService pageMetadataServi
         return JsonSerializer.Serialize(payload, SerializerOptions);
     }
 
+    public string BuildBlogPostingJsonLd(BlogPostingSeoModel model, string canonicalUrl)
+    {
+        var normalizedCanonical = EnsureAbsoluteUrl(canonicalUrl);
+        var normalizedImageUrl = NormalizeImageUrl(model.ImageUrl, normalizedCanonical);
+        var normalizedDescription = NormalizeDescription(model.Description);
+
+        var payload = new Dictionary<string, object?>
+        {
+            ["@context"] = "https://schema.org",
+            ["@type"] = "BlogPosting",
+            ["headline"] = model.Headline,
+            ["description"] = normalizedDescription,
+            ["image"] = normalizedImageUrl is null ? null : new[] { normalizedImageUrl },
+            ["datePublished"] = model.DatePublished.ToString("O", CultureInfo.InvariantCulture),
+            ["dateModified"] = model.DateModified.ToString("O", CultureInfo.InvariantCulture),
+            ["author"] = new Dictionary<string, object?>
+            {
+                ["@type"] = "Person",
+                ["name"] = model.AuthorName,
+            },
+            ["mainEntityOfPage"] = new Dictionary<string, object?>
+            {
+                ["@type"] = "WebPage",
+                ["@id"] = normalizedCanonical,
+            },
+        };
+
+        return JsonSerializer.Serialize(payload, SerializerOptions);
+    }
+
     public string BuildBreadcrumbJsonLd(IEnumerable<BreadcrumbItem> items)
     {
         var normalizedItems = items

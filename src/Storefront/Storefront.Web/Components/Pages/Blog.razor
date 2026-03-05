@@ -1,0 +1,148 @@
+@page "/blog"
+@using Microsoft.AspNetCore.Http
+@using Microsoft.Extensions.Primitives
+@using Storefront.Web.Services.Content
+@using Storefront.Web.Services.Seo
+@inject ICanonicalUrlService CanonicalUrlService
+@inject IContentClient ContentClient
+@inject IPageMetadataService MetadataService
+@inject IStructuredDataService StructuredDataService
+
+<SeoHead
+    Metadata="metadata"
+    PrevUrl="@canonicalUrls?.PrevUrl"
+    NextUrl="@canonicalUrls?.NextUrl"
+    JsonLdScripts="jsonLdScripts" />
+
+<Breadcrumbs Items="breadcrumbs" />
+
+<section class="hero">
+    <h1>Blog</h1>
+    <p>News, product insights, and practical e-commerce guides.</p>
+</section>
+
+@if (isCmsUnavailable)
+{
+    <section class="cms-fallback">
+        <p>Blog content is temporarily unavailable. Please check again later.</p>
+    </section>
+}
+else if (posts.Count == 0)
+{
+    <section class="cms-fallback">
+        <p>No published posts yet.</p>
+    </section>
+}
+else
+{
+    <section class="blog-list">
+        @foreach (var post in posts)
+        {
+            <article class="blog-card">
+                <h2><a href="/blog/@post.Slug">@post.Title</a></h2>
+                <p class="blog-meta">
+                    <span>By @post.AuthorName</span>
+                    <span>@FormatDate(post.PublishedAt)</span>
+                </p>
+                <p>@post.Excerpt</p>
+                <a class="btn-link" href="/blog/@post.Slug">Read article</a>
+            </article>
+        }
+    </section>
+}
+
+<Pagination CurrentPage="currentPage" TotalPages="estimatedTotalPages" BuildUrl="BuildPageUrl" />
+
+@code {
+    private const int DisplayPageSize = 10;
+
+    [SupplyParameterFromQuery(Name = "page")]
+    public int? Page { get; set; }
+
+    private PageMetadata metadata = new("Blog", "Latest articles from Blazor Commerce.", "/blog");
+    private CanonicalUrls? canonicalUrls;
+    private IReadOnlyCollection<string> jsonLdScripts = [];
+    private IReadOnlyList<BreadcrumbItem> breadcrumbs = [];
+    private List<BlogPostContent> posts = [];
+    private int currentPage = 1;
+    private int estimatedTotalPages = 1;
+    private bool isCmsUnavailable;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        currentPage = NormalizePage(this.Page);
+        var result = await ContentClient.GetBlogPosts(currentPage, DisplayPageSize + 1, CancellationToken.None);
+        isCmsUnavailable = result.IsUnavailable;
+        posts = [];
+
+        var hasNextPage = false;
+        if (result.IsSuccess && result.Value is not null)
+        {
+            posts = result.Value.Take(DisplayPageSize).ToList();
+            hasNextPage = result.Value.Count > DisplayPageSize;
+            estimatedTotalPages = hasNextPage ? currentPage + 1 : currentPage;
+        }
+        else
+        {
+            estimatedTotalPages = currentPage;
+        }
+
+        canonicalUrls = CanonicalUrlService.Build("/blog", BuildCanonicalQuery(currentPage), hasNextPage);
+        metadata = new PageMetadata(
+            "Blog",
+            "Latest articles from Blazor Commerce.",
+            canonicalUrls.CanonicalUrl);
+
+        breadcrumbs =
+        [
+            new BreadcrumbItem("Home", "/"),
+            new BreadcrumbItem("Blog", "/blog"),
+        ];
+
+        jsonLdScripts =
+        [
+            StructuredDataService.BuildBreadcrumbJsonLd(this.ToAbsoluteBreadcrumbs(breadcrumbs)),
+        ];
+    }
+
+    private string BuildPageUrl(int targetPage)
+    {
+        var queryValues = new List<KeyValuePair<string, string?>>();
+        if (targetPage > 1)
+        {
+            queryValues.Add(new KeyValuePair<string, string?>("page", targetPage.ToString()));
+        }
+
+        return queryValues.Count == 0
+            ? "/blog"
+            : $"/blog{QueryString.Create(queryValues)}";
+    }
+
+    private IEnumerable<BreadcrumbItem> ToAbsoluteBreadcrumbs(IEnumerable<BreadcrumbItem> source)
+    {
+        return source.Select(item => new BreadcrumbItem(item.Name, MetadataService.BuildAbsoluteUrl(item.Url)));
+    }
+
+    private static int NormalizePage(int? page)
+    {
+        return page is null || page < 1 ? 1 : page.Value;
+    }
+
+    private static IReadOnlyDictionary<string, StringValues> BuildCanonicalQuery(int page)
+    {
+        if (page <= 1)
+        {
+            return new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        return new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["page"] = page.ToString(),
+        };
+    }
+
+    private static string FormatDate(DateTimeOffset? value)
+    {
+        return value?.ToString("MMMM dd, yyyy") ?? "Draft";
+    }
+}

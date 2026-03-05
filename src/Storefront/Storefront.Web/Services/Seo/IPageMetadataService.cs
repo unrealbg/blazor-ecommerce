@@ -10,5 +10,9 @@ public interface IPageMetadataService
 
     PageMetadata ForSearch(string query);
 
+    string ResolveCanonicalUrl(string? preferredCanonicalUrl, string fallbackRelativePath);
+
+    string? ResolveAbsoluteOptionalUrl(string? value);
+
     string BuildAbsoluteUrl(string relativePathAndQuery);
 }

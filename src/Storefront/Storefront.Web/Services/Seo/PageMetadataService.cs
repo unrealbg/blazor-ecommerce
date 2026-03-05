@@ -40,6 +40,28 @@ public sealed class PageMetadataService(IOptions<SeoOptions> options) : IPageMet
             BuildAbsoluteUrl($"/search?q={Uri.EscapeDataString(normalizedQuery)}"));
     }
 
+    public string ResolveCanonicalUrl(string? preferredCanonicalUrl, string fallbackRelativePath)
+    {
+        return this.ResolveAbsoluteOptionalUrl(preferredCanonicalUrl) ??
+               this.BuildAbsoluteUrl(fallbackRelativePath);
+    }
+
+    public string? ResolveAbsoluteOptionalUrl(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var normalized = value.Trim();
+        if (Uri.TryCreate(normalized, UriKind.Absolute, out _))
+        {
+            return normalized;
+        }
+
+        return this.BuildAbsoluteUrl(normalized);
+    }
+
     public string BuildAbsoluteUrl(string relativePathAndQuery)
     {
         if (string.IsNullOrWhiteSpace(relativePathAndQuery) || relativePathAndQuery == "/")

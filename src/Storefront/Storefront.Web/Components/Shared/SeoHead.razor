@@ -5,6 +5,11 @@
     <PageTitle>@Metadata.Title</PageTitle>
     <HeadContent>
         <meta name="description" content="@Metadata.Description" />
+        @if (Metadata.NoIndex)
+        {
+            <meta name="robots" content="noindex,nofollow" />
+        }
+
         <link rel="canonical" href="@Metadata.CanonicalUrl" />
         @if (!string.IsNullOrWhiteSpace(PrevUrl))
         {
@@ -19,6 +24,19 @@
         <meta property="og:title" content="@Metadata.Title" />
         <meta property="og:description" content="@Metadata.Description" />
         <meta property="og:url" content="@Metadata.CanonicalUrl" />
+        <meta property="og:type" content="@Metadata.OpenGraphType" />
+        @if (!string.IsNullOrWhiteSpace(Metadata.OpenGraphImageUrl))
+        {
+            <meta property="og:image" content="@Metadata.OpenGraphImageUrl" />
+        }
+
+        <meta name="twitter:card" content="@(string.IsNullOrWhiteSpace(Metadata.OpenGraphImageUrl) ? "summary" : "summary_large_image")" />
+        <meta name="twitter:title" content="@Metadata.Title" />
+        <meta name="twitter:description" content="@Metadata.Description" />
+        @if (!string.IsNullOrWhiteSpace(Metadata.OpenGraphImageUrl))
+        {
+            <meta name="twitter:image" content="@Metadata.OpenGraphImageUrl" />
+        }
     </HeadContent>
 }
 

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Storefront.Web.Services.Api;
+using Storefront.Web.Services.Content;
 
 namespace Storefront.Tests;
 
@@ -16,6 +17,9 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
             configurationBuilder.AddInMemoryCollection(
             [
                 new KeyValuePair<string, string?>("Api:BaseUrl", "http://localhost:8080"),
+                new KeyValuePair<string, string?>("Cms:CmsBaseUrl", "http://localhost:8055"),
+                new KeyValuePair<string, string?>("Cms:CmsApiKey", string.Empty),
+                new KeyValuePair<string, string?>("Cms:CacheSeconds", "60"),
                 new KeyValuePair<string, string?>("Seo:SiteBaseUrl", "https://shop.example.com"),
             ]);
         });
@@ -23,7 +27,9 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<IStoreApiClient>();
+            services.RemoveAll<IContentClient>();
             services.AddSingleton<IStoreApiClient, FakeStoreApiClient>();
+            services.AddSingleton<IContentClient, FakeContentClient>();
         });
     }
 
@@ -131,6 +137,78 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
                     true));
 
             return products;
+        }
+    }
+
+    private sealed class FakeContentClient : IContentClient
+    {
+        private static readonly IReadOnlyCollection<BlogPostContent> BlogPosts =
+        [
+            new BlogPostContent(
+                "Shipping Checklist for 2026",
+                "shipping-checklist-2026",
+                "Practical shipping checklist to reduce cart abandonment and improve delivery reliability.",
+                "Use this checklist before every campaign:\n1. Verify carrier cut-off.\n2. Update ETAs.\n3. Prepare fallback carrier options.",
+                "/images/blog/shipping-checklist.jpg",
+                "Alex Mercer",
+                DateTimeOffset.UtcNow.AddDays(-5),
+                DateTimeOffset.UtcNow.AddDays(-3),
+                ["shipping", "operations"],
+                "Shipping Checklist for 2026",
+                "Practical shipping checklist for modern e-commerce teams.",
+                null,
+                false),
+        ];
+
+        private static readonly IReadOnlyCollection<LandingPageContent> Pages =
+        [
+            new LandingPageContent(
+                "Wholesale Program",
+                "wholesale-program",
+                "Partner with us and unlock volume pricing for your retail chain.",
+                "Wholesale Program",
+                "Volume pricing and dedicated support for wholesale partners.",
+                null,
+                false),
+        ];
+
+        public Task<ContentFetchResult<IReadOnlyCollection<BlogPostContent>>> GetBlogPosts(
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken)
+        {
+            var normalizedPage = Math.Max(1, page);
+            var normalizedPageSize = Math.Max(1, pageSize);
+            var items = BlogPosts
+                .OrderByDescending(post => post.PublishedAt)
+                .Skip((normalizedPage - 1) * normalizedPageSize)
+                .Take(normalizedPageSize)
+                .ToArray();
+
+            return Task.FromResult(ContentFetchResult<IReadOnlyCollection<BlogPostContent>>.Success(items));
+        }
+
+        public Task<ContentFetchResult<BlogPostContent>> GetBlogPostBySlug(string slug, CancellationToken cancellationToken)
+        {
+            var item = BlogPosts.SingleOrDefault(post => string.Equals(post.Slug, slug, StringComparison.Ordinal));
+            return Task.FromResult(
+                item is null
+                    ? ContentFetchResult<BlogPostContent>.NotFound()
+                    : ContentFetchResult<BlogPostContent>.Success(item));
+        }
+
+        public Task<ContentFetchResult<IReadOnlyCollection<LandingPageContent>>> GetPages(CancellationToken cancellationToken)
+        {
+            return Task.FromResult(ContentFetchResult<IReadOnlyCollection<LandingPageContent>>.Success(Pages));
+        }
+
+        public Task<ContentFetchResult<LandingPageContent>> GetPageBySlug(string slug, CancellationToken cancellationToken)
+        {
+            var item = Pages.SingleOrDefault(page => string.Equals(page.Slug, slug, StringComparison.Ordinal));
+            return Task.FromResult(
+                item is null
+                    ? ContentFetchResult<LandingPageContent>.NotFound()
+                    : ContentFetchResult<LandingPageContent>.Success(item));
         }
     }
 }
