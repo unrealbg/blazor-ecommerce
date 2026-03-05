@@ -23,7 +23,7 @@ public sealed class DirectusContentClient(
         PropertyNameCaseInsensitive = true,
     };
 
-    private readonly string apiKey = cmsOptions.Value.CmsApiKey.Trim();
+    private readonly string apiToken = cmsOptions.Value.ApiToken.Trim();
     private readonly TimeSpan cacheDuration = TimeSpan.FromSeconds(Math.Clamp(cmsOptions.Value.CacheSeconds, 10, 3600));
 
     public Task<ContentFetchResult<IReadOnlyCollection<BlogPostContent>>> GetBlogPosts(
@@ -54,13 +54,6 @@ public sealed class DirectusContentClient(
             cancellationToken);
     }
 
-    public Task<ContentFetchResult<IReadOnlyCollection<LandingPageContent>>> GetPages(
-        CancellationToken cancellationToken)
-    {
-        const string CacheKey = "cms:pages:all";
-        return this.GetOrSetAsync(CacheKey, () => this.FetchPagesAsync(cancellationToken), cancellationToken);
-    }
-
     public Task<ContentFetchResult<LandingPageContent>> GetPageBySlug(
         string slug,
         CancellationToken cancellationToken)
@@ -74,6 +67,20 @@ public sealed class DirectusContentClient(
             cancellationToken);
     }
 
+    public Task<ContentFetchResult<IReadOnlyCollection<string>>> GetAllPublishedBlogSlugs(
+        CancellationToken cancellationToken)
+    {
+        const string CacheKey = "cms:blog:slugs:published";
+        return this.GetOrSetAsync(CacheKey, () => this.FetchBlogSlugsAsync(cancellationToken), cancellationToken);
+    }
+
+    public Task<ContentFetchResult<IReadOnlyCollection<string>>> GetAllPublishedPageSlugs(
+        CancellationToken cancellationToken)
+    {
+        const string CacheKey = "cms:pages:slugs:published";
+        return this.GetOrSetAsync(CacheKey, () => this.FetchPageSlugsAsync(cancellationToken), cancellationToken);
+    }
+
     private async Task<ContentFetchResult<IReadOnlyCollection<BlogPostContent>>> FetchBlogPostsAsync(
         int page,
         int pageSize,
@@ -81,12 +88,12 @@ public sealed class DirectusContentClient(
     {
         var query = QueryString.Create(
         [
-            new KeyValuePair<string, string?>("fields", "title,slug,excerpt,content,coverImageUrl,authorName,publishedAt,updatedAt,tags,seoTitle,seoDescription,canonicalUrl,noIndex"),
-            new KeyValuePair<string, string?>("sort", "-publishedAt"),
+            new KeyValuePair<string, string?>("fields", "status,title,slug,excerpt,content,cover_image_url,author_name,published_at,updated_at,tags,seo_title,seo_description,canonical_url,no_index"),
+            new KeyValuePair<string, string?>("sort", "-published_at"),
             new KeyValuePair<string, string?>("page", page.ToString(CultureInfo.InvariantCulture)),
             new KeyValuePair<string, string?>("limit", pageSize.ToString(CultureInfo.InvariantCulture)),
-            new KeyValuePair<string, string?>("filter[publishedAt][_nnull]", "true"),
-            new KeyValuePair<string, string?>("filter[publishedAt][_lte]", DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture)),
+            new KeyValuePair<string, string?>("filter[status][_eq]", "published"),
+            new KeyValuePair<string, string?>("filter[published_at][_nnull]", "true"),
         ]);
 
         using var response = await this.SendAsync($"/items/blog_posts{query}", cancellationToken);
@@ -106,10 +113,10 @@ public sealed class DirectusContentClient(
             cancellationToken);
 
         var posts = payload?.Data?
-            .Select(MapBlogPost)
+            .Select(this.MapBlogPost)
             .Where(item => item is not null)
             .Select(item => item!)
-            .Where(IsPublished)
+            .Where(this.IsPublishedBlog)
             .ToList()
             ?? [];
 
@@ -122,7 +129,8 @@ public sealed class DirectusContentClient(
     {
         var query = QueryString.Create(
         [
-            new KeyValuePair<string, string?>("fields", "title,slug,excerpt,content,coverImageUrl,authorName,publishedAt,updatedAt,tags,seoTitle,seoDescription,canonicalUrl,noIndex"),
+            new KeyValuePair<string, string?>("fields", "status,title,slug,excerpt,content,cover_image_url,author_name,published_at,updated_at,tags,seo_title,seo_description,canonical_url,no_index"),
+            new KeyValuePair<string, string?>("filter[status][_eq]", "published"),
             new KeyValuePair<string, string?>("filter[slug][_eq]", slug),
             new KeyValuePair<string, string?>("limit", "1"),
         ]);
@@ -148,49 +156,13 @@ public sealed class DirectusContentClient(
             SerializerOptions,
             cancellationToken);
 
-        var item = payload?.Data?.Select(MapBlogPost).FirstOrDefault(post => post is not null);
-        if (item is null || !IsPublished(item))
+        var item = payload?.Data?.Select(this.MapBlogPost).FirstOrDefault(post => post is not null);
+        if (item is null || !this.IsPublishedBlog(item))
         {
             return ContentFetchResult<BlogPostContent>.NotFound();
         }
 
         return ContentFetchResult<BlogPostContent>.Success(item);
-    }
-
-    private async Task<ContentFetchResult<IReadOnlyCollection<LandingPageContent>>> FetchPagesAsync(
-        CancellationToken cancellationToken)
-    {
-        var query = QueryString.Create(
-        [
-            new KeyValuePair<string, string?>("fields", "title,slug,content,seoTitle,seoDescription,canonicalUrl,noIndex"),
-            new KeyValuePair<string, string?>("sort", "slug"),
-            new KeyValuePair<string, string?>("limit", "500"),
-        ]);
-
-        using var response = await this.SendAsync($"/items/pages{query}", cancellationToken);
-        if (response is null)
-        {
-            return ContentFetchResult<IReadOnlyCollection<LandingPageContent>>.Unavailable();
-        }
-
-        if (!response.IsSuccessStatusCode)
-        {
-            logger.LogWarning("CMS pages request failed with status code {StatusCode}", response.StatusCode);
-            return ContentFetchResult<IReadOnlyCollection<LandingPageContent>>.Unavailable();
-        }
-
-        var payload = await response.Content.ReadFromJsonAsync<DirectusEnvelope<List<DirectusPageDto>>>(
-            SerializerOptions,
-            cancellationToken);
-
-        var pages = payload?.Data?
-            .Select(MapLandingPage)
-            .Where(page => page is not null)
-            .Select(page => page!)
-            .ToList()
-            ?? [];
-
-        return ContentFetchResult<IReadOnlyCollection<LandingPageContent>>.Success(pages);
     }
 
     private async Task<ContentFetchResult<LandingPageContent>> FetchPageBySlugAsync(
@@ -199,7 +171,8 @@ public sealed class DirectusContentClient(
     {
         var query = QueryString.Create(
         [
-            new KeyValuePair<string, string?>("fields", "title,slug,content,seoTitle,seoDescription,canonicalUrl,noIndex"),
+            new KeyValuePair<string, string?>("fields", "status,title,slug,content,updated_at,seo_title,seo_description,canonical_url,no_index"),
+            new KeyValuePair<string, string?>("filter[status][_eq]", "published"),
             new KeyValuePair<string, string?>("filter[slug][_eq]", slug),
             new KeyValuePair<string, string?>("limit", "1"),
         ]);
@@ -225,18 +198,102 @@ public sealed class DirectusContentClient(
             SerializerOptions,
             cancellationToken);
 
-        var item = payload?.Data?.Select(MapLandingPage).FirstOrDefault(page => page is not null);
-        return item is null
-            ? ContentFetchResult<LandingPageContent>.NotFound()
-            : ContentFetchResult<LandingPageContent>.Success(item);
+        var item = payload?.Data?.Select(this.MapPage).FirstOrDefault(page => page is not null);
+        if (item is null || !this.IsPublishedPage(item))
+        {
+            return ContentFetchResult<LandingPageContent>.NotFound();
+        }
+
+        return ContentFetchResult<LandingPageContent>.Success(item);
+    }
+
+    private async Task<ContentFetchResult<IReadOnlyCollection<string>>> FetchBlogSlugsAsync(
+        CancellationToken cancellationToken)
+    {
+        var query = QueryString.Create(
+        [
+            new KeyValuePair<string, string?>("fields", "slug,no_index"),
+            new KeyValuePair<string, string?>("sort", "-published_at"),
+            new KeyValuePair<string, string?>("limit", "1000"),
+            new KeyValuePair<string, string?>("filter[status][_eq]", "published"),
+            new KeyValuePair<string, string?>("filter[published_at][_nnull]", "true"),
+            new KeyValuePair<string, string?>("filter[no_index][_eq]", "false"),
+        ]);
+
+        using var response = await this.SendAsync($"/items/blog_posts{query}", cancellationToken);
+        if (response is null)
+        {
+            return ContentFetchResult<IReadOnlyCollection<string>>.Unavailable();
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            logger.LogWarning("CMS blog slugs request failed with status code {StatusCode}", response.StatusCode);
+            return ContentFetchResult<IReadOnlyCollection<string>>.Unavailable();
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<DirectusEnvelope<List<DirectusSlugDto>>>(
+            SerializerOptions,
+            cancellationToken);
+
+        var slugs = payload?.Data?
+            .Where(item => !item.NoIndex)
+            .Select(item => item.Slug?.Trim())
+            .Where(slug => !string.IsNullOrWhiteSpace(slug))
+            .Select(slug => slug!.ToLowerInvariant())
+            .Distinct(StringComparer.Ordinal)
+            .ToList()
+            ?? [];
+
+        return ContentFetchResult<IReadOnlyCollection<string>>.Success(slugs);
+    }
+
+    private async Task<ContentFetchResult<IReadOnlyCollection<string>>> FetchPageSlugsAsync(
+        CancellationToken cancellationToken)
+    {
+        var query = QueryString.Create(
+        [
+            new KeyValuePair<string, string?>("fields", "slug,no_index"),
+            new KeyValuePair<string, string?>("sort", "slug"),
+            new KeyValuePair<string, string?>("limit", "1000"),
+            new KeyValuePair<string, string?>("filter[status][_eq]", "published"),
+            new KeyValuePair<string, string?>("filter[no_index][_eq]", "false"),
+        ]);
+
+        using var response = await this.SendAsync($"/items/pages{query}", cancellationToken);
+        if (response is null)
+        {
+            return ContentFetchResult<IReadOnlyCollection<string>>.Unavailable();
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            logger.LogWarning("CMS page slugs request failed with status code {StatusCode}", response.StatusCode);
+            return ContentFetchResult<IReadOnlyCollection<string>>.Unavailable();
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<DirectusEnvelope<List<DirectusSlugDto>>>(
+            SerializerOptions,
+            cancellationToken);
+
+        var slugs = payload?.Data?
+            .Where(item => !item.NoIndex)
+            .Select(item => item.Slug?.Trim())
+            .Where(slug => !string.IsNullOrWhiteSpace(slug))
+            .Select(slug => slug!.ToLowerInvariant())
+            .Distinct(StringComparer.Ordinal)
+            .ToList()
+            ?? [];
+
+        return ContentFetchResult<IReadOnlyCollection<string>>.Success(slugs);
     }
 
     private async Task<HttpResponseMessage?> SendAsync(string relativeUrl, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, relativeUrl);
-        if (!string.IsNullOrWhiteSpace(this.apiKey))
+        if (!string.IsNullOrWhiteSpace(this.apiToken))
         {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", this.apiKey);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", this.apiToken);
         }
 
         try
@@ -303,9 +360,15 @@ public sealed class DirectusContentClient(
         }
     }
 
-    private bool IsPublished(BlogPostContent post)
+    private bool IsPublishedBlog(BlogPostContent post)
     {
-        return post.PublishedAt is not null && post.PublishedAt <= DateTimeOffset.UtcNow;
+        return string.Equals(post.Status, "published", StringComparison.OrdinalIgnoreCase) &&
+               post.PublishedAt is not null;
+    }
+
+    private bool IsPublishedPage(LandingPageContent page)
+    {
+        return string.Equals(page.Status, "published", StringComparison.OrdinalIgnoreCase);
     }
 
     private BlogPostContent? MapBlogPost(DirectusBlogPostDto dto)
@@ -316,10 +379,11 @@ public sealed class DirectusContentClient(
         }
 
         var excerpt = string.IsNullOrWhiteSpace(dto.Excerpt)
-            ? BuildFallbackExcerpt(dto.Content)
+            ? this.BuildFallbackExcerpt(dto.Content)
             : dto.Excerpt.Trim();
 
         return new BlogPostContent(
+            dto.Status?.Trim().ToLowerInvariant() ?? "draft",
             dto.Title.Trim(),
             dto.Slug.Trim().ToLowerInvariant(),
             excerpt,
@@ -327,15 +391,15 @@ public sealed class DirectusContentClient(
             dto.CoverImageUrl?.Trim(),
             string.IsNullOrWhiteSpace(dto.AuthorName) ? "Editorial Team" : dto.AuthorName.Trim(),
             dto.PublishedAt,
-            dto.UpdatedAt,
-            ParseTags(dto.Tags),
+            dto.UpdatedAt ?? dto.PublishedAt,
+            this.ParseTags(dto.Tags),
             dto.SeoTitle?.Trim(),
             dto.SeoDescription?.Trim(),
             dto.CanonicalUrl?.Trim(),
             dto.NoIndex ?? false);
     }
 
-    private LandingPageContent? MapLandingPage(DirectusPageDto dto)
+    private LandingPageContent? MapPage(DirectusPageDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Title) || string.IsNullOrWhiteSpace(dto.Slug))
         {
@@ -343,6 +407,7 @@ public sealed class DirectusContentClient(
         }
 
         return new LandingPageContent(
+            dto.Status?.Trim().ToLowerInvariant() ?? "draft",
             dto.Title.Trim(),
             dto.Slug.Trim().ToLowerInvariant(),
             dto.Content?.Trim() ?? string.Empty,
@@ -423,29 +488,36 @@ public sealed class DirectusContentClient(
             .ToArray();
     }
 
-    private sealed record DirectusEnvelope<T>(T Data);
+    private sealed record DirectusEnvelope<T>([property: JsonPropertyName("data")] T Data);
 
     private sealed record DirectusBlogPostDto(
-        string? Title,
-        string? Slug,
-        string? Excerpt,
-        string? Content,
-        string? CoverImageUrl,
-        string? AuthorName,
-        DateTimeOffset? PublishedAt,
-        DateTimeOffset? UpdatedAt,
-        JsonElement? Tags,
-        string? SeoTitle,
-        string? SeoDescription,
-        string? CanonicalUrl,
-        bool? NoIndex);
+        [property: JsonPropertyName("status")] string? Status,
+        [property: JsonPropertyName("title")] string? Title,
+        [property: JsonPropertyName("slug")] string? Slug,
+        [property: JsonPropertyName("excerpt")] string? Excerpt,
+        [property: JsonPropertyName("content")] string? Content,
+        [property: JsonPropertyName("cover_image_url")] string? CoverImageUrl,
+        [property: JsonPropertyName("author_name")] string? AuthorName,
+        [property: JsonPropertyName("published_at")] DateTimeOffset? PublishedAt,
+        [property: JsonPropertyName("updated_at")] DateTimeOffset? UpdatedAt,
+        [property: JsonPropertyName("tags")] JsonElement? Tags,
+        [property: JsonPropertyName("seo_title")] string? SeoTitle,
+        [property: JsonPropertyName("seo_description")] string? SeoDescription,
+        [property: JsonPropertyName("canonical_url")] string? CanonicalUrl,
+        [property: JsonPropertyName("no_index")] bool? NoIndex);
 
     private sealed record DirectusPageDto(
-        string? Title,
-        string? Slug,
-        string? Content,
-        string? SeoTitle,
-        string? SeoDescription,
-        string? CanonicalUrl,
-        bool? NoIndex);
+        [property: JsonPropertyName("status")] string? Status,
+        [property: JsonPropertyName("title")] string? Title,
+        [property: JsonPropertyName("slug")] string? Slug,
+        [property: JsonPropertyName("content")] string? Content,
+        [property: JsonPropertyName("updated_at")] DateTimeOffset? UpdatedAt,
+        [property: JsonPropertyName("seo_title")] string? SeoTitle,
+        [property: JsonPropertyName("seo_description")] string? SeoDescription,
+        [property: JsonPropertyName("canonical_url")] string? CanonicalUrl,
+        [property: JsonPropertyName("no_index")] bool? NoIndex);
+
+    private sealed record DirectusSlugDto(
+        [property: JsonPropertyName("slug")] string? Slug,
+        [property: JsonPropertyName("no_index")] bool NoIndex);
 }

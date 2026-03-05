@@ -28,6 +28,8 @@ public sealed class StorefrontSeoTests(StorefrontWebApplicationFactory factory) 
         var xml = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("https://shop.example.com/blog", xml);
+        Assert.Contains("https://shop.example.com/blog/shipping-checklist-2026", xml);
         Assert.Contains("https://shop.example.com/product/mechanical-keyboard", xml);
     }
 
@@ -85,6 +87,8 @@ public sealed class StorefrontSeoTests(StorefrontWebApplicationFactory factory) 
         Assert.Contains("Shipping Checklist for 2026", html, StringComparison.Ordinal);
         Assert.Contains("application/ld&#x2B;json", html, StringComparison.Ordinal);
         Assert.Contains("\"@type\":\"BlogPosting\"", html, StringComparison.Ordinal);
+        Assert.Contains("\"@type\":\"BreadcrumbList\"", html, StringComparison.Ordinal);
+        Assert.Contains("href=\"https://shop.example.com/blog/shipping-checklist-2026\"", html, StringComparison.Ordinal);
     }
 
     [Fact]

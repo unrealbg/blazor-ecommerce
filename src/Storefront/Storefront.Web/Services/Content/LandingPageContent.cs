@@ -1,6 +1,7 @@
 namespace Storefront.Web.Services.Content;
 
 public sealed record LandingPageContent(
+    string Status,
     string Title,
     string Slug,
     string Content,

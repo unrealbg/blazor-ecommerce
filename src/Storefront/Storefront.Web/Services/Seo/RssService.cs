@@ -11,9 +11,10 @@ public sealed class RssService(
 {
     public async Task<string> BuildXmlAsync(CancellationToken cancellationToken)
     {
-        var result = await contentClient.GetBlogPosts(1, 200, cancellationToken);
+        var result = await contentClient.GetBlogPosts(1, 20, cancellationToken);
         var posts = result.IsSuccess && result.Value is not null
             ? result.Value
+                .Where(post => string.Equals(post.Status, "published", StringComparison.OrdinalIgnoreCase))
                 .Where(post => post.PublishedAt is not null)
                 .OrderByDescending(post => post.PublishedAt)
                 .ToList()
@@ -29,7 +30,7 @@ public sealed class RssService(
 
         foreach (var post in posts)
         {
-            var postUrl = pageMetadataService.BuildAbsoluteUrl($"/blog/{post.Slug}");
+            var postUrl = pageMetadataService.ResolveCanonicalUrl(post.CanonicalUrl, $"/blog/{post.Slug}");
             channel.Add(
                 new XElement(
                     "item",

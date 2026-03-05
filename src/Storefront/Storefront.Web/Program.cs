@@ -10,7 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<ApiOptions>(builder.Configuration.GetSection(ApiOptions.SectionName));
 builder.Services.Configure<CmsOptions>(builder.Configuration.GetSection(CmsOptions.SectionName));
-builder.Services.Configure<SeoOptions>(builder.Configuration.GetSection(SeoOptions.SectionName));
+builder.Services.Configure<SiteOptions>(builder.Configuration.GetSection(SiteOptions.SectionName));
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -46,7 +46,7 @@ builder.Services.AddHttpClient<IStoreApiClient, StoreApiClient>((serviceProvider
 builder.Services.AddHttpClient<IContentClient, DirectusContentClient>((serviceProvider, client) =>
 {
     var options = serviceProvider.GetRequiredService<IOptions<CmsOptions>>().Value;
-    client.BaseAddress = new Uri(options.CmsBaseUrl.TrimEnd('/'));
+    client.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/'));
 });
 
 var app = builder.Build();
@@ -57,9 +57,9 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.MapGet("/robots.txt", (IOptions<SeoOptions> options) =>
+app.MapGet("/robots.txt", (IOptions<SiteOptions> options) =>
 {
-    var baseUrl = options.Value.SiteBaseUrl.TrimEnd('/');
+    var baseUrl = options.Value.BaseUrl.TrimEnd('/');
     var robots = $"User-agent: *{Environment.NewLine}Allow: /{Environment.NewLine}Sitemap: {baseUrl}/sitemap.xml";
     return Results.Text(robots, "text/plain");
 });
