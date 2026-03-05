@@ -18,7 +18,7 @@ namespace Cart.Infrastructure.Persistence.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("cart")
-                .HasAnnotation("ProductVersion", "9.0.4")
+                .HasAnnotation("ProductVersion", "10.0.3")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -58,58 +58,86 @@ namespace Cart.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Cart.Domain.Carts.ShoppingCart", b =>
+            modelBuilder.Entity("Cart.Domain.Carts.Cart", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime?>("CheckedOutOnUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("CreatedOnUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CustomerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Status")
+                    b.Property<string>("CustomerId")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CustomerId")
+                        .IsUnique();
 
                     b.ToTable("carts", "cart");
                 });
 
-            modelBuilder.Entity("Cart.Domain.Carts.ShoppingCart", b =>
+            modelBuilder.Entity("Cart.Domain.Carts.Cart", b =>
                 {
-                    b.OwnsOne("BuildingBlocks.Domain.Shared.Money", "CheckoutTotal", b1 =>
+                    b.OwnsMany("Cart.Domain.Carts.CartLine", "Lines", b1 =>
                         {
-                            b1.Property<Guid>("ShoppingCartId")
+                            b1.Property<Guid>("cart_id")
                                 .HasColumnType("uuid");
 
-                            b1.Property<decimal>("Amount")
-                                .HasPrecision(18, 2)
-                                .HasColumnType("numeric(18,2)")
-                                .HasColumnName("checkout_amount");
+                            b1.Property<Guid>("ProductId")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uuid")
+                                .HasColumnName("product_id");
 
-                            b1.Property<string>("Currency")
+                            b1.Property<string>("ProductName")
                                 .IsRequired()
-                                .HasMaxLength(3)
-                                .HasColumnType("character varying(3)")
-                                .HasColumnName("checkout_currency");
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("product_name");
 
-                            b1.HasKey("ShoppingCartId");
+                            b1.Property<int>("Quantity")
+                                .HasColumnType("integer")
+                                .HasColumnName("quantity");
 
-                            b1.ToTable("carts", "cart");
+                            b1.HasKey("cart_id", "ProductId");
+
+                            b1.ToTable("cart_lines", "cart");
 
                             b1.WithOwner()
-                                .HasForeignKey("ShoppingCartId");
+                                .HasForeignKey("cart_id");
+
+                            b1.OwnsOne("BuildingBlocks.Domain.Shared.Money", "UnitPrice", b2 =>
+                                {
+                                    b2.Property<Guid>("CartLinecart_id")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<Guid>("CartLineProductId")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<decimal>("Amount")
+                                        .HasPrecision(18, 2)
+                                        .HasColumnType("numeric(18,2)")
+                                        .HasColumnName("unit_amount");
+
+                                    b2.Property<string>("Currency")
+                                        .IsRequired()
+                                        .HasMaxLength(3)
+                                        .HasColumnType("character varying(3)")
+                                        .HasColumnName("unit_currency");
+
+                                    b2.HasKey("CartLinecart_id", "CartLineProductId");
+
+                                    b2.ToTable("cart_lines", "cart");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("CartLinecart_id", "CartLineProductId");
+                                });
+
+                            b1.Navigation("UnitPrice")
+                                .IsRequired();
                         });
 
-                    b.Navigation("CheckoutTotal");
+                    b.Navigation("Lines");
                 });
 #pragma warning restore 612, 618
         }

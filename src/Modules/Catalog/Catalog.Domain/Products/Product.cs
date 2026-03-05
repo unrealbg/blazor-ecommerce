@@ -10,21 +10,24 @@ public sealed class Product : AggregateRoot<Guid>
     {
     }
 
-    private Product(Guid id, string name, Money price, DateTime createdOnUtc)
+    private Product(Guid id, string name, string? description, Money price, bool isActive)
     {
         Id = id;
         Name = name;
+        Description = description;
         Price = price;
-        CreatedOnUtc = createdOnUtc;
+        IsActive = isActive;
     }
 
     public string Name { get; private set; } = string.Empty;
 
+    public string? Description { get; private set; }
+
     public Money Price { get; private set; } = null!;
 
-    public DateTime CreatedOnUtc { get; private set; }
+    public bool IsActive { get; private set; }
 
-    public static Result<Product> Create(string name, Money price, DateTime createdOnUtc)
+    public static Result<Product> Create(string name, string? description, Money price, bool isActive)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -33,7 +36,17 @@ public sealed class Product : AggregateRoot<Guid>
         }
 
         var trimmedName = name.Trim();
-        var product = new Product(Guid.NewGuid(), trimmedName, price, createdOnUtc);
+        var normalizedDescription = string.IsNullOrWhiteSpace(description)
+            ? null
+            : description.Trim();
+
+        if (normalizedDescription is { Length: > 2000 })
+        {
+            return Result<Product>.Failure(
+                new Error("catalog.product.description.too_long", "Product description is too long."));
+        }
+
+        var product = new Product(Guid.NewGuid(), trimmedName, normalizedDescription, price, isActive);
 
         return Result<Product>.Success(product);
     }

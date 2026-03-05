@@ -1,10 +1,11 @@
 using Cart.Domain.Carts;
+using CartAggregate = Cart.Domain.Carts.Cart;
 
 namespace Cart.Application.Carts;
 
 public interface ICartRepository
 {
-    Task AddAsync(ShoppingCart cart, CancellationToken cancellationToken);
+    Task AddAsync(CartAggregate cart, CancellationToken cancellationToken);
 
-    Task<ShoppingCart?> GetByIdAsync(Guid cartId, CancellationToken cancellationToken);
+    Task<CartAggregate?> GetByCustomerIdAsync(string customerId, CancellationToken cancellationToken);
 }

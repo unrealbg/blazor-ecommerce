@@ -1,3 +1,4 @@
+using BuildingBlocks.Application.Contracts;
 using BuildingBlocks.Infrastructure.Modules;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -21,6 +22,8 @@ public sealed class OrdersInfrastructureInstaller : IModuleInfrastructureInstall
                 npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "orders")));
 
         services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IOrderAuditRepository, OrderAuditRepository>();
+        services.AddScoped<ICartCheckoutAccessor, CartCheckoutAccessor>();
         services.AddScoped<IOrdersUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<OrdersDbContext>());
     }
 

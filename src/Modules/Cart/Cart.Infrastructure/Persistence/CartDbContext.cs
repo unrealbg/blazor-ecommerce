@@ -1,8 +1,8 @@
 using BuildingBlocks.Infrastructure.Messaging;
 using BuildingBlocks.Infrastructure.Persistence;
 using Cart.Application.Carts;
-using Cart.Domain.Carts;
 using Microsoft.EntityFrameworkCore;
+using CartAggregate = Cart.Domain.Carts.Cart;
 
 namespace Cart.Infrastructure.Persistence;
 
@@ -11,7 +11,7 @@ public sealed class CartDbContext(
     IEventSerializer eventSerializer)
     : ModuleDbContext(options, eventSerializer), ICartUnitOfWork
 {
-    public DbSet<ShoppingCart> Carts => Set<ShoppingCart>();
+    public DbSet<CartAggregate> Carts => Set<CartAggregate>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

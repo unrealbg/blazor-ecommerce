@@ -23,7 +23,13 @@ public static class CatalogModuleExtensions
 
         group.MapPost("/products", async (CreateProductRequest request, ISender sender, CancellationToken cancellationToken) =>
         {
-            var command = new CreateProductCommand(request.Name, request.Currency, request.Amount);
+            var command = new CreateProductCommand(
+                request.Name,
+                request.Description,
+                request.Currency,
+                request.Amount,
+                request.IsActive);
+
             var result = await sender.Send(command, cancellationToken);
 
             return result.IsSuccess
@@ -40,5 +46,10 @@ public static class CatalogModuleExtensions
         return endpoints;
     }
 
-    public sealed record CreateProductRequest(string Name, string Currency, decimal Amount);
+    public sealed record CreateProductRequest(
+        string Name,
+        string? Description,
+        string Currency,
+        decimal Amount,
+        bool IsActive = true);
 }
