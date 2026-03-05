@@ -1,15 +1,23 @@
+# .NET build artifacts
 bin/
 obj/
 
+# publish outputs / local artifacts
 publish/
 .artifacts/
 
+# Visual Studio / Rider
 .vs/
 .idea/
 *.user
 *.suo
 
+# Node / frontend
 node_modules/
+
+# logs
 *.log
+
+# OS files
 .DS_Store
 Thumbs.db

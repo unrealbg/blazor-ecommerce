@@ -1,3 +1,4 @@
+using BuildingBlocks.Domain.Results;
 using Cart.Application.Carts.AddItem;
 using Cart.Application.Carts.GetCart;
 using Cart.Application.DependencyInjection;
@@ -20,6 +21,7 @@ public static class CartModuleExtensions
     public static IEndpointRouteBuilder MapCartEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/cart").WithTags("Cart");
+        group.AllowAnonymous();
 
         group.MapPost("/{customerId}/items", async (
             string customerId,
@@ -33,7 +35,7 @@ public static class CartModuleExtensions
 
             return result.IsSuccess
                 ? Results.Created($"/api/v1/cart/{customerId}", new { id = result.Value })
-                : Results.BadRequest(new { code = result.Error.Code, message = result.Error.Message });
+                : BusinessError(result.Error);
         });
 
         group.MapGet("/{customerId}", async (string customerId, ISender sender, CancellationToken cancellationToken) =>
@@ -43,6 +45,18 @@ public static class CartModuleExtensions
         });
 
         return endpoints;
+    }
+
+    private static IResult BusinessError(Error error)
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "Business rule violation",
+            detail: error.Message,
+            extensions: new Dictionary<string, object?>
+            {
+                ["code"] = error.Code,
+            });
     }
 
     public sealed record AddItemRequest(Guid ProductId, int Quantity);

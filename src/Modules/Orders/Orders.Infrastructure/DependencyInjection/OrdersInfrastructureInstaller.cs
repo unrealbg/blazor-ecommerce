@@ -22,6 +22,7 @@ public sealed class OrdersInfrastructureInstaller : IModuleInfrastructureInstall
                 npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "orders")));
 
         services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<ICheckoutIdempotencyRepository, CheckoutIdempotencyRepository>();
         services.AddScoped<IOrderAuditRepository, OrderAuditRepository>();
         services.AddScoped<ICartCheckoutAccessor, CartCheckoutAccessor>();
         services.AddScoped<IOrdersUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<OrdersDbContext>());

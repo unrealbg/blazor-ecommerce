@@ -1,3 +1,4 @@
+using BuildingBlocks.Domain.Results;
 using Catalog.Application.DependencyInjection;
 using Catalog.Application.Products.CreateProduct;
 using Catalog.Application.Products.GetProducts;
@@ -20,6 +21,7 @@ public static class CatalogModuleExtensions
     public static IEndpointRouteBuilder MapCatalogEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/catalog").WithTags("Catalog");
+        group.AllowAnonymous();
 
         group.MapPost("/products", async (CreateProductRequest request, ISender sender, CancellationToken cancellationToken) =>
         {
@@ -34,7 +36,7 @@ public static class CatalogModuleExtensions
 
             return result.IsSuccess
                 ? Results.Created($"/api/v1/catalog/products/{result.Value}", new { id = result.Value })
-                : Results.BadRequest(new { code = result.Error.Code, message = result.Error.Message });
+                : BusinessError(result.Error);
         });
 
         group.MapGet("/products", async (ISender sender, CancellationToken cancellationToken) =>
@@ -44,6 +46,18 @@ public static class CatalogModuleExtensions
         });
 
         return endpoints;
+    }
+
+    private static IResult BusinessError(Error error)
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "Business rule violation",
+            detail: error.Message,
+            extensions: new Dictionary<string, object?>
+            {
+                ["code"] = error.Code,
+            });
     }
 
     public sealed record CreateProductRequest(

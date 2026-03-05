@@ -28,6 +28,7 @@ public sealed class Order : AggregateRoot<Guid>
         Total = total;
         PlacedAtUtc = placedAtUtc;
         Status = OrderStatus.Placed;
+        RowVersion = 0L;
 
         RaiseDomainEvent(new OrderPlaced(Id, CustomerId, Total.Currency, Total.Amount));
     }
@@ -43,6 +44,8 @@ public sealed class Order : AggregateRoot<Guid>
     public DateTime PlacedAtUtc { get; private set; }
 
     public OrderStatus Status { get; private set; }
+
+    public long RowVersion { get; private set; }
 
     public static Result<Order> Create(
         string customerId,

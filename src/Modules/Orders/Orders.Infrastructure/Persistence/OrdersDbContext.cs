@@ -15,6 +15,8 @@ public sealed class OrdersDbContext(
 
     public DbSet<OrderAudit> OrderAudits => Set<OrderAudit>();
 
+    public DbSet<CheckoutIdempotency> CheckoutIdempotencyRecords => Set<CheckoutIdempotency>();
+
     public async Task<TResult> ExecuteInTransactionAsync<TResult>(
         Func<CancellationToken, Task<TResult>> operation,
         CancellationToken cancellationToken)

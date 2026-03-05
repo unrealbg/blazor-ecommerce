@@ -9,5 +9,9 @@ public sealed class CheckoutCommandValidator : AbstractValidator<CheckoutCommand
         RuleFor(command => command.CustomerId)
             .NotEmpty()
             .MaximumLength(128);
+
+        RuleFor(command => command.IdempotencyKey)
+            .NotEmpty()
+            .MaximumLength(128);
     }
 }
