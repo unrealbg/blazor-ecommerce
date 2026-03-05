@@ -1,0 +1,130 @@
+@page "/p/{Slug}"
+@using Microsoft.AspNetCore.Http
+@using Storefront.Web.Services.Content
+@using Storefront.Web.Services.Seo
+@inject IContentClient ContentClient
+@inject IPageMetadataService MetadataService
+@inject IStructuredDataService StructuredDataService
+
+<SeoHead Metadata="metadata" JsonLdScripts="jsonLdScripts" />
+
+<Breadcrumbs Items="breadcrumbs" />
+
+@if (isCmsUnavailable)
+{
+    <section class="cms-fallback">
+        <h1>Content is temporarily unavailable</h1>
+        <p>Please try again later.</p>
+    </section>
+}
+else if (isNotFound || landingPage is null)
+{
+    <section class="cms-fallback">
+        <h1>Page not found</h1>
+        <p>The requested page does not exist.</p>
+    </section>
+}
+else
+{
+    <article class="landing-page">
+        <h1>@landingPage.Title</h1>
+        <section class="cms-content">@landingPage.Content</section>
+    </article>
+}
+
+@code {
+    [CascadingParameter]
+    public HttpContext? HttpContext { get; set; }
+
+    [Parameter]
+    public string Slug { get; set; } = string.Empty;
+
+    private PageMetadata metadata = new("Page", "Landing page.", "/");
+    private IReadOnlyCollection<string> jsonLdScripts = [];
+    private IReadOnlyList<BreadcrumbItem> breadcrumbs = [];
+    private LandingPageContent? landingPage;
+    private bool isCmsUnavailable;
+    private bool isNotFound;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isCmsUnavailable = false;
+        isNotFound = false;
+        landingPage = null;
+        breadcrumbs =
+        [
+            new BreadcrumbItem("Home", "/"),
+        ];
+
+        var result = await ContentClient.GetPageBySlug(this.Slug, CancellationToken.None);
+        if (result.IsUnavailable)
+        {
+            isCmsUnavailable = true;
+            metadata = new PageMetadata(
+                "Content unavailable",
+                "Landing page content is temporarily unavailable.",
+                MetadataService.BuildAbsoluteUrl($"/p/{Slug}"),
+                true);
+            jsonLdScripts = [];
+            return;
+        }
+
+        if (result.IsNotFound || result.Value is null)
+        {
+            isNotFound = true;
+            HttpContext?.Response.StatusCode = StatusCodes.Status404NotFound;
+            metadata = new PageMetadata(
+                "Page not found",
+                "The requested page does not exist.",
+                MetadataService.BuildAbsoluteUrl($"/p/{Slug}"));
+            breadcrumbs =
+            [
+                .. breadcrumbs,
+                new BreadcrumbItem("Not found", $"/p/{Slug}"),
+            ];
+            jsonLdScripts =
+            [
+                StructuredDataService.BuildBreadcrumbJsonLd(this.ToAbsoluteBreadcrumbs(breadcrumbs)),
+            ];
+            return;
+        }
+
+        landingPage = result.Value;
+        var canonical = MetadataService.ResolveCanonicalUrl(landingPage.CanonicalUrl, $"/p/{landingPage.Slug}");
+        var description = string.IsNullOrWhiteSpace(landingPage.SeoDescription)
+            ? BuildDescription(landingPage.Content)
+            : landingPage.SeoDescription!.Trim();
+
+        metadata = new PageMetadata(
+            string.IsNullOrWhiteSpace(landingPage.SeoTitle) ? landingPage.Title : landingPage.SeoTitle,
+            description,
+            canonical,
+            landingPage.NoIndex);
+
+        breadcrumbs =
+        [
+            .. breadcrumbs,
+            new BreadcrumbItem(landingPage.Title, $"/p/{landingPage.Slug}"),
+        ];
+        jsonLdScripts =
+        [
+            StructuredDataService.BuildBreadcrumbJsonLd(this.ToAbsoluteBreadcrumbs(breadcrumbs)),
+        ];
+    }
+
+    private IEnumerable<BreadcrumbItem> ToAbsoluteBreadcrumbs(IEnumerable<BreadcrumbItem> source)
+    {
+        return source.Select(item => new BreadcrumbItem(item.Name, MetadataService.BuildAbsoluteUrl(item.Url)));
+    }
+
+    private static string BuildDescription(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return "Read more details on this page.";
+        }
+
+        var normalized = content.Trim();
+        return normalized.Length <= 160 ? normalized : normalized[..160];
+    }
+}

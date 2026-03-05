@@ -1,0 +1,167 @@
+@page "/blog/{Slug}"
+@using Microsoft.AspNetCore.Http
+@using Storefront.Web.Services.Content
+@using Storefront.Web.Services.Seo
+@inject IContentClient ContentClient
+@inject IPageMetadataService MetadataService
+@inject IStructuredDataService StructuredDataService
+
+<SeoHead Metadata="metadata" JsonLdScripts="jsonLdScripts" />
+
+<Breadcrumbs Items="breadcrumbs" />
+
+@if (isCmsUnavailable)
+{
+    <section class="cms-fallback">
+        <h1>Blog is temporarily unavailable</h1>
+        <p>We could not load this article right now. Please try again later.</p>
+    </section>
+}
+else if (isNotFound || post is null)
+{
+    <section class="cms-fallback">
+        <h1>Article not found</h1>
+        <p>The requested article does not exist or is not published yet.</p>
+    </section>
+}
+else
+{
+    <article class="blog-post">
+        <header class="blog-post-header">
+            <h1>@post.Title</h1>
+            <p class="blog-meta">
+                <span>By @post.AuthorName</span>
+                <span>@FormatDate(post.PublishedAt)</span>
+            </p>
+        </header>
+
+        @if (!string.IsNullOrWhiteSpace(post.CoverImageUrl))
+        {
+            <img class="blog-cover" src="@post.CoverImageUrl" alt="@post.Title" />
+        }
+
+        <p class="blog-excerpt">@post.Excerpt</p>
+        <section class="cms-content">@post.Content</section>
+
+        @if (post.Tags.Count > 0)
+        {
+            <ul class="tag-list">
+                @foreach (var tag in post.Tags)
+                {
+                    <li>@tag</li>
+                }
+            </ul>
+        }
+    </article>
+}
+
+@code {
+    [CascadingParameter]
+    public HttpContext? HttpContext { get; set; }
+
+    [Parameter]
+    public string Slug { get; set; } = string.Empty;
+
+    private PageMetadata metadata = new("Blog", "Read our latest article.", "/blog");
+    private IReadOnlyCollection<string> jsonLdScripts = [];
+    private IReadOnlyList<BreadcrumbItem> breadcrumbs = [];
+    private BlogPostContent? post;
+    private bool isNotFound;
+    private bool isCmsUnavailable;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isNotFound = false;
+        isCmsUnavailable = false;
+        jsonLdScripts = [];
+        breadcrumbs =
+        [
+            new BreadcrumbItem("Home", "/"),
+            new BreadcrumbItem("Blog", "/blog"),
+        ];
+
+        var result = await ContentClient.GetBlogPostBySlug(this.Slug, CancellationToken.None);
+        if (result.IsUnavailable)
+        {
+            isCmsUnavailable = true;
+            metadata = new PageMetadata(
+                "Blog unavailable",
+                "Blog content is temporarily unavailable.",
+                MetadataService.BuildAbsoluteUrl($"/blog/{Slug}"),
+                true);
+            return;
+        }
+
+        if (result.IsNotFound || result.Value is null)
+        {
+            isNotFound = true;
+            HttpContext?.Response.StatusCode = StatusCodes.Status404NotFound;
+            metadata = new PageMetadata(
+                "Article not found",
+                "The requested article does not exist.",
+                MetadataService.BuildAbsoluteUrl($"/blog/{Slug}"));
+            breadcrumbs =
+            [
+                .. breadcrumbs,
+                new BreadcrumbItem("Not found", $"/blog/{Slug}"),
+            ];
+            jsonLdScripts =
+            [
+                StructuredDataService.BuildBreadcrumbJsonLd(this.ToAbsoluteBreadcrumbs(breadcrumbs)),
+            ];
+            return;
+        }
+
+        post = result.Value;
+        var canonical = MetadataService.ResolveCanonicalUrl(post.CanonicalUrl, $"/blog/{post.Slug}");
+        var description = BuildDescription(post.SeoDescription, post.Excerpt);
+
+        metadata = new PageMetadata(
+            string.IsNullOrWhiteSpace(post.SeoTitle) ? post.Title : post.SeoTitle,
+            description,
+            canonical,
+            post.NoIndex,
+            "article",
+            MetadataService.ResolveAbsoluteOptionalUrl(post.CoverImageUrl));
+
+        breadcrumbs =
+        [
+            .. breadcrumbs,
+            new BreadcrumbItem(post.Title, $"/blog/{post.Slug}"),
+        ];
+
+        jsonLdScripts =
+        [
+            StructuredDataService.BuildBlogPostingJsonLd(
+                new BlogPostingSeoModel(
+                    post.Title,
+                    post.Excerpt,
+                    post.CoverImageUrl,
+                    post.PublishedAt ?? DateTimeOffset.UtcNow,
+                    post.UpdatedAt ?? post.PublishedAt ?? DateTimeOffset.UtcNow,
+                    post.AuthorName),
+                metadata.CanonicalUrl),
+            StructuredDataService.BuildBreadcrumbJsonLd(this.ToAbsoluteBreadcrumbs(breadcrumbs)),
+        ];
+    }
+
+    private static string BuildDescription(string? seoDescription, string excerpt)
+    {
+        if (!string.IsNullOrWhiteSpace(seoDescription))
+        {
+            return seoDescription.Trim();
+        }
+
+        return excerpt.Length <= 240 ? excerpt : excerpt[..240];
+    }
+
+    private IEnumerable<BreadcrumbItem> ToAbsoluteBreadcrumbs(IEnumerable<BreadcrumbItem> source)
+    {
+        return source.Select(item => new BreadcrumbItem(item.Name, MetadataService.BuildAbsoluteUrl(item.Url)));
+    }
+
+    private static string FormatDate(DateTimeOffset? value)
+    {
+        return value?.ToString("MMMM dd, yyyy") ?? "Draft";
+    }
+}

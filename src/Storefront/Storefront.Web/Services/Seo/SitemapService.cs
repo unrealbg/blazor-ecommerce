@@ -1,11 +1,13 @@
 using System.Xml.Linq;
 using Microsoft.Extensions.Options;
 using Storefront.Web.Services.Api;
+using Storefront.Web.Services.Content;
 
 namespace Storefront.Web.Services.Seo;
 
 public sealed class SitemapService(
     IStoreApiClient storeApiClient,
+    IContentClient contentClient,
     IOptions<SeoOptions> seoOptions)
     : ISitemapService
 {
@@ -19,6 +21,7 @@ public sealed class SitemapService(
         var urlSet = new XElement(ns + "urlset");
 
         urlSet.Add(CreateUrlElement(ns, $"{baseUrl}/"));
+        urlSet.Add(CreateUrlElement(ns, $"{baseUrl}/blog"));
 
         var activeProducts = products
             .Where(product => product.IsActive)
@@ -39,6 +42,24 @@ public sealed class SitemapService(
         foreach (var product in activeProducts)
         {
             urlSet.Add(CreateUrlElement(ns, $"{baseUrl}/product/{product.Slug}"));
+        }
+
+        var blogResult = await contentClient.GetBlogPosts(1, 500, cancellationToken);
+        if (blogResult.IsSuccess && blogResult.Value is not null)
+        {
+            foreach (var post in blogResult.Value.Where(post => post.PublishedAt is not null))
+            {
+                urlSet.Add(CreateUrlElement(ns, $"{baseUrl}/blog/{post.Slug}"));
+            }
+        }
+
+        var pagesResult = await contentClient.GetPages(cancellationToken);
+        if (pagesResult.IsSuccess && pagesResult.Value is not null)
+        {
+            foreach (var page in pagesResult.Value.Where(page => !page.NoIndex))
+            {
+                urlSet.Add(CreateUrlElement(ns, $"{baseUrl}/p/{page.Slug}"));
+            }
         }
 
         var document = new XDocument(new XDeclaration("1.0", "utf-8", "yes"), urlSet);
