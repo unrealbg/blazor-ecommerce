@@ -25,7 +25,7 @@ namespace Orders.Infrastructure.Persistence.Migrations
                     currency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
                     amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     CreatedOnUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    Status = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false)
+                    Status = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                 },
                 constraints: table =>
                 {

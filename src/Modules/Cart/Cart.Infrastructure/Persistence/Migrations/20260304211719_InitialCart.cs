@@ -25,7 +25,7 @@ namespace Cart.Infrastructure.Persistence.Migrations
                     CreatedOnUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     CheckedOutOnUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     checkout_currency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: true),
-                    checkout_amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: true)
+                    checkout_amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: true),
                 },
                 constraints: table =>
                 {

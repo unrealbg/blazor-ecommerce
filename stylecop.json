@@ -1,0 +1,15 @@
+{
+  "settings": {
+    "documentationRules": {
+      "companyName": "Blazor E-Commerce",
+      "documentExposedElements": false,
+      "documentInternalElements": false,
+      "documentPrivateElements": false,
+      "documentInterfaces": false,
+      "xmlHeader": false
+    },
+    "orderingRules": {
+      "usingDirectivesPlacement": "outsideNamespace"
+    }
+  }
+}

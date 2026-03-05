@@ -24,7 +24,7 @@ namespace BuildingBlocks.Infrastructure.Persistence.Migrations
                     Type = table.Column<string>(type: "character varying(1024)", maxLength: 1024, nullable: false),
                     Payload = table.Column<string>(type: "text", nullable: false),
                     ProcessedOnUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    Error = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: true)
+                    Error = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: true),
                 },
                 constraints: table =>
                 {
