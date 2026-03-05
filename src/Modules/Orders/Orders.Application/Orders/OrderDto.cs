@@ -2,9 +2,10 @@ namespace Orders.Application.Orders;
 
 public sealed record OrderDto(
     Guid Id,
-    Guid CartId,
-    Guid CustomerId,
+    string CustomerId,
     string Currency,
+    decimal SubtotalAmount,
     decimal TotalAmount,
     string Status,
-    DateTime CreatedOnUtc);
+    DateTime PlacedAtUtc,
+    IReadOnlyCollection<OrderLineDto> Lines);

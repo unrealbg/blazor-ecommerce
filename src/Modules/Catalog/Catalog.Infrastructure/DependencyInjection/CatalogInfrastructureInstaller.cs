@@ -1,3 +1,4 @@
+using BuildingBlocks.Application.Contracts;
 using BuildingBlocks.Infrastructure.Modules;
 using Catalog.Application.Products;
 using Catalog.Infrastructure.Persistence;
@@ -21,6 +22,7 @@ public sealed class CatalogInfrastructureInstaller : IModuleInfrastructureInstal
                 npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "catalog")));
 
         services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IProductCatalogReader, ProductCatalogReader>();
         services.AddScoped<ICatalogUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<CatalogDbContext>());
     }
 

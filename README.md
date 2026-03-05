@@ -1,4 +1,4 @@
-# Blazor E-Commerce Modular Monolith Skeleton (.NET 9)
+# Blazor E-Commerce Modular Monolith Skeleton (.NET 10)
 
 Production-oriented modular monolith starter with strict module boundaries and clean architecture per module.
 
@@ -13,7 +13,7 @@ Production-oriented modular monolith starter with strict module boundaries and c
 - **Host**: `src/AppHost` (ASP.NET Core minimal API)
 - **Building blocks**:
   - `BuildingBlocks.Domain` (domain primitives, `Result`, `Money`, `IClock`)
-  - `BuildingBlocks.Application` (CQRS abstractions, handlers, validation pipeline)
+  - `BuildingBlocks.Application` (CQRS abstractions, handlers, validation pipeline, cross-module contracts)
   - `BuildingBlocks.Infrastructure` (EF infrastructure, outbox, dispatcher, module infrastructure loader)
 - **Each module**:
   - `*.Domain`
@@ -28,7 +28,7 @@ Production-oriented modular monolith starter with strict module boundaries and c
 - `*.Application` references only `*.Domain` + `BuildingBlocks.*`.
 - `*.Infrastructure` references `*.Application` + `*.Domain` + `BuildingBlocks.Infrastructure`.
 - No direct module-to-module domain/infrastructure references.
-- Cross-module communication is event-driven through shared contracts/domain events (outbox + dispatcher).
+- Cross-module communication is event-driven through contracts + outbox dispatcher.
 
 ## Persistence
 
@@ -44,7 +44,7 @@ Production-oriented modular monolith starter with strict module boundaries and c
 
 ## Prerequisites
 
-- .NET SDK 10.x (or newer SDK that can target `net10.0`)
+- .NET SDK 10.x
 - Docker + Docker Compose
 
 ## Run
@@ -56,7 +56,6 @@ docker compose up --build
 ```
 
 App: `http://localhost:8080`
-Redis (host port): `16379`
 
 ### Option 2: Infra in containers, app from `dotnet`
 
@@ -70,14 +69,63 @@ dotnet run --project src/AppHost/AppHost.csproj
 - Liveness: `GET /health/live`
 - Readiness (DB): `GET /health/ready`
 
-## API Route Shape
+## API Routes (v1)
 
-- Versioned base path: `/api/v1/{module}`
-- Examples:
-  - `GET /api/v1/catalog/products`
-  - `POST /api/v1/cart`
-  - `POST /api/v1/cart/{cartId}/checkout`
-  - `GET /api/v1/orders`
+- `POST /api/v1/catalog/products`
+- `GET /api/v1/catalog/products`
+- `POST /api/v1/cart/{customerId}/items`
+- `GET /api/v1/cart/{customerId}`
+- `POST /api/v1/orders/checkout/{customerId}`
+- `GET /api/v1/orders/{orderId}`
+
+## Sample End-to-End Flow (curl)
+
+### 1) Create product in Catalog
+
+```bash
+curl -X POST http://localhost:8080/api/v1/catalog/products \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Keyboard",
+    "description": "Mechanical keyboard",
+    "currency": "USD",
+    "amount": 99.99,
+    "isActive": true
+  }'
+```
+
+### 2) List products
+
+```bash
+curl http://localhost:8080/api/v1/catalog/products
+```
+
+### 3) Add product to Cart
+
+```bash
+curl -X POST http://localhost:8080/api/v1/cart/customer-123/items \
+  -H "Content-Type: application/json" \
+  -d '{
+    "productId": "PUT_PRODUCT_ID_HERE",
+    "quantity": 2
+  }'
+```
+
+```bash
+curl http://localhost:8080/api/v1/cart/customer-123
+```
+
+### 4) Checkout: create Order from Cart
+
+```bash
+curl -X POST http://localhost:8080/api/v1/orders/checkout/customer-123
+```
+
+### 5) Fetch created order
+
+```bash
+curl http://localhost:8080/api/v1/orders/PUT_ORDER_ID_HERE
+```
 
 ## Add a Migration
 
@@ -119,11 +167,11 @@ dotnet ef migrations add <MigrationName> \
 
 ## Outbox Flow
 
-1. A module aggregate raises a domain event.
-2. On `SaveChanges`, module `DbContext` captures domain events and writes `shared.outbox_messages` in the same transaction.
-3. `OutboxDispatcherBackgroundService` polls unprocessed messages.
-4. `IOutboxPublisher` deserializes events and dispatches them to registered in-process `IDomainEventHandler<T>`.
-5. Dispatcher marks outbox rows as processed (or stores error details).
+1. `Order` aggregate raises `Orders.Domain.Events.OrderPlaced`.
+2. `OrdersDbContext.SaveChanges` captures domain events and writes them to `shared.outbox_messages` in the same transaction as the order write.
+3. `OutboxDispatcherBackgroundService` polls unprocessed outbox rows.
+4. `IOutboxPublisher` deserializes and dispatches events to in-process `IDomainEventHandler<T>`.
+5. `OrderPlacedDomainEventHandler` logs `OrderPlaced handled...` and writes an `orders.order_audits` record to prove side-effects executed.
+6. Dispatcher marks outbox rows as processed (or stores error details).
 
 This keeps module boundaries strict while enabling reliable eventual consistency in-process.
-

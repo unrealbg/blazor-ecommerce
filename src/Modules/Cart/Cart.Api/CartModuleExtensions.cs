@@ -1,6 +1,5 @@
-using Cart.Application.Carts.CheckoutCart;
-using Cart.Application.Carts.CreateCart;
-using Cart.Application.Carts.GetCartById;
+using Cart.Application.Carts.AddItem;
+using Cart.Application.Carts.GetCart;
 using Cart.Application.DependencyInjection;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
@@ -22,40 +21,29 @@ public static class CartModuleExtensions
     {
         var group = endpoints.MapGroup("/cart").WithTags("Cart");
 
-        group.MapPost("/", async (CreateCartRequest request, ISender sender, CancellationToken cancellationToken) =>
-        {
-            var result = await sender.Send(new CreateCartCommand(request.CustomerId), cancellationToken);
-
-            return result.IsSuccess
-                ? Results.Created($"/api/v1/cart/{result.Value}", new { id = result.Value })
-                : Results.BadRequest(new { code = result.Error.Code, message = result.Error.Message });
-        });
-
-        group.MapGet("/{cartId:guid}", async (Guid cartId, ISender sender, CancellationToken cancellationToken) =>
-        {
-            var cart = await sender.Send(new GetCartByIdQuery(cartId), cancellationToken);
-            return cart is not null ? Results.Ok(cart) : Results.NotFound();
-        });
-
-        group.MapPost("/{cartId:guid}/checkout", async (
-            Guid cartId,
-            CheckoutCartRequest request,
+        group.MapPost("/{customerId}/items", async (
+            string customerId,
+            AddItemRequest request,
             ISender sender,
             CancellationToken cancellationToken) =>
         {
             var result = await sender.Send(
-                new CheckoutCartCommand(cartId, request.Currency, request.TotalAmount),
+                new AddItemToCartCommand(customerId, request.ProductId, request.Quantity),
                 cancellationToken);
 
             return result.IsSuccess
-                ? Results.Accepted($"/api/v1/cart/{cartId}")
+                ? Results.Created($"/api/v1/cart/{customerId}", new { id = result.Value })
                 : Results.BadRequest(new { code = result.Error.Code, message = result.Error.Message });
+        });
+
+        group.MapGet("/{customerId}", async (string customerId, ISender sender, CancellationToken cancellationToken) =>
+        {
+            var cart = await sender.Send(new GetCartQuery(customerId), cancellationToken);
+            return cart is not null ? Results.Ok(cart) : Results.NotFound();
         });
 
         return endpoints;
     }
 
-    public sealed record CreateCartRequest(Guid CustomerId);
-
-    public sealed record CheckoutCartRequest(string Currency, decimal TotalAmount);
+    public sealed record AddItemRequest(Guid ProductId, int Quantity);
 }

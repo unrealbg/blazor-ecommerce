@@ -1,52 +1,110 @@
 using BuildingBlocks.Domain.Primitives;
 using BuildingBlocks.Domain.Results;
 using BuildingBlocks.Domain.Shared;
+using Orders.Domain.Events;
 
 namespace Orders.Domain.Orders;
 
 public sealed class Order : AggregateRoot<Guid>
 {
+    private readonly List<OrderLine> _lines = [];
+
     private Order()
     {
     }
 
     private Order(
         Guid id,
-        Guid cartId,
-        Guid customerId,
+        string customerId,
+        IReadOnlyCollection<OrderLine> lines,
+        Money subtotal,
         Money total,
-        DateTime createdOnUtc)
+        DateTime placedAtUtc)
     {
         Id = id;
-        CartId = cartId;
         CustomerId = customerId;
+        _lines = [..lines];
+        Subtotal = subtotal;
         Total = total;
-        CreatedOnUtc = createdOnUtc;
-        Status = OrderStatus.Pending;
+        PlacedAtUtc = placedAtUtc;
+        Status = OrderStatus.Placed;
+
+        RaiseDomainEvent(new OrderPlaced(Id, CustomerId, Total.Currency, Total.Amount));
     }
 
-    public Guid CartId { get; private set; }
+    public string CustomerId { get; private set; } = string.Empty;
 
-    public Guid CustomerId { get; private set; }
+    public IReadOnlyCollection<OrderLine> Lines => _lines.AsReadOnly();
+
+    public Money Subtotal { get; private set; } = null!;
 
     public Money Total { get; private set; } = null!;
 
-    public DateTime CreatedOnUtc { get; private set; }
+    public DateTime PlacedAtUtc { get; private set; }
 
     public OrderStatus Status { get; private set; }
 
-    public static Result<Order> Create(Guid cartId, Guid customerId, Money total, DateTime createdOnUtc)
+    public static Result<Order> Create(
+        string customerId,
+        IReadOnlyCollection<OrderLineData> lineData,
+        DateTime placedAtUtc)
     {
-        if (cartId == Guid.Empty)
-        {
-            return Result<Order>.Failure(new Error("orders.cart.required", "Cart id is required."));
-        }
-
-        if (customerId == Guid.Empty)
+        if (string.IsNullOrWhiteSpace(customerId))
         {
             return Result<Order>.Failure(new Error("orders.customer.required", "Customer id is required."));
         }
 
-        return Result<Order>.Success(new Order(Guid.NewGuid(), cartId, customerId, total, createdOnUtc));
+        if (lineData.Count == 0)
+        {
+            return Result<Order>.Failure(new Error("orders.lines.required", "Order must contain at least one line."));
+        }
+
+        var firstCurrency = lineData.First().UnitPrice.Currency;
+        var subtotalAmount = 0m;
+        var lines = new List<OrderLine>(lineData.Count);
+
+        foreach (var line in lineData)
+        {
+            if (!string.Equals(firstCurrency, line.UnitPrice.Currency, StringComparison.Ordinal))
+            {
+                return Result<Order>.Failure(
+                    new Error("orders.currency.mismatch", "All order lines must use the same currency."));
+            }
+
+            if (line.Quantity <= 0)
+            {
+                return Result<Order>.Failure(
+                    new Error("orders.line.quantity.invalid", "Order line quantity must be greater than zero."));
+            }
+
+            if (string.IsNullOrWhiteSpace(line.Name))
+            {
+                return Result<Order>.Failure(
+                    new Error("orders.line.name.required", "Order line name is required."));
+            }
+
+            subtotalAmount += Money.Round(line.UnitPrice.Amount * line.Quantity);
+            lines.Add(OrderLine.Create(line.ProductId, line.Name.Trim(), line.UnitPrice, line.Quantity));
+        }
+
+        var subtotalResult = Money.Create(firstCurrency, subtotalAmount);
+        if (subtotalResult.IsFailure)
+        {
+            return Result<Order>.Failure(subtotalResult.Error);
+        }
+
+        var totalResult = Money.Create(firstCurrency, subtotalAmount);
+        if (totalResult.IsFailure)
+        {
+            return Result<Order>.Failure(totalResult.Error);
+        }
+
+        return Result<Order>.Success(new Order(
+            Guid.NewGuid(),
+            customerId.Trim(),
+            lines,
+            subtotalResult.Value,
+            totalResult.Value,
+            placedAtUtc));
     }
 }

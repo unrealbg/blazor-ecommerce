@@ -15,8 +15,10 @@ public sealed class GetProductsQueryHandler(IProductRepository productRepository
             .Select(product => new ProductDto(
                 product.Id,
                 product.Name,
+                product.Description,
                 product.Price.Currency,
-                product.Price.Amount))
+                product.Price.Amount,
+                product.IsActive))
             .ToList();
     }
 }

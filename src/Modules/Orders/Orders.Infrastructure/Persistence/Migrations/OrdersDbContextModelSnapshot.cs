@@ -18,7 +18,7 @@ namespace Orders.Infrastructure.Persistence.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("orders")
-                .HasAnnotation("ProductVersion", "9.0.4")
+                .HasAnnotation("ProductVersion", "10.0.3")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -64,14 +64,13 @@ namespace Orders.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CartId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("CustomerId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
-                    b.Property<DateTime>("CreatedOnUtc")
+                    b.Property<DateTime>("PlacedAtUtc")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CustomerId")
-                        .HasColumnType("uuid");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -83,9 +82,46 @@ namespace Orders.Infrastructure.Persistence.Migrations
                     b.ToTable("orders", "orders");
                 });
 
+            modelBuilder.Entity("Orders.Infrastructure.Persistence.OrderAudit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("CustomerId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("LoggedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId")
+                        .IsUnique();
+
+                    b.ToTable("order_audits", "orders");
+                });
+
             modelBuilder.Entity("Orders.Domain.Orders.Order", b =>
                 {
-                    b.OwnsOne("BuildingBlocks.Domain.Shared.Money", "Total", b1 =>
+                    b.OwnsOne("BuildingBlocks.Domain.Shared.Money", "Subtotal", b1 =>
                         {
                             b1.Property<Guid>("OrderId")
                                 .HasColumnType("uuid");
@@ -93,13 +129,13 @@ namespace Orders.Infrastructure.Persistence.Migrations
                             b1.Property<decimal>("Amount")
                                 .HasPrecision(18, 2)
                                 .HasColumnType("numeric(18,2)")
-                                .HasColumnName("amount");
+                                .HasColumnName("subtotal_amount");
 
                             b1.Property<string>("Currency")
                                 .IsRequired()
                                 .HasMaxLength(3)
                                 .HasColumnType("character varying(3)")
-                                .HasColumnName("currency");
+                                .HasColumnName("subtotal_currency");
 
                             b1.HasKey("OrderId");
 
@@ -108,6 +144,93 @@ namespace Orders.Infrastructure.Persistence.Migrations
                             b1.WithOwner()
                                 .HasForeignKey("OrderId");
                         });
+
+                    b.OwnsOne("BuildingBlocks.Domain.Shared.Money", "Total", b1 =>
+                        {
+                            b1.Property<Guid>("OrderId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("total_amount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("total_currency");
+
+                            b1.HasKey("OrderId");
+
+                            b1.ToTable("orders", "orders");
+
+                            b1.WithOwner()
+                                .HasForeignKey("OrderId");
+                        });
+
+                    b.OwnsMany("Orders.Domain.Orders.OrderLine", "Lines", b1 =>
+                        {
+                            b1.Property<Guid>("order_id")
+                                .HasColumnType("uuid");
+
+                            b1.Property<Guid>("ProductId")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uuid")
+                                .HasColumnName("product_id");
+
+                            b1.Property<string>("Name")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("name");
+
+                            b1.Property<int>("Quantity")
+                                .HasColumnType("integer")
+                                .HasColumnName("quantity");
+
+                            b1.HasKey("order_id", "ProductId");
+
+                            b1.ToTable("order_lines", "orders");
+
+                            b1.WithOwner()
+                                .HasForeignKey("order_id");
+
+                            b1.OwnsOne("BuildingBlocks.Domain.Shared.Money", "UnitPrice", b2 =>
+                                {
+                                    b2.Property<Guid>("OrderLineorder_id")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<Guid>("OrderLineProductId")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<decimal>("Amount")
+                                        .HasPrecision(18, 2)
+                                        .HasColumnType("numeric(18,2)")
+                                        .HasColumnName("unit_amount");
+
+                                    b2.Property<string>("Currency")
+                                        .IsRequired()
+                                        .HasMaxLength(3)
+                                        .HasColumnType("character varying(3)")
+                                        .HasColumnName("unit_currency");
+
+                                    b2.HasKey("OrderLineorder_id", "OrderLineProductId");
+
+                                    b2.ToTable("order_lines", "orders");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("OrderLineorder_id", "OrderLineProductId");
+                                });
+
+                            b1.Navigation("UnitPrice")
+                                .IsRequired();
+                        });
+
+                    b.Navigation("Lines");
+
+                    b.Navigation("Subtotal")
+                        .IsRequired();
 
                     b.Navigation("Total")
                         .IsRequired();

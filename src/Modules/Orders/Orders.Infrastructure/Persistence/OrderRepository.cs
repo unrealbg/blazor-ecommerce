@@ -11,11 +11,11 @@ internal sealed class OrderRepository(OrdersDbContext dbContext) : IOrderReposit
         return dbContext.Orders.AddAsync(order, cancellationToken).AsTask();
     }
 
-    public async Task<IReadOnlyCollection<Order>> ListAsync(CancellationToken cancellationToken)
+    public Task<Order?> GetByIdAsync(Guid orderId, CancellationToken cancellationToken)
     {
-        return await dbContext.Orders
+        return dbContext.Orders
             .AsNoTracking()
-            .OrderByDescending(order => order.CreatedOnUtc)
-            .ToListAsync(cancellationToken);
+            .Include(order => order.Lines)
+            .FirstOrDefaultAsync(order => order.Id == orderId, cancellationToken);
     }
 }

@@ -1,39 +1,59 @@
-using Cart.Domain.Carts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using CartAggregate = Cart.Domain.Carts.Cart;
 
 namespace Cart.Infrastructure.Persistence;
 
-internal sealed class ShoppingCartConfiguration : IEntityTypeConfiguration<ShoppingCart>
+internal sealed class ShoppingCartConfiguration : IEntityTypeConfiguration<CartAggregate>
 {
-    public void Configure(EntityTypeBuilder<ShoppingCart> builder)
+    public void Configure(EntityTypeBuilder<CartAggregate> builder)
     {
         builder.ToTable("carts");
 
         builder.HasKey(cart => cart.Id);
 
         builder.Property(cart => cart.CustomerId)
-            .IsRequired();
+            .IsRequired()
+            .HasMaxLength(128);
 
-        builder.Property(cart => cart.Status)
-            .HasConversion<string>()
-            .HasMaxLength(32)
-            .IsRequired();
+        builder.HasIndex(cart => cart.CustomerId)
+            .IsUnique();
 
-        builder.Property(cart => cart.CreatedOnUtc)
-            .IsRequired();
-
-        builder.Property(cart => cart.CheckedOutOnUtc);
-
-        builder.OwnsOne(cart => cart.CheckoutTotal, totalBuilder =>
+        builder.OwnsMany(cart => cart.Lines, linesBuilder =>
         {
-            totalBuilder.Property(total => total.Currency)
-                .HasColumnName("checkout_currency")
-                .HasMaxLength(3);
+            linesBuilder.ToTable("cart_lines");
+            linesBuilder.WithOwner().HasForeignKey("cart_id");
 
-            totalBuilder.Property(total => total.Amount)
-                .HasColumnName("checkout_amount")
-                .HasPrecision(18, 2);
+            linesBuilder.Property(line => line.ProductId)
+                .HasColumnName("product_id")
+                .IsRequired();
+
+            linesBuilder.Property(line => line.ProductName)
+                .HasColumnName("product_name")
+                .HasMaxLength(200)
+                .IsRequired();
+
+            linesBuilder.Property(line => line.Quantity)
+                .HasColumnName("quantity")
+                .IsRequired();
+
+            linesBuilder.OwnsOne(line => line.UnitPrice, moneyBuilder =>
+            {
+                moneyBuilder.Property(money => money.Currency)
+                    .HasColumnName("unit_currency")
+                    .HasMaxLength(3)
+                    .IsRequired();
+
+                moneyBuilder.Property(money => money.Amount)
+                    .HasColumnName("unit_amount")
+                    .HasPrecision(18, 2)
+                    .IsRequired();
+            });
+
+            linesBuilder.HasKey("cart_id", "ProductId");
         });
+
+        builder.Navigation(cart => cart.Lines)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }
