@@ -19,6 +19,14 @@ else if (cart is null || cart.Lines.Count == 0)
 }
 else
 {
+    @if (cart.Messages.Count > 0)
+    {
+        foreach (var cartMessage in cart.Messages)
+        {
+            <p class="status-message warning">@cartMessage</p>
+        }
+    }
+
     <table class="cart-table">
         <thead>
             <tr>
@@ -89,7 +97,7 @@ else
             quantity,
             CancellationToken.None);
 
-        message = updated ? "Quantity updated." : "Could not update quantity.";
+        message = updated ? "Quantity updated." : "Could not update quantity. Stock may have changed.";
         await ReloadCartAsync();
     }
 

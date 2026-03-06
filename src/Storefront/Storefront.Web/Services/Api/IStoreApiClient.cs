@@ -99,4 +99,26 @@ public interface IStoreApiClient
         CancellationToken cancellationToken);
 
     Task<bool> DeactivateRedirectRuleAsync(Guid redirectRuleId, CancellationToken cancellationToken);
+
+    Task<StoreInventoryProductDetails?> GetInventoryProductAsync(
+        Guid productId,
+        CancellationToken cancellationToken);
+
+    Task<bool> AdjustInventoryStockAsync(
+        Guid productId,
+        int quantityDelta,
+        string? reason,
+        CancellationToken cancellationToken);
+
+    Task<StoreStockMovementPage> GetInventoryMovementsAsync(
+        Guid productId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken);
+
+    Task<StoreStockReservationPage> GetActiveInventoryReservationsAsync(
+        Guid? productId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken);
 }

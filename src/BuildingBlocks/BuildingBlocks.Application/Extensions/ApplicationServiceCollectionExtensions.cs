@@ -19,6 +19,9 @@ public static class ApplicationServiceCollectionExtensions
         services.TryAddScoped<IProductSearchIndexer, NullProductSearchIndexer>();
         services.TryAddScoped<ICustomerCheckoutAccessor, NullCustomerCheckoutAccessor>();
         services.TryAddScoped<ICustomerSessionCache, NullCustomerSessionCache>();
+        services.TryAddScoped<IInventoryAvailabilityReader, NullInventoryAvailabilityReader>();
+        services.TryAddScoped<IInventoryReservationService, NullInventoryReservationService>();
+        services.TryAddScoped<IInventoryStockProvisioner, NullInventoryStockProvisioner>();
 
         return services;
     }

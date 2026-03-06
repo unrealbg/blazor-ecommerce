@@ -7,7 +7,7 @@
         Qty
         <input type="number" min="1" @bind="quantity" />
     </label>
-    <button type="button" class="btn-primary" @onclick="AddToCartAsync">Add to Cart</button>
+    <button type="button" class="btn-primary" @onclick="AddToCartAsync" disabled="@Disabled">Add to Cart</button>
 </div>
 
 @if (!string.IsNullOrWhiteSpace(message))
@@ -22,8 +22,20 @@
     [Parameter]
     public Guid ProductId { get; set; }
 
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public string DisabledMessage { get; set; } = "Item cannot be added to cart right now.";
+
     private async Task AddToCartAsync()
     {
+        if (Disabled)
+        {
+            message = DisabledMessage;
+            return;
+        }
+
         if (quantity <= 0)
         {
             message = "Quantity must be greater than zero.";

@@ -1,5 +1,6 @@
 using BuildingBlocks.Application.Contracts;
 using BuildingBlocks.Domain.Abstractions;
+using BuildingBlocks.Domain.Results;
 using Orders.Application.Orders;
 using Orders.Application.Orders.Checkout;
 using Orders.Domain.Events;
@@ -192,10 +193,47 @@ public sealed class CheckoutCommandHandlerTests
     {
         return new CheckoutCommandHandler(
             cartAccessor,
+            new StubInventoryReservationService(),
             idempotencyRepository,
             orderRepository,
             unitOfWork,
             new StubClock());
+    }
+
+    private sealed class StubInventoryReservationService : IInventoryReservationService
+    {
+        public Task<Result> SyncCartReservationAsync(
+            string cartId,
+            Guid productId,
+            string? sku,
+            int quantity,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Result.Success());
+        }
+
+        public Task<Result> ReleaseAllCartReservationsAsync(string cartId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Result.Success());
+        }
+
+        public Task<Result<InventoryReservationValidationResult>> ValidateCartReservationsAsync(
+            string cartId,
+            IReadOnlyCollection<InventoryCartLineRequest> lines,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Result<InventoryReservationValidationResult>.Success(
+                new InventoryReservationValidationResult(true, [])));
+        }
+
+        public Task<Result> ConsumeCartReservationsAsync(
+            string cartId,
+            Guid orderId,
+            IReadOnlyCollection<InventoryCartLineRequest> lines,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Result.Success());
+        }
     }
 
     private sealed class StubCartCheckoutAccessor : ICartCheckoutAccessor

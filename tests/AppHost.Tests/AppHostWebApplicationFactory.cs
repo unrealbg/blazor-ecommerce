@@ -3,6 +3,7 @@ using Cart.Infrastructure.Persistence;
 using Catalog.Infrastructure.Persistence;
 using Customers.Infrastructure.Identity;
 using Customers.Infrastructure.Persistence;
+using Inventory.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -54,6 +55,7 @@ public sealed class AppHostWebApplicationFactory : WebApplicationFactory<Program
             this.ReplaceDbContext<SearchDbContext>(services);
             this.ReplaceDbContext<CustomersDbContext>(services);
             this.ReplaceDbContext<IdentityAppDbContext>(services);
+            this.ReplaceDbContext<InventoryDbContext>(services);
         });
     }
 

@@ -129,9 +129,15 @@ public static class OrdersModuleExtensions
 
     private static IResult BusinessError(Error error)
     {
-        var statusCode = error.Code.EndsWith(".conflict", StringComparison.Ordinal)
-            ? StatusCodes.Status409Conflict
-            : StatusCodes.Status400BadRequest;
+        var statusCode = error.Code switch
+        {
+            "inventory.stock.insufficient" => StatusCodes.Status409Conflict,
+            "inventory.reservation.expired" => StatusCodes.Status409Conflict,
+            "inventory.reservation.not_found" => StatusCodes.Status409Conflict,
+            "inventory.stock.concurrency_conflict" => StatusCodes.Status409Conflict,
+            _ when error.Code.EndsWith(".conflict", StringComparison.Ordinal) => StatusCodes.Status409Conflict,
+            _ => StatusCodes.Status400BadRequest,
+        };
 
         return Results.Problem(
             statusCode: statusCode,

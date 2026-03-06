@@ -6,6 +6,7 @@ using Cart.Api;
 using Catalog.Api;
 using Customers.Api;
 using FluentValidation;
+using Inventory.Api;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -98,6 +99,7 @@ builder.Services.AddOrdersModule();
 builder.Services.AddRedirectsModule();
 builder.Services.AddSearchModule();
 builder.Services.AddCustomersModule();
+builder.Services.AddInventoryModule();
 
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<OutboxDbContext>("postgres", tags: ["ready"]);
@@ -134,6 +136,7 @@ apiV1.MapOrdersEndpoints();
 apiV1.MapRedirectEndpoints();
 apiV1.MapSearchEndpoints();
 apiV1.MapCustomersEndpoints();
+apiV1.MapInventoryEndpoints();
 app.MapDirectusWebhookEndpoint();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
