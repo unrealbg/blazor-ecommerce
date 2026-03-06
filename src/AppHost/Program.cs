@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OpenTelemetry.Trace;
 using Orders.Api;
+using Redirects.Api;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -58,6 +59,7 @@ foreach (var installer in moduleInstallers)
 builder.Services.AddCatalogModule();
 builder.Services.AddCartModule();
 builder.Services.AddOrdersModule();
+builder.Services.AddRedirectsModule();
 
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<OutboxDbContext>("postgres", tags: ["ready"]);
@@ -73,19 +75,26 @@ builder.Services.AddOpenTelemetry()
     });
 
 var app = builder.Build();
+var skipInfrastructureInitialization = builder.Configuration.GetValue<bool>("Infrastructure:SkipInitialization");
 
 app.UseExceptionHandler();
 app.UseSerilogRequestLogging();
+app.UseRedirectRules();
 app.UseAuthentication();
 app.UseAuthorization();
 
-await app.Services.InitializeSharedInfrastructureAsync(app.Lifetime.ApplicationStopping);
-await moduleInstallers.InitializeModulesAsync(app.Services, app.Lifetime.ApplicationStopping);
+if (!skipInfrastructureInitialization)
+{
+    await app.Services.InitializeSharedInfrastructureAsync(app.Lifetime.ApplicationStopping);
+    await moduleInstallers.InitializeModulesAsync(app.Services, app.Lifetime.ApplicationStopping);
+}
 
 var apiV1 = app.MapGroup("/api/v1");
 apiV1.MapCatalogEndpoints();
 apiV1.MapCartEndpoints();
 apiV1.MapOrdersEndpoints();
+apiV1.MapRedirectEndpoints();
+app.MapDirectusWebhookEndpoint();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
@@ -98,3 +107,5 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 });
 
 app.Run();
+
+public partial class Program;

@@ -26,10 +26,17 @@
     <Project Path="src/Modules/Orders/Orders.Domain/Orders.Domain.csproj" />
     <Project Path="src/Modules/Orders/Orders.Infrastructure/Orders.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Redirects/">
+    <Project Path="src/Modules/Redirects/Redirects.Api/Redirects.Api.csproj" />
+    <Project Path="src/Modules/Redirects/Redirects.Application/Redirects.Application.csproj" />
+    <Project Path="src/Modules/Redirects/Redirects.Domain/Redirects.Domain.csproj" />
+    <Project Path="src/Modules/Redirects/Redirects.Infrastructure/Redirects.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/Storefront/">
     <Project Path="src/Storefront/Storefront.Web/Storefront.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/AppHost.Tests/AppHost.Tests.csproj" />
     <Project Path="tests/Cart.Tests/Cart.Tests.csproj" />
     <Project Path="tests/Catalog.Tests/Catalog.Tests.csproj" />
     <Project Path="tests/Orders.Tests/Orders.Tests.csproj" />

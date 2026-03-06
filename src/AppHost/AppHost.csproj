@@ -6,6 +6,7 @@
     <ProjectReference Include="..\Modules\Catalog\Catalog.Api\Catalog.Api.csproj" />
     <ProjectReference Include="..\Modules\Cart\Cart.Api\Cart.Api.csproj" />
     <ProjectReference Include="..\Modules\Orders\Orders.Api\Orders.Api.csproj" />
+    <ProjectReference Include="..\Modules\Redirects\Redirects.Api\Redirects.Api.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,6 +27,7 @@
     <InfrastructureProject Include="..\Modules\Catalog\Catalog.Infrastructure\Catalog.Infrastructure.csproj" />
     <InfrastructureProject Include="..\Modules\Cart\Cart.Infrastructure\Cart.Infrastructure.csproj" />
     <InfrastructureProject Include="..\Modules\Orders\Orders.Infrastructure\Orders.Infrastructure.csproj" />
+    <InfrastructureProject Include="..\Modules\Redirects\Redirects.Infrastructure\Redirects.Infrastructure.csproj" />
   </ItemGroup>
 
   <Target Name="BuildInfrastructureProjects" BeforeTargets="Build">
@@ -39,6 +41,7 @@
       <InfrastructureOutputs Include="..\Modules\Catalog\Catalog.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Catalog.Infrastructure.*" />
       <InfrastructureOutputs Include="..\Modules\Cart\Cart.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Cart.Infrastructure.*" />
       <InfrastructureOutputs Include="..\Modules\Orders\Orders.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Orders.Infrastructure.*" />
+      <InfrastructureOutputs Include="..\Modules\Redirects\Redirects.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Redirects.Infrastructure.*" />
     </ItemGroup>
 
     <Copy SourceFiles="@(InfrastructureOutputs)"
@@ -52,6 +55,7 @@
       <InfrastructureOutputs Include="..\Modules\Catalog\Catalog.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Catalog.Infrastructure.*" />
       <InfrastructureOutputs Include="..\Modules\Cart\Cart.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Cart.Infrastructure.*" />
       <InfrastructureOutputs Include="..\Modules\Orders\Orders.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Orders.Infrastructure.*" />
+      <InfrastructureOutputs Include="..\Modules\Redirects\Redirects.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Redirects.Infrastructure.*" />
     </ItemGroup>
 
     <Copy SourceFiles="@(InfrastructureOutputs)"

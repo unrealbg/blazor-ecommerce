@@ -11,6 +11,12 @@ internal sealed class ProductRepository(CatalogDbContext dbContext) : IProductRe
         return dbContext.Products.AddAsync(product, cancellationToken).AsTask();
     }
 
+    public Task<Product?> GetByIdAsync(Guid productId, CancellationToken cancellationToken)
+    {
+        return dbContext.Products
+            .SingleOrDefaultAsync(product => product.Id == productId, cancellationToken);
+    }
+
     public Task<Product?> GetBySlugAsync(string slug, CancellationToken cancellationToken)
     {
         return dbContext.Products

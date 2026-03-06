@@ -51,6 +51,7 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
     private sealed class FakeStoreApiClient : IStoreApiClient
     {
         private static readonly IReadOnlyCollection<StoreProduct> Products = BuildProducts();
+        private static readonly List<StoreRedirectRule> RedirectRules = [];
 
         public Task<bool> AddItemToCartAsync(
             string customerId,
@@ -64,6 +65,70 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
         public Task<Guid?> CheckoutAsync(string customerId, string idempotencyKey, CancellationToken cancellationToken)
         {
             return Task.FromResult<Guid?>(Guid.Parse("7e840d4c-4994-4993-b344-e8219be85656"));
+        }
+
+        public Task<StoreRedirectMatch?> ResolveRedirectAsync(string path, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<StoreRedirectMatch?>(null);
+        }
+
+        public Task<StoreRedirectRulePage> GetRedirectRulesAsync(
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken)
+        {
+            var normalizedPage = page <= 0 ? 1 : page;
+            var normalizedPageSize = pageSize <= 0 ? 20 : pageSize;
+
+            var items = RedirectRules
+                .Skip((normalizedPage - 1) * normalizedPageSize)
+                .Take(normalizedPageSize)
+                .ToArray();
+
+            return Task.FromResult(new StoreRedirectRulePage(
+                normalizedPage,
+                normalizedPageSize,
+                RedirectRules.Count,
+                items));
+        }
+
+        public Task<Guid?> CreateRedirectRuleAsync(
+            string fromPath,
+            string toPath,
+            int statusCode,
+            CancellationToken cancellationToken)
+        {
+            var redirectRule = new StoreRedirectRule(
+                Guid.NewGuid(),
+                fromPath,
+                toPath,
+                statusCode,
+                true,
+                0,
+                DateTime.UtcNow,
+                DateTime.UtcNow,
+                null);
+
+            RedirectRules.Add(redirectRule);
+            return Task.FromResult<Guid?>(redirectRule.Id);
+        }
+
+        public Task<bool> DeactivateRedirectRuleAsync(Guid redirectRuleId, CancellationToken cancellationToken)
+        {
+            var existingRuleIndex = RedirectRules.FindIndex(rule => rule.Id == redirectRuleId);
+            if (existingRuleIndex < 0)
+            {
+                return Task.FromResult(false);
+            }
+
+            var existingRule = RedirectRules[existingRuleIndex];
+            RedirectRules[existingRuleIndex] = existingRule with
+            {
+                IsActive = false,
+                UpdatedAtUtc = DateTime.UtcNow,
+            };
+
+            return Task.FromResult(true);
         }
 
         public Task<StoreCart?> GetCartAsync(string customerId, CancellationToken cancellationToken)

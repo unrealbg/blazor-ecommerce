@@ -457,10 +457,28 @@ a {
     border-bottom: 1px solid #1e293b;
 }
 
+.admin-header nav {
+    display: inline-flex;
+    gap: 0.75rem;
+}
+
+.admin-header nav a {
+    color: #bfdbfe;
+    font-weight: 600;
+}
+
 .admin-content {
     padding: 1.2rem 1rem;
     width: min(960px, 100%);
     margin: 0 auto;
+}
+
+.admin-panel {
+    margin-bottom: 1.5rem;
+    background: #0b1222;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    padding: 1rem;
 }
 
 @media (max-width: 720px) {
