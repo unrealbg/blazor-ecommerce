@@ -78,6 +78,7 @@ Storefront configuration:
 - `Cms:ApiToken` -> Directus static API token used for content read access
 - `ConnectionStrings:Redis` -> Redis connection used for CMS response cache (60s default)
 - `Site:BaseUrl` -> absolute public storefront URL used for canonical/sitemap/robots/rss
+- `Media:*` -> media proxy allowlist, transform quality, fetch timeout, and disk cache settings
 
 ### Option 2: Infra in containers, app from `dotnet`
 
@@ -122,6 +123,7 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `GET /cart` (interactive)
 - `GET /checkout` (interactive)
 - `GET /admin/redirects` (admin redirect management UI)
+- `GET /media/image?src=...&w=...&h=...&fit=max|cover|contain&format=auto|webp|avif|jpeg|png`
 - `GET /robots.txt`
 - `GET /sitemap.xml`
 - `GET /rss.xml`
@@ -180,6 +182,76 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
   }
 }
 ```
+
+## Media Pipeline (SEO + Performance)
+
+The storefront now serves public image URLs through an internal media proxy endpoint:
+
+- `GET /media/image?src={url}&w=1200&h=630&fit=cover&format=webp`
+
+### Why this exists
+
+- avoid exposing fragile raw CMS URLs in public HTML
+- centralize image policy (security, format, dimensions, cache)
+- improve page weight and Core Web Vitals with responsive image variants
+- keep `og:image`, JSON-LD image URLs and rendered `<img>` sources stable and absolute
+
+### Security policy
+
+- only `http`/`https` sources are accepted
+- host must be in `Media:AllowedHosts`
+- private/loopback sources are rejected unless explicitly allowlisted
+- unsupported schemes (`file://`, `ftp://`, etc.) are rejected
+- source fetch size is limited by `Media:MaxSourceBytes`
+- source fetch timeout is limited by `Media:FetchTimeoutSeconds`
+
+### Transform behavior
+
+- resize supports `w`, `h`, `fit=max|cover|contain`
+- metadata is stripped from transformed images
+- output formats:
+  - `auto` -> prefers modern format when possible, then falls back safely
+  - `webp`, `jpeg`, `png` are supported explicitly
+  - `avif` parameter is accepted; output currently degrades safely when AVIF encoding is unavailable in runtime
+
+### Cache behavior
+
+- browser cache headers:
+  - `Cache-Control: public, max-age=31536000, immutable`
+  - `ETag` returned for conditional requests
+- transformed image binaries are cached on disk under `Media:CachePath` (default `cache/media`)
+- cache files are hashed by source + transform parameters + quality/version
+
+### Clear media cache
+
+- stop app and delete the cache directory (default `src/Storefront/Storefront.Web/cache/media` or your configured `Media:CachePath`)
+
+### Appsettings example
+
+```json
+{
+  "Media": {
+    "AllowedHosts": [
+      "localhost:8055",
+      "localhost:5100"
+    ],
+    "CachePath": "cache/media",
+    "DefaultQualityJpeg": 82,
+    "DefaultQualityWebp": 80,
+    "DefaultQualityAvif": 55,
+    "EnableAvif": true,
+    "MaxSourceBytes": 20971520,
+    "FetchTimeoutSeconds": 10,
+    "AllowUpscale": false
+  }
+}
+```
+
+### OG / Structured Data image policy
+
+- Product, blog post and landing page metadata now use absolute proxied image URLs (`/media/image...`).
+- Product and BlogPosting JSON-LD image fields now use proxied absolute image URLs.
+- default fallback image is `wwwroot/images/og-default.jpg` (served through media proxy for SEO tags).
 
 ## Directus CMS Setup (Self-Hosted)
 

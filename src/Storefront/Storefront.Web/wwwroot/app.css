@@ -196,6 +196,14 @@ a {
     gap: 0.7rem;
 }
 
+.card-image {
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
 .card h2 {
     margin: 0;
     font-size: 1.1rem;
@@ -339,6 +347,14 @@ a {
     padding: 1rem;
 }
 
+.blog-card-image {
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 0.7rem;
+}
+
 .blog-card h2 {
     margin: 0 0 0.5rem;
 }
@@ -376,8 +392,24 @@ a {
 }
 
 .cms-content {
-    white-space: pre-wrap;
     line-height: 1.6;
+}
+
+.cms-content p {
+    margin: 0 0 1rem;
+}
+
+.cms-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    margin: 0.7rem 0;
+}
+
+.cms-content h2,
+.cms-content h3 {
+    margin-top: 1.2rem;
 }
 
 .tag-list {

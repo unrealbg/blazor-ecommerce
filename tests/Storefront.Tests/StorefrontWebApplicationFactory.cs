@@ -8,8 +8,12 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using Storefront.Web.Services.Api;
 using Storefront.Web.Services.Content;
+using Storefront.Web.Services.Media;
 
 namespace Storefront.Tests;
 
@@ -19,6 +23,10 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
+
+    public string MediaCachePath { get; } = Path.Combine(
+        Path.GetTempPath(),
+        $"storefront-media-cache-{Guid.NewGuid():N}");
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -31,6 +39,17 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
                 new KeyValuePair<string, string?>("Cms:ApiToken", "test-token"),
                 new KeyValuePair<string, string?>("Cms:CacheSeconds", "60"),
                 new KeyValuePair<string, string?>("Site:BaseUrl", "https://shop.example.com"),
+                new KeyValuePair<string, string?>("Media:AllowedHosts:0", "localhost:8055"),
+                new KeyValuePair<string, string?>("Media:AllowedHosts:1", "shop.example.com"),
+                new KeyValuePair<string, string?>("Media:AllowedHosts:2", "localhost:5100"),
+                new KeyValuePair<string, string?>("Media:CachePath", this.MediaCachePath),
+                new KeyValuePair<string, string?>("Media:DefaultQualityJpeg", "82"),
+                new KeyValuePair<string, string?>("Media:DefaultQualityWebp", "80"),
+                new KeyValuePair<string, string?>("Media:DefaultQualityAvif", "55"),
+                new KeyValuePair<string, string?>("Media:EnableAvif", "true"),
+                new KeyValuePair<string, string?>("Media:MaxSourceBytes", "20971520"),
+                new KeyValuePair<string, string?>("Media:FetchTimeoutSeconds", "10"),
+                new KeyValuePair<string, string?>("Media:AllowUpscale", "false"),
                 new KeyValuePair<string, string?>("ConnectionStrings:Redis", string.Empty),
             ]);
         });
@@ -39,8 +58,14 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
         {
             services.RemoveAll<IStoreApiClient>();
             services.RemoveAll<IContentClient>();
+            services.RemoveAll<IMediaSourceFetcher>();
             services.AddSingleton<IStoreApiClient, FakeStoreApiClient>();
             services.AddHttpClient<IContentClient, DirectusContentClient>(client =>
+                {
+                    client.BaseAddress = new Uri("http://localhost:8055");
+                })
+                .ConfigurePrimaryHttpMessageHandler(() => new FakeCmsHttpMessageHandler());
+            services.AddHttpClient<IMediaSourceFetcher, MediaSourceFetcher>(client =>
                 {
                     client.BaseAddress = new Uri("http://localhost:8055");
                 })
@@ -224,6 +249,7 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
     {
         private static readonly DateTimeOffset PublishedAt = DateTimeOffset.UtcNow.AddDays(-5);
         private static readonly DateTimeOffset UpdatedAt = DateTimeOffset.UtcNow.AddDays(-3);
+        private static readonly byte[] PngImage = BuildPngImage();
 
         private static readonly IReadOnlyCollection<CmsBlogPost> BlogPosts =
         [
@@ -232,8 +258,8 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
                 "Shipping Checklist for 2026",
                 "shipping-checklist-2026",
                 "Practical shipping checklist to reduce cart abandonment and improve delivery reliability.",
-                "Use this checklist before every campaign:\n1. Verify carrier cut-off.\n2. Update ETAs.\n3. Prepare fallback carrier options.",
-                "/images/blog/shipping-checklist.jpg",
+                "Use this checklist before every campaign:\n\n![Packaging Bench](http://localhost:8055/assets/blog-inline.png)\n\n1. Verify carrier cut-off.\n2. Update ETAs.\n3. Prepare fallback carrier options.",
+                "http://localhost:8055/assets/blog-cover.png",
                 "Alex Mercer",
                 PublishedAt,
                 UpdatedAt,
@@ -294,7 +320,46 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
                 return Task.FromResult(this.BuildPageResponse(query));
             }
 
+            if (path.Contains("/assets/", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult(this.BuildAssetResponse(path));
+            }
+
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        }
+
+        private static byte[] BuildPngImage()
+        {
+            using var image = new Image<Rgba32>(16, 16);
+            image.Mutate(context => context.BackgroundColor(new Rgba32(15, 118, 110, 255)));
+
+            using var output = new MemoryStream();
+            image.SaveAsPng(output);
+            return output.ToArray();
+        }
+
+        private HttpResponseMessage BuildAssetResponse(string path)
+        {
+            if (path.EndsWith("/assets/missing.png", StringComparison.OrdinalIgnoreCase))
+            {
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            }
+
+            if (path.EndsWith("/assets/blog-cover.png", StringComparison.OrdinalIgnoreCase) ||
+                path.EndsWith("/assets/blog-inline.png", StringComparison.OrdinalIgnoreCase) ||
+                path.EndsWith("/assets/test.png", StringComparison.OrdinalIgnoreCase))
+            {
+                var response = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new ByteArrayContent(PngImage),
+                };
+
+                response.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+                response.Content.Headers.LastModified = UpdatedAt;
+                return response;
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
 
         private HttpResponseMessage BuildBlogResponse(IReadOnlyDictionary<string, Microsoft.Extensions.Primitives.StringValues> query)

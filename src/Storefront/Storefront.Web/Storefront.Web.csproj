@@ -8,7 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AngleSharp" />
+    <PackageReference Include="Markdig" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
+    <PackageReference Include="SixLabors.ImageSharp" />
   </ItemGroup>
 
 </Project>

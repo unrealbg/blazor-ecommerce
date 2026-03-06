@@ -1,8 +1,12 @@
 @page "/blog/{Slug}"
+@using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Http
 @using Storefront.Web.Services.Content
+@using Storefront.Web.Services.Media
 @using Storefront.Web.Services.Seo
 @inject IContentClient ContentClient
+@inject IContentHtmlRenderer ContentHtmlRenderer
+@inject IMediaUrlService MediaUrlService
 @inject IPageMetadataService MetadataService
 @inject IStructuredDataService StructuredDataService
 
@@ -35,13 +39,15 @@ else
             </p>
         </header>
 
-        @if (!string.IsNullOrWhiteSpace(post.CoverImageUrl))
-        {
-            <img class="blog-cover" src="@post.CoverImageUrl" alt="@post.Title" />
-        }
+        <ResponsiveImage
+            Source="@post.CoverImageUrl"
+            Alt="@post.Title"
+            Preset="MediaImagePreset.BlogHero"
+            CssClass="blog-cover"
+            Priority="true" />
 
         <p class="blog-excerpt">@post.Excerpt</p>
-        <section class="cms-content">@post.Content</section>
+        <section class="cms-content">@((MarkupString)renderedContent)</section>
 
         @if (post.Tags.Count > 0)
         {
@@ -68,12 +74,14 @@ else
     private BlogPostContent? post;
     private bool isNotFound;
     private bool isCmsUnavailable;
+    private string renderedContent = string.Empty;
 
     protected override async Task OnParametersSetAsync()
     {
         isNotFound = false;
         isCmsUnavailable = false;
         jsonLdScripts = [];
+        renderedContent = string.Empty;
         breadcrumbs =
         [
             new BreadcrumbItem("Home", "/"),
@@ -113,6 +121,8 @@ else
         }
 
         post = result.Value;
+        renderedContent = ContentHtmlRenderer.Render(post.Content);
+        var blogCoverImage = MediaUrlService.BlogCover(post.CoverImageUrl ?? "/images/og-default.jpg", 1200, 630);
         var canonical = MetadataService.ResolveCanonicalUrl(post.CanonicalUrl, $"/blog/{post.Slug}");
         var description = BuildDescription(post.SeoDescription, post.Excerpt);
 
@@ -122,7 +132,7 @@ else
             canonical,
             post.NoIndex,
             "article",
-            MetadataService.ResolveAbsoluteOptionalUrl(post.CoverImageUrl));
+            SeoImageMetadata.ResolveOpenGraphImage(MediaUrlService, post.CoverImageUrl));
 
         breadcrumbs =
         [
@@ -136,7 +146,7 @@ else
                 new BlogPostingSeoModel(
                     post.Title,
                     post.Excerpt,
-                    post.CoverImageUrl,
+                    blogCoverImage,
                     post.PublishedAt ?? DateTimeOffset.UtcNow,
                     post.UpdatedAt ?? post.PublishedAt ?? DateTimeOffset.UtcNow,
                     post.AuthorName),

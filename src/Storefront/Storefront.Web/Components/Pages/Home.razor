@@ -1,5 +1,6 @@
 @page "/"
 @using Storefront.Web.Services.Api
+@using Storefront.Web.Services.Media
 @using Storefront.Web.Services.Seo
 @using Microsoft.Extensions.Options
 @inject IStoreApiClient StoreApiClient
@@ -28,6 +29,11 @@
         @foreach (var product in featuredProducts)
         {
             <article class="card">
+                <ResponsiveImage
+                    Source="@product.ImageUrl"
+                    Alt="@product.Name"
+                    Preset="MediaImagePreset.ProductCard"
+                    CssClass="card-image" />
                 <h2>
                     <a href="/product/@product.Slug">@product.Name</a>
                 </h2>
