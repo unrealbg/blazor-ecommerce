@@ -7,4 +7,11 @@ public sealed record ProductSnapshot(
     string Currency,
     decimal Amount,
     bool IsActive,
-    bool IsInStock);
+    bool IsInStock,
+    string Slug = "",
+    string? Brand = null,
+    string? CategorySlug = null,
+    string? CategoryName = null,
+    string? ImageUrl = null,
+    DateTime CreatedAtUtc = default,
+    DateTime UpdatedAtUtc = default);

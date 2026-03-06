@@ -1,0 +1,16 @@
+<div class="sort-dropdown">
+    <span>Sort:</span>
+    <ul>
+        @foreach (var option in Options)
+        {
+            <li>
+                <a class="@(option.Selected ? "active" : string.Empty)" href="@option.Url">@option.Label</a>
+            </li>
+        }
+    </ul>
+</div>
+
+@code {
+    [Parameter]
+    public IReadOnlyCollection<SortOptionLink> Options { get; set; } = [];
+}

@@ -1,0 +1,37 @@
+@using Storefront.Web.Services.Api
+@using Storefront.Web.Services.Media
+
+<article class="card">
+    <ResponsiveImage
+        Source="@Item.ImageUrl"
+        Alt="@Item.Name"
+        Preset="@Preset"
+        CssClass="card-image"
+        Priority="@PriorityImage" />
+    <h2>
+        <a href="/product/@Item.Slug">@Item.Name</a>
+    </h2>
+    <p>@(string.IsNullOrWhiteSpace(Item.Description) ? "No description provided." : Item.Description)</p>
+    @if (!string.IsNullOrWhiteSpace(Item.Brand))
+    {
+        <p class="meta">@Item.Brand</p>
+    }
+
+    <p class="price">@FormatPrice(Item.PriceAmount, Item.Currency)</p>
+</article>
+
+@code {
+    [Parameter]
+    public required StoreSearchProductItem Item { get; set; }
+
+    [Parameter]
+    public MediaImagePreset Preset { get; set; } = MediaImagePreset.ProductCard;
+
+    [Parameter]
+    public bool PriorityImage { get; set; }
+
+    private static string FormatPrice(decimal amount, string currency)
+    {
+        return $"{amount:0.00} {currency}";
+    }
+}

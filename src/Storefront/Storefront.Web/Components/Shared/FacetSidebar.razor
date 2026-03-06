@@ -1,0 +1,82 @@
+<aside class="facet-sidebar" aria-label="Filters">
+    @if (BrandOptions.Count != 0)
+    {
+        <section>
+            <h2>Brand</h2>
+            <ul class="facet-list">
+                @foreach (var brand in BrandOptions)
+                {
+                    <li>
+                        <a class="@(brand.Selected ? "active" : string.Empty)" href="@brand.Url">
+                            @brand.Label
+                            <span>@brand.Count</span>
+                        </a>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+
+    @if (CategoryOptions.Count != 0)
+    {
+        <section>
+            <h2>Category</h2>
+            <ul class="facet-list">
+                @foreach (var category in CategoryOptions)
+                {
+                    <li>
+                        <a class="@(category.Selected ? "active" : string.Empty)" href="@category.Url">
+                            @category.Label
+                            <span>@category.Count</span>
+                        </a>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+
+    <section>
+        <h2>Stock</h2>
+        <a class="@(InStockSelected ? "active" : string.Empty)" href="@InStockUrl">
+            In stock only
+            <span>@InStockCount</span>
+        </a>
+    </section>
+
+    <section class="price-range">
+        <h2>Price range</h2>
+        <p>
+            @if (MinAvailable is not null && MaxAvailable is not null)
+            {
+                <span>@($"{MinAvailable:0.00} EUR - {MaxAvailable:0.00} EUR")</span>
+            }
+            else
+            {
+                <span>Not available</span>
+            }
+        </p>
+    </section>
+</aside>
+
+@code {
+    [Parameter]
+    public IReadOnlyCollection<FilterOptionLink> BrandOptions { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyCollection<FilterOptionLink> CategoryOptions { get; set; } = [];
+
+    [Parameter]
+    public string InStockUrl { get; set; } = "/";
+
+    [Parameter]
+    public bool InStockSelected { get; set; }
+
+    [Parameter]
+    public int InStockCount { get; set; }
+
+    [Parameter]
+    public decimal? MinAvailable { get; set; }
+
+    [Parameter]
+    public decimal? MaxAvailable { get; set; }
+}

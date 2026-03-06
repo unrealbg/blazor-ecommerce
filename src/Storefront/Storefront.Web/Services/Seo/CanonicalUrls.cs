@@ -4,4 +4,5 @@ public sealed record CanonicalUrls(
     string CanonicalUrl,
     string? PrevUrl,
     string? NextUrl,
-    int CurrentPage);
+    int CurrentPage,
+    bool NoIndex);

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -167,6 +168,126 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
             return Task.FromResult(product);
         }
 
+        public Task<StoreSearchProductsResponse> SearchProductsAsync(
+            StoreSearchProductsRequest request,
+            CancellationToken cancellationToken)
+        {
+            var normalizedQuery = string.IsNullOrWhiteSpace(request.Query) ? null : request.Query.Trim();
+            var normalizedCategory = string.IsNullOrWhiteSpace(request.CategorySlug)
+                ? null
+                : request.CategorySlug.Trim().ToLowerInvariant();
+            var normalizedBrands = request.Brands
+                .Where(brand => !string.IsNullOrWhiteSpace(brand))
+                .Select(brand => brand.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(brand => brand, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            var normalizedMinPrice = request.MinPrice is > 0 ? request.MinPrice : null;
+            var normalizedMaxPrice = request.MaxPrice is > 0 ? request.MaxPrice : null;
+            if (normalizedMinPrice is not null && normalizedMaxPrice is not null && normalizedMinPrice > normalizedMaxPrice)
+            {
+                (normalizedMinPrice, normalizedMaxPrice) = (normalizedMaxPrice, normalizedMinPrice);
+            }
+
+            var normalizedSort = NormalizeSort(request.Sort, normalizedQuery);
+            var normalizedPage = request.Page <= 0 ? 1 : request.Page;
+            var normalizedPageSize = request.PageSize <= 0 ? 24 : Math.Min(100, request.PageSize);
+
+            var activeProducts = Products
+                .Where(product => product.IsActive)
+                .Where(product => string.Equals(product.Currency, "EUR", StringComparison.Ordinal))
+                .ToList();
+
+            var queryFiltered = ApplyQuery(activeProducts, normalizedQuery);
+            var stockFiltered = ApplyStock(queryFiltered, request.InStock);
+            var categoryFiltered = ApplyCategory(stockFiltered, normalizedCategory);
+            var brandFiltered = ApplyBrands(categoryFiltered, normalizedBrands);
+
+            var priceSummaryScope = brandFiltered.ToList();
+            var priceSummary = new StoreSearchPriceSummary(
+                priceSummaryScope.Count == 0 ? null : priceSummaryScope.Min(product => product.Amount),
+                priceSummaryScope.Count == 0 ? null : priceSummaryScope.Max(product => product.Amount));
+
+            var filteredForResult = ApplyPrice(brandFiltered, normalizedMinPrice, normalizedMaxPrice).ToList();
+            var total = filteredForResult.Count;
+            var totalPages = total == 0 ? 1 : (int)Math.Ceiling(total / (double)normalizedPageSize);
+            normalizedPage = Math.Min(normalizedPage, totalPages);
+
+            var sorted = SortProducts(filteredForResult, normalizedSort, normalizedQuery);
+            var pageItems = sorted
+                .Skip((normalizedPage - 1) * normalizedPageSize)
+                .Take(normalizedPageSize)
+                .Select(MapToSearchItem)
+                .ToArray();
+
+            var inStockCount = categoryFiltered.Count(product => product.IsInStock);
+            var brandFacetItems = BuildBrandFacets(
+                ApplyPrice(categoryFiltered, normalizedMinPrice, normalizedMaxPrice),
+                normalizedBrands);
+            var categoryFacetItems = BuildCategoryFacets(
+                ApplyPrice(ApplyBrands(stockFiltered, normalizedBrands), normalizedMinPrice, normalizedMaxPrice),
+                normalizedCategory);
+
+            var response = new StoreSearchProductsResponse(
+                pageItems,
+                total,
+                normalizedPage,
+                normalizedPageSize,
+                totalPages,
+                new StoreSearchFacets(
+                    brandFacetItems,
+                    categoryFacetItems,
+                    inStockCount,
+                    priceSummary),
+                new StoreSearchAppliedFilters(
+                    normalizedQuery,
+                    normalizedCategory,
+                    normalizedBrands,
+                    normalizedMinPrice,
+                    normalizedMaxPrice,
+                    request.InStock,
+                    normalizedSort,
+                    normalizedPage,
+                    normalizedPageSize));
+
+            return Task.FromResult(response);
+        }
+
+        public Task<StoreSearchSuggestionsResponse> SuggestProductsAsync(
+            string query,
+            int limit,
+            CancellationToken cancellationToken)
+        {
+            var normalizedQuery = query.Trim();
+            if (normalizedQuery.Length < 2)
+            {
+                return Task.FromResult(new StoreSearchSuggestionsResponse(normalizedQuery, []));
+            }
+
+            var normalizedLower = normalizedQuery.ToLowerInvariant();
+            var normalizedLimit = Math.Clamp(limit, 1, 10);
+
+            var suggestions = Products
+                .Where(product => product.IsActive)
+                .Where(product =>
+                    product.Name.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase) ||
+                    (!string.IsNullOrWhiteSpace(product.Brand) &&
+                     product.Brand.Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase)))
+                .OrderByDescending(product => product.Name.StartsWith(normalizedQuery, StringComparison.OrdinalIgnoreCase))
+                .ThenBy(product => product.Name, StringComparer.OrdinalIgnoreCase)
+                .Take(normalizedLimit)
+                .Select(product => new StoreSearchSuggestionItem(
+                    product.Name,
+                    product.Slug,
+                    product.ImageUrl,
+                    product.Amount,
+                    product.Currency))
+                .ToArray();
+
+            return Task.FromResult(new StoreSearchSuggestionsResponse(normalizedLower, suggestions));
+        }
+
         public Task<IReadOnlyCollection<StoreProduct>> GetProductsAsync(CancellationToken cancellationToken)
         {
             return Task.FromResult<IReadOnlyCollection<StoreProduct>>(Products);
@@ -184,6 +305,200 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
             CancellationToken cancellationToken)
         {
             return Task.FromResult(true);
+        }
+
+        private static IReadOnlyCollection<StoreSearchBrandFacetItem> BuildBrandFacets(
+            IEnumerable<StoreProduct> products,
+            IReadOnlyCollection<string> selectedBrands)
+        {
+            var selectedSet = selectedBrands.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            return products
+                .Where(product => !string.IsNullOrWhiteSpace(product.Brand))
+                .GroupBy(product => product.Brand!)
+                .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
+                .Select(group => new StoreSearchBrandFacetItem(
+                    group.Key,
+                    group.Count(),
+                    selectedSet.Contains(group.Key)))
+                .ToArray();
+        }
+
+        private static IReadOnlyCollection<StoreSearchCategoryFacetItem> BuildCategoryFacets(
+            IEnumerable<StoreProduct> products,
+            string? selectedCategory)
+        {
+            return products
+                .Where(product => !string.IsNullOrWhiteSpace(product.CategorySlug) &&
+                                  !string.IsNullOrWhiteSpace(product.CategoryName))
+                .GroupBy(product => new { product.CategorySlug, product.CategoryName })
+                .OrderBy(group => group.Key.CategoryName, StringComparer.OrdinalIgnoreCase)
+                .Select(group => new
+                {
+                    group.Key.CategorySlug,
+                    group.Key.CategoryName,
+                    Count = group.Count(),
+                    Selected = selectedCategory is not null &&
+                               string.Equals(
+                                   group.Key.CategorySlug,
+                                   selectedCategory,
+                                   StringComparison.OrdinalIgnoreCase),
+                })
+                .Select(item => new StoreSearchCategoryFacetItem(
+                    item.CategorySlug!,
+                    item.CategoryName!,
+                    item.Count,
+                    item.Selected))
+                .ToArray();
+        }
+
+        private static IEnumerable<StoreProduct> ApplyQuery(
+            IEnumerable<StoreProduct> products,
+            string? query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return products;
+            }
+
+            return products.Where(product =>
+                product.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrWhiteSpace(product.Description) &&
+                 product.Description.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrWhiteSpace(product.Brand) &&
+                 product.Brand.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrWhiteSpace(product.CategoryName) &&
+                 product.CategoryName.Contains(query, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        private static IEnumerable<StoreProduct> ApplyStock(
+            IEnumerable<StoreProduct> products,
+            bool? inStock)
+        {
+            return inStock switch
+            {
+                true => products.Where(product => product.IsInStock),
+                false => products.Where(product => !product.IsInStock),
+                _ => products,
+            };
+        }
+
+        private static IEnumerable<StoreProduct> ApplyCategory(
+            IEnumerable<StoreProduct> products,
+            string? categorySlug)
+        {
+            if (string.IsNullOrWhiteSpace(categorySlug))
+            {
+                return products;
+            }
+
+            return products.Where(product => string.Equals(
+                product.CategorySlug,
+                categorySlug,
+                StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static IEnumerable<StoreProduct> ApplyBrands(
+            IEnumerable<StoreProduct> products,
+            IReadOnlyCollection<string> brands)
+        {
+            if (brands.Count == 0)
+            {
+                return products;
+            }
+
+            return products.Where(product =>
+                product.Brand is not null &&
+                brands.Contains(product.Brand, StringComparer.OrdinalIgnoreCase));
+        }
+
+        private static IEnumerable<StoreProduct> ApplyPrice(
+            IEnumerable<StoreProduct> products,
+            decimal? minPrice,
+            decimal? maxPrice)
+        {
+            if (minPrice is not null)
+            {
+                products = products.Where(product => product.Amount >= minPrice.Value);
+            }
+
+            if (maxPrice is not null)
+            {
+                products = products.Where(product => product.Amount <= maxPrice.Value);
+            }
+
+            return products;
+        }
+
+        private static string NormalizeSort(string? sort, string? query)
+        {
+            var defaultSort = string.IsNullOrWhiteSpace(query) ? "popular" : "relevance";
+            if (string.IsNullOrWhiteSpace(sort))
+            {
+                return defaultSort;
+            }
+
+            var normalized = sort.Trim().ToLowerInvariant();
+            return normalized switch
+            {
+                "relevance" => "relevance",
+                "popular" => "popular",
+                "newest" => "newest",
+                "price_asc" => "price_asc",
+                "price_desc" => "price_desc",
+                "name_asc" => "name_asc",
+                _ => defaultSort,
+            };
+        }
+
+        private static IReadOnlyCollection<StoreProduct> SortProducts(
+            IReadOnlyCollection<StoreProduct> products,
+            string sort,
+            string? query)
+        {
+            return sort switch
+            {
+                "newest" => products.OrderByDescending(product => product.Slug, StringComparer.Ordinal).ToArray(),
+                "price_asc" => products.OrderBy(product => product.Amount).ThenBy(product => product.Name).ToArray(),
+                "price_desc" => products.OrderByDescending(product => product.Amount).ThenBy(product => product.Name).ToArray(),
+                "name_asc" => products.OrderBy(product => product.Name).ToArray(),
+                "relevance" => SortByRelevance(products, query),
+                _ => products.OrderBy(product => product.Name).ToArray(),
+            };
+        }
+
+        private static IReadOnlyCollection<StoreProduct> SortByRelevance(
+            IReadOnlyCollection<StoreProduct> products,
+            string? query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return products.OrderBy(product => product.Name).ToArray();
+            }
+
+            return products
+                .OrderByDescending(product => string.Equals(product.Name, query, StringComparison.OrdinalIgnoreCase))
+                .ThenByDescending(product => product.Name.StartsWith(query, StringComparison.OrdinalIgnoreCase))
+                .ThenByDescending(product => product.IsInStock)
+                .ThenBy(product => product.Name)
+                .ToArray();
+        }
+
+        private static StoreSearchProductItem MapToSearchItem(StoreProduct product)
+        {
+            return new StoreSearchProductItem(
+                product.Id,
+                product.Slug,
+                product.Name,
+                product.Description,
+                product.CategorySlug,
+                product.CategoryName,
+                product.Brand,
+                product.Amount,
+                product.Currency,
+                product.IsInStock,
+                product.ImageUrl,
+                DateTime.UtcNow);
         }
 
         private static IReadOnlyCollection<StoreProduct> BuildProducts()

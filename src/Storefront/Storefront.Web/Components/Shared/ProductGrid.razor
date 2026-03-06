@@ -1,0 +1,27 @@
+@using Storefront.Web.Services.Api
+@using Storefront.Web.Services.Media
+
+<section class="grid">
+    @if (Items.Count == 0)
+    {
+        <p>@EmptyMessage</p>
+    }
+    else
+    {
+        @foreach (var product in Items)
+        {
+            <ProductCard Item="product" Preset="@Preset" />
+        }
+    }
+</section>
+
+@code {
+    [Parameter]
+    public IReadOnlyCollection<StoreSearchProductItem> Items { get; set; } = [];
+
+    [Parameter]
+    public string EmptyMessage { get; set; } = "No products found.";
+
+    [Parameter]
+    public MediaImagePreset Preset { get; set; } = MediaImagePreset.ProductCard;
+}

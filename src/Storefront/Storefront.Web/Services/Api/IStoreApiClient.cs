@@ -6,6 +6,15 @@ public interface IStoreApiClient
 
     Task<StoreProduct?> GetProductBySlugAsync(string slug, CancellationToken cancellationToken);
 
+    Task<StoreSearchProductsResponse> SearchProductsAsync(
+        StoreSearchProductsRequest request,
+        CancellationToken cancellationToken);
+
+    Task<StoreSearchSuggestionsResponse> SuggestProductsAsync(
+        string query,
+        int limit,
+        CancellationToken cancellationToken);
+
     Task<StoreCart?> GetCartAsync(string customerId, CancellationToken cancellationToken);
 
     Task<bool> AddItemToCartAsync(

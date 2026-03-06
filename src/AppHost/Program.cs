@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OpenTelemetry.Trace;
 using Orders.Api;
 using Redirects.Api;
+using Search.Api;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -60,6 +61,7 @@ builder.Services.AddCatalogModule();
 builder.Services.AddCartModule();
 builder.Services.AddOrdersModule();
 builder.Services.AddRedirectsModule();
+builder.Services.AddSearchModule();
 
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<OutboxDbContext>("postgres", tags: ["ready"]);
@@ -94,6 +96,7 @@ apiV1.MapCatalogEndpoints();
 apiV1.MapCartEndpoints();
 apiV1.MapOrdersEndpoints();
 apiV1.MapRedirectEndpoints();
+apiV1.MapSearchEndpoints();
 app.MapDirectusWebhookEndpoint();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
