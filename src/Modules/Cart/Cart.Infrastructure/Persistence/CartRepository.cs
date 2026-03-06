@@ -13,8 +13,19 @@ internal sealed class CartRepository(CartDbContext dbContext) : ICartRepository
 
     public Task<CartAggregate?> GetByCustomerIdAsync(string customerId, CancellationToken cancellationToken)
     {
-        return dbContext.Carts
-            .Include(cart => cart.Lines)
-            .FirstOrDefaultAsync(cart => cart.CustomerId == customerId, cancellationToken);
+        return GetByCustomerIdInternalAsync(customerId, cancellationToken);
+    }
+
+    private async Task<CartAggregate?> GetByCustomerIdInternalAsync(string customerId, CancellationToken cancellationToken)
+    {
+        var cart = await dbContext.Carts
+            .FirstOrDefaultAsync(item => item.CustomerId == customerId, cancellationToken);
+        if (cart is null)
+        {
+            return null;
+        }
+
+        await dbContext.Entry(cart).Collection(item => item.Lines).LoadAsync(cancellationToken);
+        return cart;
     }
 }

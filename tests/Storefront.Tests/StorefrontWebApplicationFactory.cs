@@ -86,13 +86,102 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
                 "sample-customer",
                 "EUR",
                 89m,
-                89m,
+                5.99m,
+                "EUR",
+                "standard",
+                "Standard Delivery",
+                94.99m,
                 "Placed",
+                "Unfulfilled",
                 DateTime.UtcNow.AddDays(-1),
                 new StoreOrderAddress("Alex", "Mercer", "Ship Street", "Sofia", "1000", "BG", "+359888000000"),
                 new StoreOrderAddress("Alex", "Mercer", "Bill Street", "Sofia", "1000", "BG", "+359888000000"),
                 [new StoreOrderLine(Guid.NewGuid(), "Mechanical Keyboard", "EUR", 89m, 1)]),
         ];
+
+        private static readonly List<StoreShippingMethod> ShippingMethods =
+        [
+            new StoreShippingMethod(
+                Guid.Parse("4bf25888-5d1c-40ba-a95a-f66c1f5f0b41"),
+                "standard",
+                "Standard Delivery",
+                "Delivery in 2-4 business days.",
+                "DemoCarrier",
+                "Delivery",
+                5.99m,
+                "EUR",
+                true,
+                true,
+                false,
+                2,
+                4,
+                10,
+                DateTime.UtcNow.AddDays(-30),
+                DateTime.UtcNow.AddDays(-1)),
+            new StoreShippingMethod(
+                Guid.Parse("23f5de32-e8ec-4d4f-b317-4ffe34cc04b6"),
+                "express",
+                "Express Delivery",
+                "Next day delivery.",
+                "DemoCarrier",
+                "Delivery",
+                12.99m,
+                "EUR",
+                true,
+                true,
+                false,
+                1,
+                2,
+                5,
+                DateTime.UtcNow.AddDays(-30),
+                DateTime.UtcNow.AddDays(-1)),
+        ];
+
+        private static readonly List<StoreShippingZone> ShippingZones =
+        [
+            new StoreShippingZone(
+                Guid.Parse("0d31873c-3a23-43db-becf-0bb5cae95e8c"),
+                "eu",
+                "Europe",
+                ["BG", "DE", "FR"],
+                true,
+                DateTime.UtcNow.AddDays(-30),
+                DateTime.UtcNow.AddDays(-2)),
+        ];
+
+        private static readonly List<StoreShippingRateRule> ShippingRateRules =
+        [
+            new StoreShippingRateRule(
+                Guid.Parse("de70af84-4e01-4f16-91ad-a3ad30270289"),
+                ShippingMethods[0].Id,
+                ShippingZones[0].Id,
+                MinOrderAmount: null,
+                MaxOrderAmount: null,
+                MinWeightKg: null,
+                MaxWeightKg: null,
+                PriceAmount: 5.99m,
+                FreeShippingThresholdAmount: 100m,
+                Currency: "EUR",
+                IsActive: true,
+                DateTime.UtcNow.AddDays(-30),
+                DateTime.UtcNow.AddDays(-2)),
+            new StoreShippingRateRule(
+                Guid.Parse("7106bc3e-5ac0-4f0b-b9bc-6b689bbddc84"),
+                ShippingMethods[1].Id,
+                ShippingZones[0].Id,
+                MinOrderAmount: null,
+                MaxOrderAmount: null,
+                MinWeightKg: null,
+                MaxWeightKg: null,
+                PriceAmount: 12.99m,
+                FreeShippingThresholdAmount: null,
+                Currency: "EUR",
+                IsActive: true,
+                DateTime.UtcNow.AddDays(-30),
+                DateTime.UtcNow.AddDays(-2)),
+        ];
+
+        private static readonly List<StoreShipment> Shipments = [];
 
         private static StoreCustomerProfile? currentCustomer;
 
@@ -528,6 +617,289 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
             return Task.FromResult(new StoreStockReservationPage(1, pageSize <= 0 ? 50 : pageSize, reservations.Count, reservations));
         }
 
+        public Task<IReadOnlyCollection<StoreShippingQuoteMethod>> GetShippingQuotesAsync(
+            string countryCode,
+            decimal subtotalAmount,
+            string currency,
+            CancellationToken cancellationToken)
+        {
+            var normalizedCountryCode = string.IsNullOrWhiteSpace(countryCode)
+                ? "BG"
+                : countryCode.Trim().ToUpperInvariant();
+            var normalizedCurrency = string.IsNullOrWhiteSpace(currency)
+                ? "EUR"
+                : currency.Trim().ToUpperInvariant();
+
+            var zone = ShippingZones.FirstOrDefault(item =>
+                item.IsActive &&
+                item.CountryCodes.Contains(normalizedCountryCode, StringComparer.Ordinal));
+            if (zone is null)
+            {
+                return Task.FromResult<IReadOnlyCollection<StoreShippingQuoteMethod>>([]);
+            }
+
+            var quotes = ShippingMethods
+                .Where(method => method.IsActive && string.Equals(method.Currency, normalizedCurrency, StringComparison.Ordinal))
+                .Select(method =>
+                {
+                    var rule = ShippingRateRules
+                        .Where(item => item.IsActive &&
+                                       item.ShippingMethodId == method.Id &&
+                                       item.ShippingZoneId == zone.Id)
+                        .OrderBy(item => item.PriceAmount)
+                        .FirstOrDefault();
+
+                    var price = rule?.PriceAmount ?? method.BasePriceAmount;
+                    var freeThreshold = rule?.FreeShippingThresholdAmount;
+                    if (freeThreshold is not null && subtotalAmount >= freeThreshold.Value)
+                    {
+                        price = 0m;
+                    }
+
+                    return new StoreShippingQuoteMethod(
+                        method.Id,
+                        method.Code,
+                        method.Name,
+                        method.Description,
+                        price,
+                        method.Currency,
+                        method.EstimatedMinDays,
+                        method.EstimatedMaxDays,
+                        IsFreeShipping: price == 0m);
+                })
+                .OrderBy(quote => ShippingMethods.Single(method => method.Id == quote.Id).Priority)
+                .ThenBy(quote => quote.PriceAmount)
+                .ToArray();
+
+            return Task.FromResult<IReadOnlyCollection<StoreShippingQuoteMethod>>(quotes);
+        }
+
+        public Task<IReadOnlyCollection<StoreShippingMethod>> GetShippingMethodsAsync(
+            bool activeOnly,
+            CancellationToken cancellationToken)
+        {
+            var methods = activeOnly
+                ? ShippingMethods.Where(method => method.IsActive).ToArray()
+                : ShippingMethods.ToArray();
+
+            return Task.FromResult<IReadOnlyCollection<StoreShippingMethod>>(methods);
+        }
+
+        public Task<IReadOnlyCollection<StoreShippingZone>> GetShippingZonesAsync(
+            bool activeOnly,
+            CancellationToken cancellationToken)
+        {
+            var zones = activeOnly
+                ? ShippingZones.Where(zone => zone.IsActive).ToArray()
+                : ShippingZones.ToArray();
+
+            return Task.FromResult<IReadOnlyCollection<StoreShippingZone>>(zones);
+        }
+
+        public Task<IReadOnlyCollection<StoreShippingRateRule>> GetShippingRateRulesAsync(
+            bool activeOnly,
+            CancellationToken cancellationToken)
+        {
+            var rules = activeOnly
+                ? ShippingRateRules.Where(rule => rule.IsActive).ToArray()
+                : ShippingRateRules.ToArray();
+
+            return Task.FromResult<IReadOnlyCollection<StoreShippingRateRule>>(rules);
+        }
+
+        public Task<Guid?> CreateShippingMethodAsync(StoreShippingMethod request, CancellationToken cancellationToken)
+        {
+            var id = Guid.NewGuid();
+            ShippingMethods.Add(request with
+            {
+                Id = id,
+                CreatedAtUtc = DateTime.UtcNow,
+                UpdatedAtUtc = DateTime.UtcNow,
+            });
+
+            return Task.FromResult<Guid?>(id);
+        }
+
+        public Task<bool> UpdateShippingMethodAsync(
+            Guid shippingMethodId,
+            StoreShippingMethod request,
+            CancellationToken cancellationToken)
+        {
+            var index = ShippingMethods.FindIndex(method => method.Id == shippingMethodId);
+            if (index < 0)
+            {
+                return Task.FromResult(false);
+            }
+
+            ShippingMethods[index] = request with
+            {
+                Id = shippingMethodId,
+                UpdatedAtUtc = DateTime.UtcNow,
+            };
+
+            return Task.FromResult(true);
+        }
+
+        public Task<Guid?> CreateShippingZoneAsync(StoreShippingZone request, CancellationToken cancellationToken)
+        {
+            var id = Guid.NewGuid();
+            ShippingZones.Add(request with
+            {
+                Id = id,
+                CreatedAtUtc = DateTime.UtcNow,
+                UpdatedAtUtc = DateTime.UtcNow,
+            });
+
+            return Task.FromResult<Guid?>(id);
+        }
+
+        public Task<bool> UpdateShippingZoneAsync(
+            Guid shippingZoneId,
+            StoreShippingZone request,
+            CancellationToken cancellationToken)
+        {
+            var index = ShippingZones.FindIndex(zone => zone.Id == shippingZoneId);
+            if (index < 0)
+            {
+                return Task.FromResult(false);
+            }
+
+            ShippingZones[index] = request with
+            {
+                Id = shippingZoneId,
+                UpdatedAtUtc = DateTime.UtcNow,
+            };
+
+            return Task.FromResult(true);
+        }
+
+        public Task<Guid?> CreateShippingRateRuleAsync(StoreShippingRateRule request, CancellationToken cancellationToken)
+        {
+            var id = Guid.NewGuid();
+            ShippingRateRules.Add(request with
+            {
+                Id = id,
+                CreatedAtUtc = DateTime.UtcNow,
+                UpdatedAtUtc = DateTime.UtcNow,
+            });
+
+            return Task.FromResult<Guid?>(id);
+        }
+
+        public Task<bool> UpdateShippingRateRuleAsync(
+            Guid shippingRateRuleId,
+            StoreShippingRateRule request,
+            CancellationToken cancellationToken)
+        {
+            var index = ShippingRateRules.FindIndex(rule => rule.Id == shippingRateRuleId);
+            if (index < 0)
+            {
+                return Task.FromResult(false);
+            }
+
+            ShippingRateRules[index] = request with
+            {
+                Id = shippingRateRuleId,
+                UpdatedAtUtc = DateTime.UtcNow,
+            };
+
+            return Task.FromResult(true);
+        }
+
+        public Task<StoreShipmentPage> GetShipmentsAsync(
+            string? status,
+            Guid? orderId,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken)
+        {
+            var normalizedPage = page <= 0 ? 1 : page;
+            var normalizedPageSize = pageSize <= 0 ? 20 : pageSize;
+
+            var filtered = Shipments
+                .Where(shipment => orderId is null || shipment.OrderId == orderId.Value)
+                .Where(shipment => string.IsNullOrWhiteSpace(status) ||
+                                   string.Equals(shipment.Status, status, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+            var paged = filtered
+                .Skip((normalizedPage - 1) * normalizedPageSize)
+                .Take(normalizedPageSize)
+                .ToArray();
+
+            return Task.FromResult(new StoreShipmentPage(normalizedPage, normalizedPageSize, filtered.Length, paged));
+        }
+
+        public Task<StoreShipment?> GetShipmentAsync(Guid shipmentId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<StoreShipment?>(Shipments.SingleOrDefault(shipment => shipment.Id == shipmentId));
+        }
+
+        public Task<StoreShipment?> GetShipmentByOrderAsync(Guid orderId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<StoreShipment?>(Shipments.SingleOrDefault(shipment => shipment.OrderId == orderId));
+        }
+
+        public Task<Guid?> CreateShipmentAsync(
+            Guid orderId,
+            string? shippingMethodCode,
+            CancellationToken cancellationToken)
+        {
+            var order = Orders.SingleOrDefault(item => item.Id == orderId);
+            var method = ShippingMethods.FirstOrDefault(item =>
+                string.Equals(item.Code, shippingMethodCode ?? order?.ShippingMethodCode, StringComparison.OrdinalIgnoreCase))
+                ?? ShippingMethods[0];
+
+            var shipment = new StoreShipment(
+                Guid.NewGuid(),
+                orderId,
+                method.Id,
+                method.Provider,
+                method.Code,
+                $"DEMO-{orderId.ToString("N")[..8].ToUpperInvariant()}",
+                $"https://shop.example.com/demo-tracking/{orderId:N}",
+                "Pending",
+                order is null ? "Test Recipient" : $"{order.ShippingAddress.FirstName} {order.ShippingAddress.LastName}",
+                order?.ShippingAddress.Phone,
+                order is null ? "{}" : JsonSerializer.Serialize(order.ShippingAddress),
+                order?.ShippingPriceAmount ?? method.BasePriceAmount,
+                order?.ShippingCurrency ?? method.Currency,
+                null,
+                null,
+                DateTime.UtcNow,
+                DateTime.UtcNow,
+                [
+                    new StoreShipmentEvent(
+                        Guid.NewGuid(),
+                        "StatusChanged",
+                        "Shipment created",
+                        null,
+                        DateTime.UtcNow,
+                        null),
+                ]);
+
+            Shipments.Add(shipment);
+            return Task.FromResult<Guid?>(shipment.Id);
+        }
+
+        public Task<bool> CreateShipmentLabelAsync(Guid shipmentId, CancellationToken cancellationToken)
+        {
+            return UpdateShipmentStatusAsync(shipmentId, "LabelCreated", "Shipment label created");
+        }
+
+        public Task<bool> MarkShipmentShippedAsync(Guid shipmentId, CancellationToken cancellationToken)
+        {
+            return UpdateShipmentStatusAsync(shipmentId, "Shipped", "Shipment marked as shipped");
+        }
+
+        public Task<bool> CancelShipmentAsync(
+            Guid shipmentId,
+            string? reason,
+            CancellationToken cancellationToken)
+        {
+            return UpdateShipmentStatusAsync(shipmentId, "Cancelled", reason ?? "Shipment cancelled");
+        }
+
         public Task<StoreCart?> GetCartAsync(string customerId, CancellationToken cancellationToken)
         {
             return Task.FromResult<StoreCart?>(new StoreCart(Guid.NewGuid(), customerId, [], []));
@@ -675,6 +1047,34 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
             int quantity,
             CancellationToken cancellationToken)
         {
+            return Task.FromResult(true);
+        }
+
+        private static Task<bool> UpdateShipmentStatusAsync(Guid shipmentId, string status, string message)
+        {
+            var index = Shipments.FindIndex(shipment => shipment.Id == shipmentId);
+            if (index < 0)
+            {
+                return Task.FromResult(false);
+            }
+
+            var shipment = Shipments[index];
+            var events = shipment.Events.ToList();
+            events.Add(new StoreShipmentEvent(
+                Guid.NewGuid(),
+                "StatusChanged",
+                message,
+                null,
+                DateTime.UtcNow,
+                null));
+
+            Shipments[index] = shipment with
+            {
+                Status = status,
+                UpdatedAtUtc = DateTime.UtcNow,
+                Events = events,
+            };
+
             return Task.FromResult(true);
         }
 

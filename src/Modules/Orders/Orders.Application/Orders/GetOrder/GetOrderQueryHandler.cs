@@ -18,8 +18,13 @@ public sealed class GetOrderQueryHandler(IOrderRepository orderRepository)
             order.CustomerId,
             order.Total.Currency,
             order.Subtotal.Amount,
+            order.ShippingPrice.Amount,
+            order.ShippingPrice.Currency,
+            order.ShippingMethodCode,
+            order.ShippingMethodName,
             order.Total.Amount,
             order.Status.ToString(),
+            order.FulfillmentStatus.ToString(),
             order.PlacedAtUtc,
             new OrderAddressDto(
                 order.ShippingAddress.FirstName,

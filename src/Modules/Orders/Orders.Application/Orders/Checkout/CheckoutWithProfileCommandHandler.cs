@@ -11,6 +11,7 @@ namespace Orders.Application.Orders.Checkout;
 public sealed class CheckoutWithProfileCommandHandler(
     ICartCheckoutAccessor cartCheckoutAccessor,
     IInventoryReservationService inventoryReservationService,
+    IShippingQuoteService shippingQuoteService,
     ICheckoutIdempotencyRepository idempotencyRepository,
     ICustomerCheckoutAccessor customerCheckoutAccessor,
     ICustomerSessionCache customerSessionCache,
@@ -113,6 +114,8 @@ public sealed class CheckoutWithProfileCommandHandler(
                 }
 
                 var lineData = new List<OrderLineData>(cart.Lines.Count);
+                decimal subtotalAmount = 0m;
+                string? orderCurrency = null;
                 foreach (var line in cart.Lines)
                 {
                     var moneyResult = Money.Create(line.Currency, line.UnitAmount);
@@ -121,16 +124,41 @@ public sealed class CheckoutWithProfileCommandHandler(
                         return Result<Guid>.Failure(moneyResult.Error);
                     }
 
+                    orderCurrency ??= moneyResult.Value.Currency;
+                    if (!string.Equals(orderCurrency, moneyResult.Value.Currency, StringComparison.Ordinal))
+                    {
+                        return Result<Guid>.Failure(new Error(
+                            "orders.currency.mismatch",
+                            "All cart lines must use the same currency."));
+                    }
+
+                    subtotalAmount += Money.Round(moneyResult.Value.Amount * line.Quantity);
                     lineData.Add(new OrderLineData(line.ProductId, line.Name, moneyResult.Value, line.Quantity));
                 }
 
+                var quoteResult = await shippingQuoteService.ResolveQuoteAsync(
+                    request.ShippingAddress.Country,
+                    subtotalAmount,
+                    orderCurrency ?? "EUR",
+                    request.ShippingMethodCode,
+                    innerCancellationToken);
+                if (quoteResult.IsFailure)
+                {
+                    return Result<Guid>.Failure(quoteResult.Error);
+                }
+
+                var selectedQuote = quoteResult.Value;
                 var orderResult = Order.Create(
                     customerId,
                     normalizedCartSessionId,
                     lineData,
                     clock.UtcNow,
                     shippingAddressResult.Value,
-                    billingAddressResult.Value);
+                    billingAddressResult.Value,
+                    selectedQuote.ShippingMethodCode,
+                    selectedQuote.ShippingMethodName,
+                    selectedQuote.PriceAmount,
+                    selectedQuote.Currency);
 
                 if (orderResult.IsFailure)
                 {

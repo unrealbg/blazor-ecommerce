@@ -15,6 +15,9 @@ public sealed class CheckoutWithProfileCommandValidator : AbstractValidator<Chec
             .EmailAddress()
             .MaximumLength(320);
 
+        RuleFor(command => command.ShippingMethodCode)
+            .MaximumLength(64);
+
         RuleFor(command => command.IdempotencyKey)
             .NotEmpty()
             .MaximumLength(128);

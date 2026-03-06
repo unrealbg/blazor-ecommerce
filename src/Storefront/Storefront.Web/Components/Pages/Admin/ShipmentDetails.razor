@@ -1,0 +1,128 @@
+@page "/admin/shipments/{ShipmentId:guid}"
+@layout Storefront.Web.Components.Layout.AdminLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>Shipment Details</PageTitle>
+
+<h1>Shipment Details</h1>
+<p><a class="btn-link" href="/admin/shipments">Back to shipments</a></p>
+
+@if (isLoading)
+{
+    <p>Loading shipment...</p>
+}
+else if (shipment is null)
+{
+    <p>Shipment was not found.</p>
+}
+else
+{
+    <section class="admin-panel">
+        <h2>Shipment</h2>
+        <table class="cart-table">
+            <tbody>
+                <tr><th>Shipment id</th><td>@shipment.Id</td></tr>
+                <tr><th>Order id</th><td>@shipment.OrderId</td></tr>
+                <tr><th>Status</th><td>@shipment.Status</td></tr>
+                <tr><th>Carrier</th><td>@shipment.CarrierName</td></tr>
+                <tr><th>Tracking number</th><td>@shipment.TrackingNumber</td></tr>
+                <tr><th>Tracking url</th><td>@shipment.TrackingUrl</td></tr>
+                <tr><th>Shipping price</th><td>@shipment.ShippingPriceAmount.ToString("0.00") @shipment.Currency</td></tr>
+            </tbody>
+        </table>
+
+        <div class="checkout-actions">
+            <button class="btn-primary" @onclick="CreateLabelAsync" disabled="@isSaving">Create label</button>
+            <button class="btn-primary" @onclick="MarkShippedAsync" disabled="@isSaving">Mark shipped</button>
+            <button class="btn-link" @onclick="CancelAsync" disabled="@isSaving">Cancel shipment</button>
+        </div>
+    </section>
+
+    <section class="admin-panel">
+        <h2>Shipment timeline</h2>
+        @if (shipment.Events.Count == 0)
+        {
+            <p>No events yet.</p>
+        }
+        else
+        {
+            <table class="cart-table">
+                <thead>
+                    <tr>
+                        <th>Event</th>
+                        <th>Message</th>
+                        <th>Occurred</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var shipmentEvent in shipment.Events)
+                    {
+                        <tr>
+                            <td>@shipmentEvent.EventType</td>
+                            <td>@shipmentEvent.Message</td>
+                            <td>@shipmentEvent.OccurredAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+}
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <p class="status-message">@message</p>
+}
+
+@code {
+    [Parameter]
+    public Guid ShipmentId { get; set; }
+
+    private bool isLoading = true;
+    private bool isSaving;
+    private string? message;
+    private StoreShipment? shipment;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        isLoading = true;
+        shipment = await StoreApiClient.GetShipmentAsync(ShipmentId, CancellationToken.None);
+        isLoading = false;
+    }
+
+    private async Task CreateLabelAsync()
+    {
+        await ExecuteActionAsync(() => StoreApiClient.CreateShipmentLabelAsync(ShipmentId, CancellationToken.None), "Label created.");
+    }
+
+    private async Task MarkShippedAsync()
+    {
+        await ExecuteActionAsync(() => StoreApiClient.MarkShipmentShippedAsync(ShipmentId, CancellationToken.None), "Shipment marked as shipped.");
+    }
+
+    private async Task CancelAsync()
+    {
+        await ExecuteActionAsync(
+            () => StoreApiClient.CancelShipmentAsync(ShipmentId, "Cancelled from admin UI", CancellationToken.None),
+            "Shipment cancelled.");
+    }
+
+    private async Task ExecuteActionAsync(Func<Task<bool>> action, string successMessage)
+    {
+        isSaving = true;
+        var success = await action();
+        message = success ? successMessage : "Operation failed.";
+        isSaving = false;
+
+        if (success)
+        {
+            await ReloadAsync();
+        }
+    }
+}

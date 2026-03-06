@@ -5,6 +5,7 @@ namespace Orders.Application.Orders.Checkout;
 public sealed record CheckoutWithProfileCommand(
     string CartSessionId,
     string Email,
+    string? ShippingMethodCode,
     CheckoutAddressInput ShippingAddress,
     CheckoutAddressInput BillingAddress,
     string IdempotencyKey,

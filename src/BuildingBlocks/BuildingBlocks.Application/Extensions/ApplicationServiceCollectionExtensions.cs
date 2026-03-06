@@ -23,6 +23,8 @@ public static class ApplicationServiceCollectionExtensions
         services.TryAddScoped<IInventoryReservationService, NullInventoryReservationService>();
         services.TryAddScoped<IInventoryStockProvisioner, NullInventoryStockProvisioner>();
         services.TryAddScoped<IOrderPaymentService, NullOrderPaymentService>();
+        services.TryAddScoped<IShippingQuoteService, NullShippingQuoteService>();
+        services.TryAddScoped<IOrderFulfillmentService, NullOrderFulfillmentService>();
 
         return services;
     }

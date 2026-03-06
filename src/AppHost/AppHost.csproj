@@ -11,6 +11,7 @@
     <ProjectReference Include="..\Modules\Customers\Customers.Api\Customers.Api.csproj" />
     <ProjectReference Include="..\Modules\Inventory\Inventory.Api\Inventory.Api.csproj" />
     <ProjectReference Include="..\Modules\Payments\Payments.Api\Payments.Api.csproj" />
+    <ProjectReference Include="..\Modules\Shipping\Shipping.Api\Shipping.Api.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -36,6 +37,7 @@
     <InfrastructureProject Include="..\Modules\Customers\Customers.Infrastructure\Customers.Infrastructure.csproj" />
     <InfrastructureProject Include="..\Modules\Inventory\Inventory.Infrastructure\Inventory.Infrastructure.csproj" />
     <InfrastructureProject Include="..\Modules\Payments\Payments.Infrastructure\Payments.Infrastructure.csproj" />
+    <InfrastructureProject Include="..\Modules\Shipping\Shipping.Infrastructure\Shipping.Infrastructure.csproj" />
   </ItemGroup>
 
   <Target Name="BuildInfrastructureProjects" BeforeTargets="Build">
@@ -54,6 +56,7 @@
       <InfrastructureOutputs Include="..\Modules\Customers\Customers.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Customers.Infrastructure.*" />
       <InfrastructureOutputs Include="..\Modules\Inventory\Inventory.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Inventory.Infrastructure.*" />
       <InfrastructureOutputs Include="..\Modules\Payments\Payments.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Payments.Infrastructure.*" />
+      <InfrastructureOutputs Include="..\Modules\Shipping\Shipping.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Shipping.Infrastructure.*" />
     </ItemGroup>
 
     <Copy SourceFiles="@(InfrastructureOutputs)"
@@ -72,6 +75,7 @@
       <InfrastructureOutputs Include="..\Modules\Customers\Customers.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Customers.Infrastructure.*" />
       <InfrastructureOutputs Include="..\Modules\Inventory\Inventory.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Inventory.Infrastructure.*" />
       <InfrastructureOutputs Include="..\Modules\Payments\Payments.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Payments.Infrastructure.*" />
+      <InfrastructureOutputs Include="..\Modules\Shipping\Shipping.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Shipping.Infrastructure.*" />
     </ItemGroup>
 
     <Copy SourceFiles="@(InfrastructureOutputs)"

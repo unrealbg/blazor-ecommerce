@@ -9,6 +9,7 @@ Production-oriented modular monolith starter with strict module boundaries and c
 - Orders
 - Payments
 - Inventory
+- Shipping
 - Customers
 - Redirects
 - Search
@@ -45,6 +46,8 @@ Production-oriented modular monolith starter with strict module boundaries and c
   - `cart`
   - `orders`
   - `inventory`
+  - `shipping`
+  - `payments`
   - `customers`
   - `identity`
   - `redirects`
@@ -146,6 +149,25 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `POST /api/v1/payments/intents/{id}/refund` (authorized)
 - `GET /api/v1/payments/intents?page=&pageSize=&provider=&status=` (authorized)
 - `POST /api/v1/payments/webhooks/{provider}`
+- `POST /api/v1/shipping/quotes`
+- `GET /api/v1/shipping/methods`
+- `GET /api/v1/shipping/methods/{id}`
+- `GET /api/v1/shipping/zones` (authorized)
+- `GET /api/v1/shipping/rules` (authorized)
+- `POST /api/v1/shipping/methods` (authorized)
+- `PUT /api/v1/shipping/methods/{id}` (authorized)
+- `POST /api/v1/shipping/zones` (authorized)
+- `PUT /api/v1/shipping/zones/{id}` (authorized)
+- `POST /api/v1/shipping/rules` (authorized)
+- `PUT /api/v1/shipping/rules/{id}` (authorized)
+- `POST /api/v1/shipping/shipments` (authorized)
+- `GET /api/v1/shipping/shipments` (authorized)
+- `GET /api/v1/shipping/shipments/{id}` (authorized)
+- `POST /api/v1/shipping/shipments/{id}/create-label` (authorized)
+- `POST /api/v1/shipping/shipments/{id}/mark-shipped` (authorized)
+- `POST /api/v1/shipping/shipments/{id}/cancel` (authorized)
+- `GET /api/v1/shipping/shipments/by-order/{orderId}` (authorized, order owner)
+- `POST /api/v1/shipping/webhooks/{provider}`
 - `POST /api/webhooks/directus`
 
 ## Storefront Routes
@@ -171,6 +193,12 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `GET /admin/redirects` (admin redirect management UI)
 - `GET /admin/inventory` (admin inventory dashboard)
 - `GET /admin/inventory/{productId}` (admin inventory details)
+- `GET /admin/shipping` (admin shipping dashboard)
+- `GET /admin/shipping/methods` (admin shipping methods)
+- `GET /admin/shipping/zones` (admin shipping zones)
+- `GET /admin/shipping/rules` (admin shipping rules)
+- `GET /admin/shipments` (admin shipments list)
+- `GET /admin/shipments/{shipmentId}` (admin shipment details)
 - `GET /admin/payments` (admin payments list)
 - `GET /admin/payments/{paymentIntentId}` (admin payment details + refund action)
 - `GET /media/image?src=...&w=...&h=...&fit=max|cover|contain&format=auto|webp|avif|jpeg|png`
@@ -426,7 +454,19 @@ curl -X POST http://localhost:8080/api/v1/cart/customer-123/items \
 curl http://localhost:8080/api/v1/cart/customer-123
 ```
 
-### 4) Checkout: create Order from Cart (guest flow)
+### 4) Request shipping quotes for destination
+
+```bash
+curl -X POST http://localhost:8080/api/v1/shipping/quotes \
+  -H "Content-Type: application/json" \
+  -d '{
+    "countryCode": "BG",
+    "subtotalAmount": 199.98,
+    "currency": "EUR"
+  }'
+```
+
+### 5) Checkout: create Order from Cart (guest flow)
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/orders/checkout \
@@ -435,6 +475,7 @@ curl -X POST http://localhost:8080/api/v1/orders/checkout \
   -d '{
     "cartSessionId": "customer-123",
     "email": "guest@example.com",
+    "shippingMethodCode": "standard",
     "shippingAddress": {
       "firstName": "John",
       "lastName": "Doe",
@@ -456,13 +497,13 @@ curl -X POST http://localhost:8080/api/v1/orders/checkout \
   }'
 ```
 
-### 5) Fetch created order
+### 6) Fetch created order
 
 ```bash
 curl http://localhost:8080/api/v1/orders/PUT_ORDER_ID_HERE
 ```
 
-### 6) Create payment intent for the order
+### 7) Create payment intent for the order
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/payments/intents \
@@ -475,14 +516,14 @@ curl -X POST http://localhost:8080/api/v1/payments/intents \
   }'
 ```
 
-### 7) Confirm payment intent (when status is Pending/RequiresAction)
+### 8) Confirm payment intent (when status is Pending/RequiresAction)
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/payments/intents/PUT_PAYMENT_INTENT_ID_HERE/confirm \
   -H "Idempotency-Key: payment-order-001-confirm"
 ```
 
-### 8) Simulate provider webhook (Demo)
+### 9) Simulate provider webhook (Demo)
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/payments/webhooks/Demo \
@@ -596,7 +637,7 @@ curl -X POST http://localhost:8080/api/v1/payments/webhooks/Demo \
 curl -X POST http://localhost:8080/api/v1/orders/checkout \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: checkout-customer-123-001" \
-  -d '{"cartSessionId":"customer-123","email":"guest@example.com","shippingAddress":{"firstName":"John","lastName":"Doe","street":"Main St 1","city":"Sofia","postalCode":"1000","country":"BG","phone":"+359888000111"},"billingAddress":{"firstName":"John","lastName":"Doe","street":"Main St 1","city":"Sofia","postalCode":"1000","country":"BG","phone":"+359888000111"}}'
+  -d '{"cartSessionId":"customer-123","email":"guest@example.com","shippingMethodCode":"standard","shippingAddress":{"firstName":"John","lastName":"Doe","street":"Main St 1","city":"Sofia","postalCode":"1000","country":"BG","phone":"+359888000111"},"billingAddress":{"firstName":"John","lastName":"Doe","street":"Main St 1","city":"Sofia","postalCode":"1000","country":"BG","phone":"+359888000111"}}'
 ```
 
 ```bash
@@ -604,7 +645,7 @@ curl -X POST http://localhost:8080/api/v1/orders/checkout \
 curl -X POST http://localhost:8080/api/v1/orders/checkout \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: checkout-customer-123-001" \
-  -d '{"cartSessionId":"customer-123","email":"guest@example.com","shippingAddress":{"firstName":"John","lastName":"Doe","street":"Main St 1","city":"Sofia","postalCode":"1000","country":"BG","phone":"+359888000111"},"billingAddress":{"firstName":"John","lastName":"Doe","street":"Main St 1","city":"Sofia","postalCode":"1000","country":"BG","phone":"+359888000111"}}'
+  -d '{"cartSessionId":"customer-123","email":"guest@example.com","shippingMethodCode":"standard","shippingAddress":{"firstName":"John","lastName":"Doe","street":"Main St 1","city":"Sofia","postalCode":"1000","country":"BG","phone":"+359888000111"},"billingAddress":{"firstName":"John","lastName":"Doe","street":"Main St 1","city":"Sofia","postalCode":"1000","country":"BG","phone":"+359888000111"}}'
 ```
 
 ## Inventory & Reservations
@@ -626,7 +667,7 @@ curl -X POST http://localhost:8080/api/v1/orders/checkout \
 - Quantity changes in cart synchronize reservation quantity.
 - Removing item (or reducing to zero) releases reservation.
 - Reservation expiration is handled by `ReservationExpirationWorker` (background sweep).
-- Checkout validates active reservations and consumes them.
+- Checkout validates active reservations and promotes them to order-level reservations.
 
 ### Current inventory policy
 
@@ -677,6 +718,154 @@ curl -X POST http://localhost:8080/api/v1/orders/checkout \
     "ExposeExactStockPublicly": false
   }
 }
+```
+
+## Shipping & Fulfillment
+
+- New bounded context:
+  - `src/Modules/Shipping/Shipping.Domain`
+  - `src/Modules/Shipping/Shipping.Application`
+  - `src/Modules/Shipping/Shipping.Infrastructure`
+  - `src/Modules/Shipping/Shipping.Api`
+- Schema: `shipping`
+- Core persistence:
+  - `shipping_methods`
+  - `shipping_zones`
+  - `shipping_rate_rules`
+  - `shipments`
+  - `shipment_events`
+  - `carrier_webhook_inbox_messages`
+
+### Method/zone/rule model
+
+- `ShippingMethod`:
+  - customer-selectable method (`Code`, `Name`, `Provider`, `Type`, base price, ETA, priority, active flag)
+- `ShippingZone`:
+  - destination applicability by country list (`CountryCodesJson`)
+- `ShippingRateRule`:
+  - method + zone pricing constraints (`min/max order`, optional weight ranges, free-shipping threshold)
+- Quote calculation is deterministic:
+  - active zone by destination country
+  - active methods in matching currency
+  - best matching active rule per method
+  - free shipping applies when threshold is met
+  - results sorted by method priority, then price
+
+### Checkout shipping flow
+
+- Checkout request supports `shippingMethodCode`.
+- Orders resolve shipping quote at checkout time using destination country + subtotal + selected method.
+- Order snapshots now store:
+  - shipping method code/name
+  - shipping price and currency
+  - shipping address snapshot
+- Order total includes shipping.
+- Payment intent amount uses final order total (products + shipping).
+
+### Shipment lifecycle
+
+- Shipment statuses:
+  - `Pending`, `LabelCreated`, `ReadyForPickup`, `Shipped`, `InTransit`, `OutForDelivery`, `Delivered`, `Failed`, `Returned`, `Cancelled`
+- State transitions are validated in domain logic.
+- Current fulfillment policy:
+  - order must be `Paid` before shipment creation
+  - shipment creation is manual (admin/API)
+  - order fulfillment status is updated from shipping events:
+    - `ShipmentCreated` -> `FulfillmentPending`
+    - `ShipmentDelivered` -> `Fulfilled`
+    - `ShipmentReturned` -> `Returned`
+
+### DemoCarrier and webhook processing
+
+- Carrier abstraction:
+  - `IShippingCarrierProvider`
+  - `IShippingCarrierProviderFactory`
+  - `IShippingWebhookVerifier`
+- Local default provider: `DemoCarrier`
+  - creates fake tracking number/url
+  - creates label reference
+  - supports webhook payload parsing
+- Carrier webhook endpoint:
+  - `POST /api/v1/shipping/webhooks/{provider}`
+  - inbox is idempotent by unique `(Provider, ExternalEventId)`
+  - duplicate webhooks are acknowledged and ignored safely (`processed=false`)
+
+### Tracking visibility
+
+- Customer-facing shipment lookup:
+  - `GET /api/v1/shipping/shipments/by-order/{orderId}`
+  - requires auth and verifies order ownership
+- Account order details page renders:
+  - shipping method and shipping price
+  - shipment status, tracking number, tracking URL
+  - shipment event timeline
+- Admin pages:
+  - `/admin/shipping`
+  - `/admin/shipping/methods`
+  - `/admin/shipping/zones`
+  - `/admin/shipping/rules`
+  - `/admin/shipments`
+  - `/admin/shipments/{shipmentId}`
+
+### Shipping configuration
+
+```json
+{
+  "Shipping": {
+    "DefaultCarrier": "DemoCarrier",
+    "DefaultCurrency": "EUR",
+    "AllowStorePickup": false,
+    "QuoteCacheSeconds": 60,
+    "DemoCarrier": {
+      "AutoAdvanceStatuses": false,
+      "BaseTrackingUrl": "http://localhost:5000/demo-tracking/"
+    }
+  }
+}
+```
+
+### Local dev examples
+
+```bash
+# Create shipping method (authorized)
+curl -X POST http://localhost:8080/api/v1/shipping/methods \
+  -H "Content-Type: application/json" \
+  -d '{"code":"standard","name":"Standard Delivery","description":"2-4 business days","provider":"DemoCarrier","type":"Delivery","basePriceAmount":5.99,"currency":"EUR","supportsTracking":true,"supportsPickupPoint":false,"estimatedMinDays":2,"estimatedMaxDays":4,"priority":10}'
+```
+
+```bash
+# Create shipping zone (authorized)
+curl -X POST http://localhost:8080/api/v1/shipping/zones \
+  -H "Content-Type: application/json" \
+  -d '{"code":"eu","name":"Europe","countryCodes":["BG","DE","FR"]}'
+```
+
+```bash
+# Create shipping rule (authorized)
+curl -X POST http://localhost:8080/api/v1/shipping/rules \
+  -H "Content-Type: application/json" \
+  -d '{"shippingMethodId":"PUT_METHOD_ID","shippingZoneId":"PUT_ZONE_ID","minOrderAmount":null,"maxOrderAmount":null,"minWeightKg":null,"maxWeightKg":null,"priceAmount":5.99,"freeShippingThresholdAmount":100.0,"currency":"EUR"}'
+```
+
+```bash
+# Quote shipping methods for checkout
+curl -X POST http://localhost:8080/api/v1/shipping/quotes \
+  -H "Content-Type: application/json" \
+  -d '{"countryCode":"BG","subtotalAmount":80.0,"currency":"EUR"}'
+```
+
+```bash
+# Create shipment for paid order (authorized)
+curl -X POST http://localhost:8080/api/v1/shipping/shipments \
+  -H "Content-Type: application/json" \
+  -d '{"orderId":"PUT_PAID_ORDER_ID","shippingMethodCode":"standard"}'
+```
+
+```bash
+# Simulate carrier status webhook
+curl -X POST http://localhost:8080/api/v1/shipping/webhooks/DemoCarrier \
+  -H "Content-Type: application/json" \
+  -d '{"eventId":"carrier-demo-001","eventType":"shipment.status.updated","shipmentId":"PUT_SHIPMENT_ID","status":"Shipped","message":"Shipment left warehouse"}'
 ```
 
 ## Customers and Identity
@@ -946,6 +1135,16 @@ dotnet ef migrations add <MigrationName> \
   --project src/Modules/Payments/Payments.Infrastructure/Payments.Infrastructure.csproj \
   --startup-project src/Modules/Payments/Payments.Infrastructure/Payments.Infrastructure.csproj \
   --context Payments.Infrastructure.Persistence.PaymentsDbContext \
+  --output-dir Persistence/Migrations
+```
+
+### Shipping
+
+```bash
+dotnet ef migrations add <MigrationName> \
+  --project src/Modules/Shipping/Shipping.Infrastructure/Shipping.Infrastructure.csproj \
+  --startup-project src/Modules/Shipping/Shipping.Infrastructure/Shipping.Infrastructure.csproj \
+  --context Shipping.Infrastructure.Persistence.ShippingDbContext \
   --output-dir Persistence/Migrations
 ```
 

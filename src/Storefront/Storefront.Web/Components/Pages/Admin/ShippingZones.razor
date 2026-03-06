@@ -1,0 +1,132 @@
+@page "/admin/shipping/zones"
+@layout Storefront.Web.Components.Layout.AdminLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>Shipping Zones</PageTitle>
+
+<h1>Shipping Zones</h1>
+<p><a class="btn-link" href="/admin/shipping">Back to shipping dashboard</a></p>
+
+<section class="admin-panel">
+    <h2>Create zone</h2>
+    <form class="form-grid" @onsubmit="CreateAsync" @onsubmit:preventDefault="true">
+        <label>Code <input @bind="code" required /></label>
+        <label>Name <input @bind="name" required /></label>
+        <label>Country codes (comma separated) <input @bind="countryCodes" required /></label>
+        <button class="btn-primary" type="submit" disabled="@isSaving">Create</button>
+    </form>
+</section>
+
+<section class="admin-panel">
+    <h2>Zones</h2>
+    @if (zones.Count == 0)
+    {
+        <p>No shipping zones configured.</p>
+    }
+    else
+    {
+        <table class="cart-table">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>Countries</th>
+                    <th>Active</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var zone in zones)
+                {
+                    <tr>
+                        <td>@zone.Code</td>
+                        <td>@zone.Name</td>
+                        <td>@string.Join(", ", zone.CountryCodes)</td>
+                        <td>@zone.IsActive</td>
+                        <td>
+                            <button class="btn-link" @onclick="() => ToggleZoneAsync(zone)">
+                                @(zone.IsActive ? "Deactivate" : "Activate")
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <p class="status-message">@message</p>
+}
+
+@code {
+    private readonly List<StoreShippingZone> zones = [];
+    private bool isSaving;
+    private string code = "eu";
+    private string name = "Europe";
+    private string countryCodes = "BG,DE,FR";
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        zones.Clear();
+        zones.AddRange(await StoreApiClient.GetShippingZonesAsync(activeOnly: false, CancellationToken.None));
+    }
+
+    private async Task CreateAsync()
+    {
+        isSaving = true;
+        message = null;
+
+        var zone = new StoreShippingZone(
+            Guid.Empty,
+            code.Trim(),
+            name.Trim(),
+            ParseCountries(countryCodes),
+            IsActive: true,
+            DateTime.UtcNow,
+            DateTime.UtcNow);
+
+        var id = await StoreApiClient.CreateShippingZoneAsync(zone, CancellationToken.None);
+        message = id is null ? "Failed to create shipping zone." : $"Shipping zone created ({id}).";
+        isSaving = false;
+
+        if (id is not null)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private async Task ToggleZoneAsync(StoreShippingZone zone)
+    {
+        var success = await StoreApiClient.UpdateShippingZoneAsync(
+            zone.Id,
+            zone with { IsActive = !zone.IsActive },
+            CancellationToken.None);
+
+        message = success
+            ? "Shipping zone updated."
+            : "Shipping zone update failed.";
+
+        if (success)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private static IReadOnlyCollection<string> ParseCountries(string value)
+    {
+        return value
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(country => country.ToUpperInvariant())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
+}

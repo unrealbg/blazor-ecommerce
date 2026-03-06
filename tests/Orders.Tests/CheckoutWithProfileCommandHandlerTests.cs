@@ -34,6 +34,7 @@ public sealed class CheckoutWithProfileCommandHandlerTests
             new CheckoutWithProfileCommand(
                 "session-guest",
                 "guest@example.com",
+                ShippingMethodCode: null,
                 BuildAddress("Guest", "Buyer"),
                 BuildAddress("Guest", "Buyer"),
                 "guest-idempotency",
@@ -75,6 +76,7 @@ public sealed class CheckoutWithProfileCommandHandlerTests
             new CheckoutWithProfileCommand(
                 "session-user",
                 "other-email@example.com",
+                ShippingMethodCode: null,
                 BuildAddress("Alice", "Buyer"),
                 BuildAddress("Alice", "Buyer"),
                 "user-idempotency",
@@ -101,6 +103,7 @@ public sealed class CheckoutWithProfileCommandHandlerTests
         var handler = new CheckoutWithProfileCommandHandler(
             cartAccessor,
             new StubInventoryReservationService(),
+            new StubShippingQuoteService(),
             idempotencyRepository,
             customerAccessor,
             sessionCache,
@@ -166,6 +169,27 @@ public sealed class CheckoutWithProfileCommandHandlerTests
         public Task<Result> ReleaseOrderReservationsAsync(Guid orderId, CancellationToken cancellationToken)
         {
             return Task.FromResult(Result.Success());
+        }
+    }
+
+    private sealed class StubShippingQuoteService : IShippingQuoteService
+    {
+        public Task<Result<ShippingQuoteSelection>> ResolveQuoteAsync(
+            string countryCode,
+            decimal subtotalAmount,
+            string currency,
+            string? shippingMethodCode,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Result<ShippingQuoteSelection>.Success(new ShippingQuoteSelection(
+                Guid.NewGuid(),
+                shippingMethodCode ?? "standard",
+                "Standard Delivery",
+                0m,
+                string.IsNullOrWhiteSpace(currency) ? "EUR" : currency,
+                EstimatedMinDays: 2,
+                EstimatedMaxDays: 4,
+                IsFreeShipping: true)));
         }
     }
 

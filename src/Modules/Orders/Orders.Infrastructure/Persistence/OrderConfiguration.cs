@@ -20,12 +20,24 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
             .HasMaxLength(128)
             .IsRequired();
 
+        builder.Property(order => order.ShippingMethodCode)
+            .HasColumnName("shipping_method_code")
+            .HasMaxLength(64)
+            .IsRequired();
+
+        builder.Property(order => order.ShippingMethodName)
+            .HasColumnName("shipping_method_name")
+            .HasMaxLength(160)
+            .IsRequired();
+
         builder.Property(order => order.PlacedAtUtc)
             .IsRequired();
 
         builder.Property(order => order.PaidAtUtc);
 
         builder.Property(order => order.LastPaymentIntentId);
+
+        builder.Property(order => order.LastShipmentId);
 
         builder.Property(order => order.PaymentFailureMessage)
             .HasMaxLength(512);
@@ -40,7 +52,14 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
             .HasMaxLength(32)
             .IsRequired();
 
+        builder.Property(order => order.FulfillmentStatus)
+            .HasColumnName("fulfillment_status")
+            .HasConversion<string>()
+            .HasMaxLength(32)
+            .IsRequired();
+
         builder.HasIndex(order => order.Status);
+        builder.HasIndex(order => order.FulfillmentStatus);
 
         builder.OwnsOne(order => order.Subtotal, subtotalBuilder =>
         {
@@ -64,6 +83,19 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 
             totalBuilder.Property(total => total.Amount)
                 .HasColumnName("total_amount")
+                .HasPrecision(18, 2)
+                .IsRequired();
+        });
+
+        builder.OwnsOne(order => order.ShippingPrice, shippingPriceBuilder =>
+        {
+            shippingPriceBuilder.Property(total => total.Currency)
+                .HasColumnName("shipping_currency")
+                .HasMaxLength(3)
+                .IsRequired();
+
+            shippingPriceBuilder.Property(total => total.Amount)
+                .HasColumnName("shipping_amount")
                 .HasPrecision(18, 2)
                 .IsRequired();
         });
