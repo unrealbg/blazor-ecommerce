@@ -8,4 +8,13 @@ public interface ICanonicalUrlService
         string path,
         IReadOnlyDictionary<string, StringValues> query,
         bool hasNextPage);
+
+    CanonicalUrls BuildForSearch(
+        IReadOnlyDictionary<string, StringValues> query,
+        bool hasNextPage);
+
+    CanonicalUrls BuildForCategory(
+        string categorySlug,
+        IReadOnlyDictionary<string, StringValues> query,
+        bool hasNextPage);
 }

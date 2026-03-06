@@ -8,6 +8,7 @@ Production-oriented modular monolith starter with strict module boundaries and c
 - Cart
 - Orders
 - Redirects
+- Search
 - Storefront.Web (SSR Blazor UI)
 
 ## Architecture
@@ -41,6 +42,7 @@ Production-oriented modular monolith starter with strict module boundaries and c
   - `cart`
   - `orders`
   - `redirects`
+  - `search`
   - `shared` (outbox)
 - Migrations are separated by bounded context:
   - `src/Modules/*/*Infrastructure/Persistence/Migrations`
@@ -109,6 +111,9 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `GET /api/v1/redirects?page=1&pageSize=20`
 - `PUT /api/v1/redirects/{redirectRuleId}/deactivate`
 - `GET /api/v1/redirects/resolve?path=/blog/old-slug`
+- `GET /api/v1/search/products?q=&categorySlug=&brand=&minPrice=&maxPrice=&inStock=&sort=&page=&pageSize=`
+- `GET /api/v1/search/suggest?q=&limit=`
+- `POST /api/v1/search/rebuild`
 - `POST /api/webhooks/directus`
 
 ## Storefront Routes
@@ -136,7 +141,7 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
   - `<meta name="description">`
   - `<link rel="canonical">`
   - `<link rel="prev">` and `<link rel="next">` for paginated pages
-  - `<meta name="robots" content="noindex,nofollow">` when CMS content has `no_index=true`
+  - `<meta name="robots" content="noindex,follow">` for low-value filtered/search pages and CMS content with `no_index=true`
   - OpenGraph + Twitter basic tags
 - Canonical and sitemap absolute URLs are generated from `Site:BaseUrl`.
 - `robots.txt` allows all crawlers and points to `/sitemap.xml`.
@@ -149,9 +154,11 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - Category canonical:
   - `page=1` -> `/category/{slug}`
   - `page>1` -> `/category/{slug}?page=N`
+  - filtered category URLs (`brand`, `minPrice`, `maxPrice`, `inStock`, `sort`, `pageSize`) are `noindex,follow` and canonicalized to clean category URL (plus `page` only when `>1`)
 - Search canonical:
+  - always `noindex,follow`
   - keeps only `q` and `page` (`page` only when `>1`)
-  - excludes `sort` and `pageSize`
+  - excludes `categorySlug`, `brand`, `minPrice`, `maxPrice`, `inStock`, `sort`, `pageSize`
   - `page=1` -> `/search?q=...`
   - `page>1` -> `/search?q=...&page=N`
 - Blog/Page canonical:
@@ -458,6 +465,58 @@ curl -X POST http://localhost:8080/api/v1/orders/checkout/customer-123 \
 
 - The endpoint also supports `data.slug` and `previous.slug` fields.
 
+## Search and Faceted Filtering
+
+- Search is implemented as a dedicated read-model module (`src/Modules/Search`) with provider abstraction:
+  - `ISearchProvider` in Application
+  - `PostgresSearchProvider` in Infrastructure
+- Read model table:
+  - `search.product_search_documents`
+  - denormalized searchable product data (`slug`, `name`, `description`, `brand`, `category`, `price`, `stock`, `active`, `image`, timestamps)
+- PostgreSQL search-related setup:
+  - `pg_trgm` extension enabled in Search migration
+  - B-tree indexes on filter/sort fields (`category_slug`, `brand`, `price_amount`, `is_active`, `is_in_stock`, `slug`, `normalized_name`)
+  - GIN expression index for full-text vector (`name + description + brand + category`)
+  - GIN trigram index on product name
+  - `PostgresSearchProvider` uses `websearch_to_tsquery` + trigram similarity for query ranking/suggestions
+
+### Indexing Flow
+
+- Catalog publishes domain events into the shared outbox.
+- Search index is updated from event handlers via `IProductSearchIndexer`:
+  - `ProductCreated` -> upsert search document
+  - `ProductSlugChanged` -> upsert search document
+- Rebuild API:
+  - `POST /api/v1/search/rebuild`
+  - pulls products through `IProductCatalogReader`
+  - re-syncs full search read model
+
+### Storefront Search UX
+
+- SSR listing routes:
+  - `/search`
+  - `/category/{slug}`
+- Facets supported:
+  - brand
+  - category (on search results)
+  - in-stock
+  - price range (min/max)
+- Sorting supported:
+  - `relevance`, `popular`, `newest`, `price_asc`, `price_desc`, `name_asc`
+- Autocomplete:
+  - header search box calls `GET /api/v1/search/suggest`
+  - debounced suggestions, links to `/product/{slug}`
+- Analytics hooks (structured logs only, no external provider yet):
+  - search performed
+  - zero results
+  - filters applied
+  - suggestion clicked
+
+### Future Path
+
+- Search module is isolated behind `ISearchProvider`.
+- Replacing PostgreSQL implementation with OpenSearch/Elasticsearch later requires a new provider implementation and DI switch, without changing Storefront/Search API contracts.
+
 ## Add a Migration
 
 ### Shared outbox (schema `shared`)
@@ -502,6 +561,16 @@ dotnet ef migrations add <MigrationName> \
 dotnet ef migrations add <MigrationName> \
   --project src/Modules/Redirects/Redirects.Infrastructure/Redirects.Infrastructure.csproj \
   --context Redirects.Infrastructure.Persistence.RedirectsDbContext \
+  --output-dir Persistence/Migrations
+```
+
+### Search
+
+```bash
+dotnet ef migrations add <MigrationName> \
+  --project src/Modules/Search/Search.Infrastructure/Search.Infrastructure.csproj \
+  --startup-project src/Modules/Search/Search.Infrastructure/Search.Infrastructure.csproj \
+  --context Search.Infrastructure.Persistence.SearchDbContext \
   --output-dir Persistence/Migrations
 ```
 

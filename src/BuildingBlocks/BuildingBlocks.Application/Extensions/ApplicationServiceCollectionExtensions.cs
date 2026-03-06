@@ -16,6 +16,7 @@ public static class ApplicationServiceCollectionExtensions
         services.TryAddEnumerable(
             ServiceDescriptor.Transient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>)));
         services.TryAddScoped<IRedirectRuleWriter, NullRedirectRuleWriter>();
+        services.TryAddScoped<IProductSearchIndexer, NullProductSearchIndexer>();
 
         return services;
     }

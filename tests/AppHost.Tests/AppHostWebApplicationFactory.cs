@@ -10,16 +10,18 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orders.Infrastructure.Persistence;
 using Redirects.Infrastructure.Persistence;
+using Search.Infrastructure.Persistence;
 
 namespace AppHost.Tests;
 
 public sealed class AppHostWebApplicationFactory : WebApplicationFactory<Program>
 {
-    private const string SharedDatabaseName = "apphost-tests-shared";
-    private static readonly InMemoryDatabaseRoot DatabaseRoot = new();
     private static readonly IServiceProvider InMemoryServiceProvider = new ServiceCollection()
         .AddEntityFrameworkInMemoryDatabase()
         .BuildServiceProvider();
+
+    private readonly string sharedDatabaseName = $"apphost-tests-{Guid.NewGuid():N}";
+    private readonly InMemoryDatabaseRoot databaseRoot = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -41,15 +43,16 @@ public sealed class AppHostWebApplicationFactory : WebApplicationFactory<Program
 
         builder.ConfigureServices(services =>
         {
-            ReplaceDbContext<OutboxDbContext>(services);
-            ReplaceDbContext<CatalogDbContext>(services);
-            ReplaceDbContext<CartDbContext>(services);
-            ReplaceDbContext<OrdersDbContext>(services);
-            ReplaceDbContext<RedirectsDbContext>(services);
+            this.ReplaceDbContext<OutboxDbContext>(services);
+            this.ReplaceDbContext<CatalogDbContext>(services);
+            this.ReplaceDbContext<CartDbContext>(services);
+            this.ReplaceDbContext<OrdersDbContext>(services);
+            this.ReplaceDbContext<RedirectsDbContext>(services);
+            this.ReplaceDbContext<SearchDbContext>(services);
         });
     }
 
-    private static void ReplaceDbContext<TContext>(IServiceCollection services)
+    private void ReplaceDbContext<TContext>(IServiceCollection services)
         where TContext : DbContext
     {
         services.RemoveAll<TContext>();
@@ -57,7 +60,7 @@ public sealed class AppHostWebApplicationFactory : WebApplicationFactory<Program
 
         services.AddDbContext<TContext>(options =>
             options
-                .UseInMemoryDatabase(SharedDatabaseName, DatabaseRoot)
+                .UseInMemoryDatabase(this.sharedDatabaseName, this.databaseRoot)
                 .UseInternalServiceProvider(InMemoryServiceProvider));
     }
 }

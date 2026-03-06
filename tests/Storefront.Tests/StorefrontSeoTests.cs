@@ -5,6 +5,40 @@ namespace Storefront.Tests;
 public sealed class StorefrontSeoTests(StorefrontWebApplicationFactory factory) : IClassFixture<StorefrontWebApplicationFactory>
 {
     [Fact]
+    public async Task SearchPage_Should_BeNoIndex_AndUseDeterministicCanonical()
+    {
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync(
+            "/search?q=keyboard&brand=Contoso&minPrice=10&maxPrice=200&inStock=true&sort=price_desc&utm_source=mail");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("name=\"robots\" content=\"noindex,follow\"", html, StringComparison.Ordinal);
+        Assert.Contains(
+            "rel=\"canonical\" href=\"https://shop.example.com/search?q=keyboard\"",
+            html,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "rel=\"canonical\" href=\"https://shop.example.com/search?q=keyboard&amp;sort=price_desc\"",
+            html,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task FilteredCategoryPage_Should_BeNoIndex_AndCanonicalizeToBaseCategory()
+    {
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/category/keyboards?brand=Contoso&sort=price_desc&inStock=true");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("name=\"robots\" content=\"noindex,follow\"", html, StringComparison.Ordinal);
+        Assert.Contains("href=\"https://shop.example.com/category/keyboards\"", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ProductPage_Should_Return200_AndContainStructuredDataAndCanonical()
     {
         using var client = factory.CreateClient();

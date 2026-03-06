@@ -176,6 +176,7 @@ public sealed class Product : AggregateRoot<Guid>
             normalizedCategoryName,
             price,
             isActive);
+        product.RaiseDomainEvent(new ProductCreated(product.Id));
 
         return Result<Product>.Success(product);
 

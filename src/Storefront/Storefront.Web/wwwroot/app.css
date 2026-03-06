@@ -80,6 +80,10 @@ a {
     gap: 0.5rem;
 }
 
+.search-box {
+    position: relative;
+}
+
 .search-form input {
     width: 100%;
     border: 1px solid var(--border);
@@ -94,6 +98,33 @@ a {
     color: #fff;
     padding: 0.55rem 0.85rem;
     cursor: pointer;
+}
+
+.search-suggestions {
+    list-style: none;
+    margin: 0.35rem 0 0;
+    padding: 0.35rem;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+}
+
+.search-suggestions li a {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.45rem 0.5rem;
+    border-radius: 8px;
+}
+
+.search-suggestions li a:hover {
+    background: #f1f5f9;
 }
 
 .cart-link {
@@ -165,6 +196,150 @@ a {
     display: inline-flex;
     align-items: center;
     gap: 0.6rem;
+}
+
+.listing-layout {
+    display: grid;
+    grid-template-columns: minmax(220px, 250px) 1fr;
+    gap: 1rem;
+    align-items: start;
+}
+
+.listing-main {
+    min-width: 0;
+}
+
+.facet-sidebar {
+    position: sticky;
+    top: 5.8rem;
+    display: grid;
+    gap: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.9rem;
+}
+
+.facet-sidebar h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+}
+
+.facet-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.3rem;
+}
+
+.facet-sidebar a {
+    display: inline-flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.6rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 0.3rem 0.4rem;
+}
+
+.facet-sidebar a:hover {
+    border-color: var(--border);
+}
+
+.facet-sidebar a.active {
+    border-color: var(--accent);
+    color: var(--accent-strong);
+    font-weight: 600;
+}
+
+.price-range p {
+    margin: 0;
+    color: var(--muted);
+}
+
+.sort-dropdown {
+    margin: 0 0 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+.sort-dropdown ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.sort-dropdown a {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.28rem 0.65rem;
+    color: var(--muted);
+}
+
+.sort-dropdown a.active,
+.sort-dropdown a:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.price-filter-form {
+    margin: 0 0 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    align-items: end;
+}
+
+.price-filter-form label {
+    display: grid;
+    gap: 0.2rem;
+    font-size: 0.9rem;
+    color: var(--muted);
+}
+
+.price-filter-form input {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.45rem 0.55rem;
+    width: 130px;
+}
+
+.price-filter-form button {
+    border: 0;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    padding: 0.52rem 0.8rem;
+    cursor: pointer;
+}
+
+.active-filters {
+    margin: 0.6rem 0 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.filter-chip {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.26rem 0.62rem;
+    color: var(--muted);
+}
+
+.filter-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.filter-chip.reset {
+    color: var(--danger);
+    border-color: #fecaca;
 }
 
 .toolbar select {
@@ -528,5 +703,13 @@ a {
 
     .add-to-cart {
         flex-wrap: wrap;
+    }
+
+    .listing-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .facet-sidebar {
+        position: static;
     }
 }

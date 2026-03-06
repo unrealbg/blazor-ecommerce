@@ -1,0 +1,132 @@
+@using Storefront.Web.Services.Api
+@implements IDisposable
+@inject IStoreApiClient StoreApiClient
+@inject NavigationManager NavigationManager
+@inject ILogger<SearchBox> Logger
+
+<div class="search-box">
+    <form class="search-form" role="search" @onsubmit="OnSubmitAsync" @onsubmit:preventDefault="true">
+        <input
+            type="search"
+            value="@searchText"
+            placeholder="@Placeholder"
+            aria-label="@AriaLabel"
+            @oninput="OnInputAsync"
+            @onfocus="OnFocus"
+            @onblur="OnBlurAsync" />
+        <button type="submit">Search</button>
+    </form>
+
+    @if (isOpen && suggestions.Count != 0)
+    {
+        <ul class="search-suggestions" role="listbox" aria-label="Product suggestions">
+            @foreach (var suggestion in suggestions)
+            {
+                <li>
+                    <a
+                        href="/product/@suggestion.Slug"
+                        @onclick="() => OnSuggestionClickAsync(suggestion)"
+                        @onclick:preventDefault="true">
+                        <span>@suggestion.Name</span>
+                        <small>@($"{suggestion.PriceAmount:0.00} {suggestion.Currency}")</small>
+                    </a>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    private readonly List<StoreSearchSuggestionItem> suggestions = [];
+    private CancellationTokenSource? debounceCancellationTokenSource;
+    private string searchText = string.Empty;
+    private bool isOpen;
+
+    [Parameter]
+    public string Placeholder { get; set; } = "Search products...";
+
+    [Parameter]
+    public string AriaLabel { get; set; } = "Search products";
+
+    private async Task OnInputAsync(ChangeEventArgs args)
+    {
+        searchText = args.Value?.ToString() ?? string.Empty;
+
+        debounceCancellationTokenSource?.Cancel();
+        debounceCancellationTokenSource?.Dispose();
+        debounceCancellationTokenSource = new CancellationTokenSource();
+
+        if (searchText.Trim().Length < 3)
+        {
+            suggestions.Clear();
+            isOpen = false;
+            return;
+        }
+
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(250), debounceCancellationTokenSource.Token);
+
+            var response = await StoreApiClient.SuggestProductsAsync(
+                searchText,
+                8,
+                debounceCancellationTokenSource.Token);
+
+            suggestions.Clear();
+            suggestions.AddRange(response.Suggestions);
+            isOpen = suggestions.Count != 0;
+            StateHasChanged();
+        }
+        catch (OperationCanceledException)
+        {
+            // Ignore canceled debounce requests.
+        }
+    }
+
+    private Task OnSubmitAsync(EventArgs _)
+    {
+        NavigationManager.NavigateTo(BuildSearchUrl(searchText));
+        return Task.CompletedTask;
+    }
+
+    private void OnFocus(FocusEventArgs _)
+    {
+        if (suggestions.Count != 0)
+        {
+            isOpen = true;
+        }
+    }
+
+    private async Task OnBlurAsync(FocusEventArgs _)
+    {
+        await Task.Delay(150);
+        isOpen = false;
+        StateHasChanged();
+    }
+
+    private Task OnSuggestionClickAsync(StoreSearchSuggestionItem suggestion)
+    {
+        Logger.LogInformation(
+            "Search suggestion clicked. Query={Query} Slug={Slug} Name={Name}",
+            searchText.Trim(),
+            suggestion.Slug,
+            suggestion.Name);
+
+        NavigationManager.NavigateTo($"/product/{suggestion.Slug}");
+        return Task.CompletedTask;
+    }
+
+    private static string BuildSearchUrl(string query)
+    {
+        var normalizedQuery = query.Trim();
+        return string.IsNullOrWhiteSpace(normalizedQuery)
+            ? "/search"
+            : $"/search?q={Uri.EscapeDataString(normalizedQuery)}";
+    }
+
+    public void Dispose()
+    {
+        debounceCancellationTokenSource?.Cancel();
+        debounceCancellationTokenSource?.Dispose();
+    }
+}

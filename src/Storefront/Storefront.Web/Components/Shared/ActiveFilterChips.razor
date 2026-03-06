@@ -1,0 +1,22 @@
+@if (Chips.Count != 0)
+{
+    <section class="active-filters" aria-label="Active filters">
+        @foreach (var chip in Chips)
+        {
+            <a class="filter-chip" href="@chip.RemoveUrl">@chip.Label x</a>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(ClearAllUrl))
+        {
+            <a class="filter-chip reset" href="@ClearAllUrl">Clear all</a>
+        }
+    </section>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyCollection<FilterChip> Chips { get; set; } = [];
+
+    [Parameter]
+    public string? ClearAllUrl { get; set; }
+}

@@ -1,10 +1,9 @@
 @page "/category/{Slug}"
+@using System.Globalization
 @using Microsoft.AspNetCore.Http
 @using Microsoft.Extensions.Primitives
 @using Storefront.Web.Services.Api
-@using Storefront.Web.Services.Media
 @using Storefront.Web.Services.Seo
-@inject NavigationManager NavigationManager
 @inject IStoreApiClient StoreApiClient
 @inject IPageMetadataService MetadataService
 @inject ICanonicalUrlService CanonicalUrlService
@@ -20,107 +19,148 @@
 
 <section>
     <h1>@categoryTitle</h1>
-    <p>Showing products for this category.</p>
+    <p>Browse products in this category.</p>
 </section>
 
-<section class="toolbar">
-    <label for="category-sort">Sort:</label>
-    <select id="category-sort" value="@currentSort" @onchange="OnSortChanged">
-        <option value="name">Name (A-Z)</option>
-        <option value="name-desc">Name (Z-A)</option>
-        <option value="price-asc">Price (Low to High)</option>
-        <option value="price-desc">Price (High to Low)</option>
-    </select>
-</section>
+<ActiveFilterChips Chips="chips" ClearAllUrl="@clearFiltersUrl" />
 
-<section class="grid">
-    @if (isLoading)
-    {
-        <p>Loading products...</p>
-    }
-    else if (products.Count == 0)
-    {
-        <p>No products found.</p>
-    }
-    else
-    {
-        @foreach (var product in products)
-        {
-            <article class="card">
-                <ResponsiveImage
-                    Source="@product.ImageUrl"
-                    Alt="@product.Name"
-                    Preset="MediaImagePreset.ProductCard"
-                    CssClass="card-image" />
-                <h2>
-                    <a href="/product/@product.Slug">@product.Name</a>
-                </h2>
-                <p>@(string.IsNullOrWhiteSpace(product.Description) ? "No description provided." : product.Description)</p>
-                <p class="price">@FormatPrice(product.Amount, product.Currency)</p>
-            </article>
-        }
-    }
-</section>
+<section class="listing-layout">
+    <FacetSidebar
+        BrandOptions="brandOptions"
+        CategoryOptions="[]"
+        InStockUrl="@inStockUrl"
+        InStockSelected="@(selectedInStock is true)"
+        InStockCount="@response.Facets.InStockCount"
+        MinAvailable="@response.Facets.Price.MinAvailable"
+        MaxAvailable="@response.Facets.Price.MaxAvailable" />
 
-<Pagination CurrentPage="currentPage" TotalPages="totalPages" BuildUrl="BuildPageUrl" />
+    <div class="listing-main">
+        <SortDropdown Options="sortOptions" />
+
+        <form class="price-filter-form" method="get" action="/category/@Slug">
+            @foreach (var brand in selectedBrands)
+            {
+                <input type="hidden" name="brand" value="@brand" />
+            }
+
+            @if (selectedInStock is true)
+            {
+                <input type="hidden" name="inStock" value="true" />
+            }
+
+            @if (!IsDefaultSort(selectedSort))
+            {
+                <input type="hidden" name="sort" value="@selectedSort" />
+            }
+
+            <label>
+                Min EUR
+                <input type="number" step="0.01" min="0" name="minPrice" value="@minPriceInput" />
+            </label>
+            <label>
+                Max EUR
+                <input type="number" step="0.01" min="0" name="maxPrice" value="@maxPriceInput" />
+            </label>
+            <button type="submit">Apply price</button>
+            <a href="@BuildPriceResetUrl()">Clear price</a>
+        </form>
+
+        <ProductGrid Items="response.Items" EmptyMessage="No products found in this category." />
+
+        <Pagination CurrentPage="@response.Page" TotalPages="@response.TotalPages" BuildUrl="BuildPageUrl" />
+    </div>
+</section>
 
 @code {
-    private const int FixedPageSize = 24;
-    private const string DefaultSort = "name";
+    private static readonly IReadOnlyCollection<SortDefinition> CategorySortDefinitions =
+    [
+        new SortDefinition("popular", "Popular"),
+        new SortDefinition("newest", "Newest"),
+        new SortDefinition("price_asc", "Price: Low to High"),
+        new SortDefinition("price_desc", "Price: High to Low"),
+        new SortDefinition("name_asc", "Name: A-Z"),
+    ];
 
     [Parameter]
     public string Slug { get; set; } = "all-products";
 
-    [SupplyParameterFromQuery(Name = "page")]
-    public int? Page { get; set; }
+    [SupplyParameterFromQuery(Name = "brand")]
+    public string[]? Brands { get; set; }
+
+    [SupplyParameterFromQuery(Name = "minPrice")]
+    public decimal? MinPrice { get; set; }
+
+    [SupplyParameterFromQuery(Name = "maxPrice")]
+    public decimal? MaxPrice { get; set; }
+
+    [SupplyParameterFromQuery(Name = "inStock")]
+    public bool? InStock { get; set; }
 
     [SupplyParameterFromQuery(Name = "sort")]
     public string? Sort { get; set; }
 
+    [SupplyParameterFromQuery(Name = "page")]
+    public int? Page { get; set; }
+
     private PageMetadata metadata = new("Category", "Browse products by category.", "/");
     private CanonicalUrls? canonicalUrls;
+    private StoreSearchProductsResponse response = EmptyResponse();
     private IReadOnlyCollection<string> jsonLdScripts = [];
     private IReadOnlyList<BreadcrumbItem> breadcrumbs = [];
-    private string categoryTitle = "All Products";
-    private bool isLoading = true;
-    private string currentSort = DefaultSort;
-    private int currentPage = 1;
-    private int totalPages;
-    private List<StoreProduct> products = [];
+    private IReadOnlyCollection<FilterOptionLink> brandOptions = [];
+    private IReadOnlyCollection<SortOptionLink> sortOptions = [];
+    private IReadOnlyCollection<FilterChip> chips = [];
+    private string categoryTitle = "Category";
+    private IReadOnlyCollection<string> selectedBrands = [];
+    private decimal? selectedMinPrice;
+    private decimal? selectedMaxPrice;
+    private bool? selectedInStock;
+    private string selectedSort = "popular";
+    private int selectedPage = 1;
+    private string inStockUrl = "/";
+    private string clearFiltersUrl = "/";
+    private string minPriceInput = string.Empty;
+    private string maxPriceInput = string.Empty;
 
     protected override async Task OnParametersSetAsync()
     {
-        isLoading = true;
+        selectedBrands = NormalizeBrands(Brands);
+        (selectedMinPrice, selectedMaxPrice) = NormalizePriceRange(MinPrice, MaxPrice);
+        selectedInStock = InStock;
+        selectedPage = NormalizePage(Page);
+        selectedSort = NormalizeCategorySort(Sort);
 
-        categoryTitle = SlugToTitle(Slug);
-        currentSort = NormalizeSort(Sort);
-        currentPage = NormalizePage(Page);
+        response = await StoreApiClient.SearchProductsAsync(
+            new StoreSearchProductsRequest(
+                Query: null,
+                CategorySlug: Slug,
+                Brands: selectedBrands,
+                MinPrice: selectedMinPrice,
+                MaxPrice: selectedMaxPrice,
+                InStock: selectedInStock,
+                Sort: selectedSort,
+                Page: selectedPage,
+                PageSize: 24),
+            CancellationToken.None);
 
-        var allProducts = await StoreApiClient.GetProductsAsync(CancellationToken.None);
-        var filteredProducts = allProducts
-            .Where(product => product.IsActive)
-            .Where(product => string.Equals(product.Currency, "EUR", StringComparison.Ordinal))
-            .Where(product => IsProductInCategory(product, Slug))
-            .ToList();
+        selectedBrands = response.AppliedFilters.Brands;
+        selectedMinPrice = response.AppliedFilters.MinPrice;
+        selectedMaxPrice = response.AppliedFilters.MaxPrice;
+        selectedInStock = response.AppliedFilters.InStock;
+        selectedSort = response.AppliedFilters.Sort;
+        selectedPage = response.AppliedFilters.Page;
 
-        var sortedProducts = SortProducts(filteredProducts, currentSort);
-        totalPages = Math.Max(1, (int)Math.Ceiling(sortedProducts.Count / (double)FixedPageSize));
-        currentPage = Math.Min(currentPage, totalPages);
+        categoryTitle = ResolveCategoryTitle(response.Items, Slug);
 
-        products = sortedProducts
-            .Skip((currentPage - 1) * FixedPageSize)
-            .Take(FixedPageSize)
-            .ToList();
-
-        var hasNextPage = currentPage < totalPages;
-        canonicalUrls = CanonicalUrlService.Build(
-            $"/category/{Slug}",
-            BuildCanonicalQuery(currentPage),
-            hasNextPage);
+        canonicalUrls = CanonicalUrlService.BuildForCategory(
+            Slug,
+            BuildCanonicalQuery(),
+            response.Page < response.TotalPages);
 
         metadata = MetadataService.ForCategory(categoryTitle, Slug) with
         {
             CanonicalUrl = canonicalUrls.CanonicalUrl,
+            NoIndex = canonicalUrls.NoIndex || response.Total == 0,
         };
 
         breadcrumbs =
@@ -134,102 +174,235 @@
             StructuredDataService.BuildBreadcrumbJsonLd(ToAbsoluteBreadcrumbs(breadcrumbs)),
         ];
 
-        isLoading = false;
+        brandOptions = response.Facets.Brands
+            .Select(brand => new FilterOptionLink(
+                brand.Value,
+                brand.Count,
+                brand.Selected,
+                BuildBrandToggleUrl(brand.Value)))
+            .ToArray();
+
+        sortOptions = CategorySortDefinitions
+            .Select(definition => new SortOptionLink(
+                definition.Value,
+                definition.Label,
+                string.Equals(definition.Value, selectedSort, StringComparison.Ordinal),
+                BuildSortUrl(definition.Value)))
+            .ToArray();
+
+        chips = BuildActiveFilterChips();
+        inStockUrl = BuildInStockToggleUrl();
+        clearFiltersUrl = BuildCategoryUrl(Slug, [], null, null, null, selectedSort, 1);
+        minPriceInput = selectedMinPrice?.ToString("0.##", CultureInfo.InvariantCulture) ?? string.Empty;
+        maxPriceInput = selectedMaxPrice?.ToString("0.##", CultureInfo.InvariantCulture) ?? string.Empty;
     }
 
-    private Task OnSortChanged(ChangeEventArgs args)
+    private string BuildPageUrl(int page)
     {
-        var selectedSort = args.Value?.ToString();
-        var targetUrl = BuildPageUrl(1, selectedSort);
-
-        NavigationManager.NavigateTo(targetUrl);
-        return Task.CompletedTask;
+        return BuildCategoryUrl(
+            Slug,
+            selectedBrands,
+            selectedMinPrice,
+            selectedMaxPrice,
+            selectedInStock,
+            selectedSort,
+            page);
     }
 
-    private string BuildPageUrl(int targetPage)
+    private string BuildSortUrl(string sort)
     {
-        return BuildPageUrl(targetPage, currentSort);
+        return BuildCategoryUrl(
+            Slug,
+            selectedBrands,
+            selectedMinPrice,
+            selectedMaxPrice,
+            selectedInStock,
+            sort,
+            1);
     }
 
-    private string BuildPageUrl(int targetPage, string? sort)
+    private string BuildBrandToggleUrl(string brand)
     {
-        var queryParameters = new List<KeyValuePair<string, string?>>(2);
-
-        if (targetPage > 1)
+        var updatedBrands = selectedBrands.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!updatedBrands.Add(brand))
         {
-            queryParameters.Add(new KeyValuePair<string, string?>("page", targetPage.ToString()));
+            updatedBrands.Remove(brand);
         }
 
-        var normalizedSort = NormalizeSort(sort);
-        if (!string.Equals(normalizedSort, DefaultSort, StringComparison.Ordinal))
+        var orderedBrands = updatedBrands
+            .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return BuildCategoryUrl(
+            Slug,
+            orderedBrands,
+            selectedMinPrice,
+            selectedMaxPrice,
+            selectedInStock,
+            selectedSort,
+            1);
+    }
+
+    private string BuildInStockToggleUrl()
+    {
+        bool? nextInStock = selectedInStock is true ? null : true;
+        return BuildCategoryUrl(
+            Slug,
+            selectedBrands,
+            selectedMinPrice,
+            selectedMaxPrice,
+            nextInStock,
+            selectedSort,
+            1);
+    }
+
+    private string BuildPriceResetUrl()
+    {
+        return BuildCategoryUrl(
+            Slug,
+            selectedBrands,
+            null,
+            null,
+            selectedInStock,
+            selectedSort,
+            1);
+    }
+
+    private IReadOnlyCollection<FilterChip> BuildActiveFilterChips()
+    {
+        var activeChips = new List<FilterChip>();
+
+        foreach (var brand in selectedBrands)
         {
-            queryParameters.Add(new KeyValuePair<string, string?>("sort", normalizedSort));
+            activeChips.Add(new FilterChip($"Brand: {brand}", BuildBrandToggleUrl(brand)));
         }
 
-        var basePath = $"/category/{Slug}";
+        if (selectedInStock is true)
+        {
+            activeChips.Add(new FilterChip("In stock", BuildInStockToggleUrl()));
+        }
+
+        if (selectedMinPrice is not null || selectedMaxPrice is not null)
+        {
+            activeChips.Add(new FilterChip("Price range", BuildPriceResetUrl()));
+        }
+
+        return activeChips;
+    }
+
+    private string BuildCategoryUrl(
+        string slug,
+        IReadOnlyCollection<string> brands,
+        decimal? minPrice,
+        decimal? maxPrice,
+        bool? inStock,
+        string sort,
+        int page)
+    {
+        var normalizedSlug = string.IsNullOrWhiteSpace(slug) ? "all-products" : slug.Trim().ToLowerInvariant();
+        var normalizedPage = page <= 1 ? 1 : page;
+        var queryParameters = new List<KeyValuePair<string, string?>>();
+
+        foreach (var brand in brands
+                     .Where(value => !string.IsNullOrWhiteSpace(value))
+                     .OrderBy(value => value, StringComparer.OrdinalIgnoreCase))
+        {
+            queryParameters.Add(new KeyValuePair<string, string?>("brand", brand.Trim()));
+        }
+
+        if (minPrice is > 0)
+        {
+            queryParameters.Add(new KeyValuePair<string, string?>(
+                "minPrice",
+                minPrice.Value.ToString("0.##", CultureInfo.InvariantCulture)));
+        }
+
+        if (maxPrice is > 0)
+        {
+            queryParameters.Add(new KeyValuePair<string, string?>(
+                "maxPrice",
+                maxPrice.Value.ToString("0.##", CultureInfo.InvariantCulture)));
+        }
+
+        if (inStock is true)
+        {
+            queryParameters.Add(new KeyValuePair<string, string?>("inStock", "true"));
+        }
+
+        if (!IsDefaultSort(sort))
+        {
+            queryParameters.Add(new KeyValuePair<string, string?>("sort", sort));
+        }
+
+        if (normalizedPage > 1)
+        {
+            queryParameters.Add(new KeyValuePair<string, string?>("page", normalizedPage.ToString(CultureInfo.InvariantCulture)));
+        }
+
+        var basePath = $"/category/{normalizedSlug}";
         return queryParameters.Count == 0
             ? basePath
             : $"{basePath}{QueryString.Create(queryParameters)}";
     }
 
-    private static List<StoreProduct> SortProducts(IEnumerable<StoreProduct> source, string sort)
-    {
-        return sort switch
-        {
-            "name-desc" => source.OrderByDescending(product => product.Name).ToList(),
-            "price-asc" => source.OrderBy(product => product.Amount).ThenBy(product => product.Name).ToList(),
-            "price-desc" => source.OrderByDescending(product => product.Amount).ThenBy(product => product.Name).ToList(),
-            _ => source.OrderBy(product => product.Name).ToList(),
-        };
-    }
-
-    private static bool IsProductInCategory(StoreProduct product, string categorySlug)
-    {
-        if (string.Equals(categorySlug, "all-products", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        return string.Equals(product.CategorySlug, categorySlug, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static int NormalizePage(int? page)
-    {
-        return page is null || page < 1 ? 1 : page.Value;
-    }
-
-    private static string NormalizeSort(string? sort)
-    {
-        return sort switch
-        {
-            "name-desc" => "name-desc",
-            "price-asc" => "price-asc",
-            "price-desc" => "price-desc",
-            _ => DefaultSort,
-        };
-    }
-
-    private static string FormatPrice(decimal amount, string currency)
-    {
-        return $"{amount:0.00} {currency}";
-    }
-
-    private static IReadOnlyDictionary<string, StringValues> BuildCanonicalQuery(int page)
+    private IReadOnlyDictionary<string, StringValues> BuildCanonicalQuery()
     {
         var values = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase);
-        if (page > 1)
+
+        if (selectedBrands.Count != 0)
         {
-            values["page"] = page.ToString();
+            values["brand"] = new StringValues(selectedBrands.ToArray());
+        }
+
+        if (selectedMinPrice is > 0)
+        {
+            values["minPrice"] = selectedMinPrice.Value.ToString("0.##", CultureInfo.InvariantCulture);
+        }
+
+        if (selectedMaxPrice is > 0)
+        {
+            values["maxPrice"] = selectedMaxPrice.Value.ToString("0.##", CultureInfo.InvariantCulture);
+        }
+
+        if (selectedInStock is true)
+        {
+            values["inStock"] = "true";
+        }
+
+        if (!IsDefaultSort(selectedSort))
+        {
+            values["sort"] = selectedSort;
+        }
+
+        if (selectedPage > 1)
+        {
+            values["page"] = selectedPage.ToString(CultureInfo.InvariantCulture);
         }
 
         return values;
+    }
+
+    private IEnumerable<BreadcrumbItem> ToAbsoluteBreadcrumbs(IEnumerable<BreadcrumbItem> source)
+    {
+        return source.Select(item => new BreadcrumbItem(item.Name, MetadataService.BuildAbsoluteUrl(item.Url)));
+    }
+
+    private static string ResolveCategoryTitle(IReadOnlyCollection<StoreSearchProductItem> items, string fallbackSlug)
+    {
+        var firstName = items
+            .Select(item => item.CategoryName)
+            .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name));
+
+        return !string.IsNullOrWhiteSpace(firstName)
+            ? firstName
+            : SlugToTitle(fallbackSlug);
     }
 
     private static string SlugToTitle(string slug)
     {
         if (string.IsNullOrWhiteSpace(slug))
         {
-            return "All Products";
+            return "Category";
         }
 
         var words = slug
@@ -239,8 +412,63 @@
         return string.Join(' ', words);
     }
 
-    private IEnumerable<BreadcrumbItem> ToAbsoluteBreadcrumbs(IEnumerable<BreadcrumbItem> source)
+    private static int NormalizePage(int? page)
     {
-        return source.Select(item => new BreadcrumbItem(item.Name, MetadataService.BuildAbsoluteUrl(item.Url)));
+        return page is null || page < 1 ? 1 : page.Value;
     }
+
+    private static IReadOnlyCollection<string> NormalizeBrands(string[]? brands)
+    {
+        return (brands ?? [])
+            .Where(brand => !string.IsNullOrWhiteSpace(brand))
+            .Select(brand => brand.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(brand => brand, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static (decimal? Min, decimal? Max) NormalizePriceRange(decimal? minPrice, decimal? maxPrice)
+    {
+        var normalizedMin = minPrice is > 0 ? minPrice : null;
+        var normalizedMax = maxPrice is > 0 ? maxPrice : null;
+
+        if (normalizedMin is not null && normalizedMax is not null && normalizedMin > normalizedMax)
+        {
+            (normalizedMin, normalizedMax) = (normalizedMax, normalizedMin);
+        }
+
+        return (normalizedMin, normalizedMax);
+    }
+
+    private static string NormalizeCategorySort(string? sort)
+    {
+        if (string.IsNullOrWhiteSpace(sort))
+        {
+            return "popular";
+        }
+
+        var normalized = sort.Trim().ToLowerInvariant();
+        return CategorySortDefinitions.Any(definition => definition.Value == normalized)
+            ? normalized
+            : "popular";
+    }
+
+    private static bool IsDefaultSort(string sort)
+    {
+        return string.Equals(sort, "popular", StringComparison.Ordinal);
+    }
+
+    private static StoreSearchProductsResponse EmptyResponse()
+    {
+        return new StoreSearchProductsResponse(
+            [],
+            0,
+            1,
+            24,
+            1,
+            new StoreSearchFacets([], [], 0, new StoreSearchPriceSummary(null, null)),
+            new StoreSearchAppliedFilters(null, null, [], null, null, null, "popular", 1, 24));
+    }
+
+    private sealed record SortDefinition(string Value, string Label);
 }
