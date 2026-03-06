@@ -1,11 +1,13 @@
 using BuildingBlocks.Application.Contracts;
 using BuildingBlocks.Application.Abstractions;
+using BuildingBlocks.Domain.Results;
 
 namespace Cart.Application.Carts.GetCart;
 
 public sealed class GetCartQueryHandler(
     ICartRepository cartRepository,
-    ICustomerSessionCache customerSessionCache)
+    ICustomerSessionCache customerSessionCache,
+    IInventoryReservationService inventoryReservationService)
     : IQueryHandler<GetCartQuery, CartDto?>
 {
     public async Task<CartDto?> Handle(GetCartQuery request, CancellationToken cancellationToken)
@@ -18,6 +20,21 @@ public sealed class GetCartQueryHandler(
             return null;
         }
 
+        var messages = new List<string>();
+        var validationResult = await inventoryReservationService.ValidateCartReservationsAsync(
+            request.CustomerId,
+            cart.Lines.Select(line => new InventoryCartLineRequest(line.ProductId, null, line.Quantity)).ToList(),
+            cancellationToken);
+
+        if (validationResult.IsFailure)
+        {
+            messages.Add(validationResult.Error.Message);
+        }
+        else if (!validationResult.Value.IsValid)
+        {
+            messages.Add("Some items in your cart were updated due to stock availability.");
+        }
+
         return new CartDto(
             cart.Id,
             cart.CustomerId,
@@ -28,6 +45,7 @@ public sealed class GetCartQueryHandler(
                     line.UnitPrice.Currency,
                     line.UnitPrice.Amount,
                     line.Quantity))
-                .ToList());
+                .ToList(),
+            messages);
     }
 }

@@ -13,4 +13,7 @@ public sealed record ProductDto(
     string? CategoryName,
     string Currency,
     decimal Amount,
-    bool IsActive);
+    bool IsActive,
+    bool IsTracked = false,
+    bool AllowBackorder = false,
+    int? AvailableQuantity = null);

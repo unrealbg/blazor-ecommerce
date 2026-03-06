@@ -7,6 +7,7 @@ Production-oriented modular monolith starter with strict module boundaries and c
 - Catalog
 - Cart
 - Orders
+- Inventory
 - Customers
 - Redirects
 - Search
@@ -42,6 +43,7 @@ Production-oriented modular monolith starter with strict module boundaries and c
   - `catalog`
   - `cart`
   - `orders`
+  - `inventory`
   - `customers`
   - `identity`
   - `redirects`
@@ -131,6 +133,10 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `GET /api/v1/search/products?q=&categorySlug=&brand=&minPrice=&maxPrice=&inStock=&sort=&page=&pageSize=`
 - `GET /api/v1/search/suggest?q=&limit=`
 - `POST /api/v1/search/rebuild`
+- `GET /api/v1/inventory/products/{productId}`
+- `POST /api/v1/inventory/products/{productId}/adjust` (authorized)
+- `GET /api/v1/inventory/products/{productId}/movements?page=&pageSize=` (authorized)
+- `GET /api/v1/inventory/reservations/active?productId=&page=&pageSize=` (authorized)
 - `POST /api/webhooks/directus`
 
 ## Storefront Routes
@@ -150,6 +156,8 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `GET /account/orders` (interactive)
 - `GET /account/addresses` (interactive)
 - `GET /admin/redirects` (admin redirect management UI)
+- `GET /admin/inventory` (admin inventory dashboard)
+- `GET /admin/inventory/{productId}` (admin inventory details)
 - `GET /media/image?src=...&w=...&h=...&fit=max|cover|contain&format=auto|webp|avif|jpeg|png`
 - `GET /robots.txt`
 - `GET /sitemap.xml`
@@ -466,6 +474,77 @@ curl -X POST http://localhost:8080/api/v1/orders/checkout \
   -d '{"cartSessionId":"customer-123","email":"guest@example.com","shippingAddress":{"firstName":"John","lastName":"Doe","street":"Main St 1","city":"Sofia","postalCode":"1000","country":"BG","phone":"+359888000111"},"billingAddress":{"firstName":"John","lastName":"Doe","street":"Main St 1","city":"Sofia","postalCode":"1000","country":"BG","phone":"+359888000111"}}'
 ```
 
+## Inventory & Reservations
+
+- New bounded context:
+  - `src/Modules/Inventory/Inventory.Domain`
+  - `src/Modules/Inventory/Inventory.Application`
+  - `src/Modules/Inventory/Inventory.Infrastructure`
+  - `src/Modules/Inventory/Inventory.Api`
+- Schema: `inventory`
+- Core model:
+  - `StockItem` (`OnHandQuantity`, `ReservedQuantity`, computed available, tracked/backorder flags, `RowVersion`)
+  - `StockReservation` (`Active`, `Consumed`, `Released`, `Expired`, expiration timestamp, reservation token)
+  - `StockMovement` ledger (`ReservationCreated`, `ReservationReleased`, `ReservationConsumed`, `ReservationExpired`, `Restock`, `ManualAdjustment`, `OrderCompleted`)
+
+### Reservation lifecycle
+
+- Reservations are created/updated on cart mutation through `IInventoryReservationService`.
+- Quantity changes in cart synchronize reservation quantity.
+- Removing item (or reducing to zero) releases reservation.
+- Reservation expiration is handled by `ReservationExpirationWorker` (background sweep).
+- Checkout validates active reservations and consumes them.
+
+### Current inventory policy
+
+- Reserve in cart.
+- Consume on successful order placement.
+- Consumption decrements:
+  - `ReservedQuantity`
+  - `OnHandQuantity`
+- If checkout fails before consume, reservation remains active until explicit release or TTL expiry.
+
+### Oversell protection
+
+- `StockItem.RowVersion` is used as optimistic concurrency token.
+- Inventory write paths execute with retry (`InventoryDbContext.ExecuteWithConcurrencyRetryAsync`).
+- On repeated conflicts, API returns business conflict:
+  - `inventory.stock.concurrency_conflict`
+
+### Search/storefront stock behavior
+
+- Catalog API now enriches products with inventory availability (`IsTracked`, `AllowBackorder`, `AvailableQuantity`).
+- Storefront product page shows stock status:
+  - In stock
+  - Out of stock
+  - Backorder available
+- Add-to-cart is disabled when item is tracked, out of stock, and backorder disabled.
+- Stock availability domain event updates Search read model `IsInStock`.
+
+### Admin inventory operations
+
+- `GET /api/v1/inventory/products/{productId}` (public read)
+- `POST /api/v1/inventory/products/{productId}/adjust` (authorized)
+- `GET /api/v1/inventory/products/{productId}/movements` (authorized)
+- `GET /api/v1/inventory/reservations/active` (authorized)
+- Storefront admin UI:
+  - `/admin/inventory`
+  - `/admin/inventory/{productId}`
+
+### Inventory configuration
+
+```json
+{
+  "Inventory": {
+    "ReservationTtlMinutes": 30,
+    "ExpirationSweepSeconds": 60,
+    "RefreshReservationOnCartMutation": true,
+    "RetryOnConcurrencyCount": 3,
+    "ExposeExactStockPublicly": false
+  }
+}
+```
+
 ## Customers and Identity
 
 - New bounded context:
@@ -714,6 +793,16 @@ dotnet ef migrations add <MigrationName> \
   --startup-project src/Modules/Customers/Customers.Infrastructure/Customers.Infrastructure.csproj \
   --context Customers.Infrastructure.Identity.IdentityAppDbContext \
   --output-dir Identity/Migrations
+```
+
+### Inventory
+
+```bash
+dotnet ef migrations add <MigrationName> \
+  --project src/Modules/Inventory/Inventory.Infrastructure/Inventory.Infrastructure.csproj \
+  --startup-project src/Modules/Inventory/Inventory.Infrastructure/Inventory.Infrastructure.csproj \
+  --context Inventory.Infrastructure.Persistence.InventoryDbContext \
+  --output-dir Persistence/Migrations
 ```
 
 ## Outbox Flow

@@ -7,7 +7,8 @@ namespace Cart.Application.Carts.UpdateItemQuantity;
 public sealed class UpdateCartItemQuantityCommandHandler(
     ICartRepository cartRepository,
     ICartUnitOfWork unitOfWork,
-    ICustomerSessionCache customerSessionCache)
+    ICustomerSessionCache customerSessionCache,
+    IInventoryReservationService inventoryReservationService)
     : ICommandHandler<UpdateCartItemQuantityCommand, Guid>
 {
     public async Task<Result<Guid>> Handle(
@@ -20,13 +21,51 @@ public sealed class UpdateCartItemQuantityCommandHandler(
             return Result<Guid>.Failure(new Error("cart.not_found", "Cart was not found."));
         }
 
+        var existingLine = cart.Lines.FirstOrDefault(line => line.ProductId == request.ProductId);
+        if (existingLine is null)
+        {
+            return Result<Guid>.Failure(new Error("cart.item.not_found", "Cart item was not found."));
+        }
+
+        var existingQuantity = existingLine.Quantity;
+        var reservationResult = await inventoryReservationService.SyncCartReservationAsync(
+            request.CustomerId,
+            request.ProductId,
+            sku: null,
+            request.Quantity,
+            cancellationToken);
+        if (reservationResult.IsFailure)
+        {
+            return Result<Guid>.Failure(reservationResult.Error);
+        }
+
         var updateResult = cart.UpdateItemQuantity(request.ProductId, request.Quantity);
         if (updateResult.IsFailure)
         {
+            await inventoryReservationService.SyncCartReservationAsync(
+                request.CustomerId,
+                request.ProductId,
+                sku: null,
+                existingQuantity,
+                cancellationToken);
             return Result<Guid>.Failure(updateResult.Error);
         }
 
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch
+        {
+            await inventoryReservationService.SyncCartReservationAsync(
+                request.CustomerId,
+                request.ProductId,
+                sku: null,
+                existingQuantity,
+                cancellationToken);
+            throw;
+        }
+
         await customerSessionCache.TouchCartSessionAsync(request.CustomerId, cancellationToken);
         return Result<Guid>.Success(cart.Id);
     }

@@ -1,0 +1,179 @@
+@page "/admin/inventory/{ProductId:guid}"
+@layout Storefront.Web.Components.Layout.AdminLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>Inventory Details</PageTitle>
+
+<h1>Inventory Details</h1>
+<p><a class="btn-link" href="/admin/inventory">Back to inventory search</a></p>
+
+@if (isLoading)
+{
+    <p>Loading inventory details...</p>
+}
+else if (details is null)
+{
+    <p>Inventory item was not found.</p>
+}
+else
+{
+    <section class="admin-panel">
+        <h2>Stock item</h2>
+        <table class="cart-table">
+            <tbody>
+                <tr><th>Product</th><td>@details.StockItem.ProductId</td></tr>
+                <tr><th>On-hand</th><td>@details.StockItem.OnHandQuantity</td></tr>
+                <tr><th>Reserved</th><td>@details.StockItem.ReservedQuantity</td></tr>
+                <tr><th>Available</th><td>@details.StockItem.AvailableQuantity</td></tr>
+                <tr><th>Tracked</th><td>@details.StockItem.IsTracked</td></tr>
+                <tr><th>Backorder</th><td>@details.StockItem.AllowBackorder</td></tr>
+                <tr><th>In stock</th><td>@details.StockItem.IsInStock</td></tr>
+                <tr><th>Updated</th><td>@details.StockItem.UpdatedAtUtc.ToString("yyyy-MM-dd HH:mm")</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section class="admin-panel">
+        <h2>Manual adjustment</h2>
+        <form class="form-grid" @onsubmit="AdjustAsync" @onsubmit:preventDefault="true">
+            <label>
+                Quantity delta
+                <input type="number" @bind="adjustDelta" required />
+            </label>
+            <label>
+                Reason
+                <input @bind="adjustReason" maxlength="300" />
+            </label>
+            <button class="btn-primary" type="submit" disabled="@isAdjusting">Apply</button>
+        </form>
+    </section>
+
+    <section class="admin-panel">
+        <h2>Stock movements</h2>
+        @if (movements.Items.Count == 0)
+        {
+            <p>No movements found.</p>
+        }
+        else
+        {
+            <table class="cart-table">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Delta</th>
+                        <th>Reason</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var movement in movements.Items)
+                    {
+                        <tr>
+                            <td>@movement.Type</td>
+                            <td>@movement.QuantityDelta</td>
+                            <td>@movement.Reason</td>
+                            <td>@movement.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    <section class="admin-panel">
+        <h2>Active reservations</h2>
+        @if (reservations.Items.Count == 0)
+        {
+            <p>No active reservations.</p>
+        }
+        else
+        {
+            <table class="cart-table">
+                <thead>
+                    <tr>
+                        <th>Reservation</th>
+                        <th>Cart</th>
+                        <th>Qty</th>
+                        <th>Expires</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var reservation in reservations.Items)
+                    {
+                        <tr>
+                            <td>@reservation.Id</td>
+                            <td>@reservation.CartId</td>
+                            <td>@reservation.Quantity</td>
+                            <td>@reservation.ExpiresAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>@reservation.Status</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+}
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <p class="status-message">@message</p>
+}
+
+@code {
+    [Parameter]
+    public Guid ProductId { get; set; }
+
+    private bool isLoading = true;
+    private bool isAdjusting;
+    private string? message;
+    private int adjustDelta;
+    private string? adjustReason;
+    private StoreInventoryProductDetails? details;
+    private StoreStockMovementPage movements = new(1, 50, 0, []);
+    private StoreStockReservationPage reservations = new(1, 50, 0, []);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        isLoading = true;
+        message = null;
+
+        details = await StoreApiClient.GetInventoryProductAsync(ProductId, CancellationToken.None);
+        movements = await StoreApiClient.GetInventoryMovementsAsync(ProductId, 1, 50, CancellationToken.None);
+        reservations = await StoreApiClient.GetActiveInventoryReservationsAsync(ProductId, 1, 50, CancellationToken.None);
+
+        isLoading = false;
+    }
+
+    private async Task AdjustAsync()
+    {
+        if (adjustDelta == 0)
+        {
+            message = "Quantity delta must not be zero.";
+            return;
+        }
+
+        isAdjusting = true;
+        var success = await StoreApiClient.AdjustInventoryStockAsync(
+            ProductId,
+            adjustDelta,
+            adjustReason,
+            CancellationToken.None);
+
+        message = success
+            ? "Stock adjusted successfully."
+            : "Stock adjustment failed.";
+
+        adjustDelta = 0;
+        adjustReason = null;
+        isAdjusting = false;
+
+        await ReloadAsync();
+    }
+}

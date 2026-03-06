@@ -517,6 +517,10 @@ a {
     color: var(--muted);
 }
 
+.status-message.warning {
+    color: #b45309;
+}
+
 .account-shell {
     display: grid;
     gap: 1rem;

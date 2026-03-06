@@ -140,7 +140,7 @@
 
         if (createdOrderId is null)
         {
-            message = "Checkout could not be completed.";
+            message = "Checkout could not be completed. Reservations may have expired, please refresh your cart.";
             isSubmitting = false;
             return;
         }

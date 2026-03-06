@@ -14,4 +14,8 @@ public sealed record ProductSnapshot(
     string? CategoryName = null,
     string? ImageUrl = null,
     DateTime CreatedAtUtc = default,
-    DateTime UpdatedAtUtc = default);
+    DateTime UpdatedAtUtc = default,
+    bool IsTracked = false,
+    bool AllowBackorder = false,
+    int? AvailableQuantity = null,
+    string? Sku = null);

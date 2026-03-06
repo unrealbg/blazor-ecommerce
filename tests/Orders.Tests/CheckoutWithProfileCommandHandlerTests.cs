@@ -1,5 +1,6 @@
 using BuildingBlocks.Application.Contracts;
 using BuildingBlocks.Domain.Abstractions;
+using BuildingBlocks.Domain.Results;
 using Orders.Application.Orders;
 using Orders.Application.Orders.Checkout;
 using Orders.Domain.Orders;
@@ -99,6 +100,7 @@ public sealed class CheckoutWithProfileCommandHandlerTests
         var sessionCache = new StubCustomerSessionCache();
         var handler = new CheckoutWithProfileCommandHandler(
             cartAccessor,
+            new StubInventoryReservationService(),
             idempotencyRepository,
             customerAccessor,
             sessionCache,
@@ -107,6 +109,42 @@ public sealed class CheckoutWithProfileCommandHandlerTests
             new StubClock());
 
         return new HandlerFixture(handler, orderRepository, sessionCache);
+    }
+
+    private sealed class StubInventoryReservationService : IInventoryReservationService
+    {
+        public Task<Result> SyncCartReservationAsync(
+            string cartId,
+            Guid productId,
+            string? sku,
+            int quantity,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Result.Success());
+        }
+
+        public Task<Result> ReleaseAllCartReservationsAsync(string cartId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Result.Success());
+        }
+
+        public Task<Result<InventoryReservationValidationResult>> ValidateCartReservationsAsync(
+            string cartId,
+            IReadOnlyCollection<InventoryCartLineRequest> lines,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Result<InventoryReservationValidationResult>.Success(
+                new InventoryReservationValidationResult(true, [])));
+        }
+
+        public Task<Result> ConsumeCartReservationsAsync(
+            string cartId,
+            Guid orderId,
+            IReadOnlyCollection<InventoryCartLineRequest> lines,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Result.Success());
+        }
     }
 
     private static CartCheckoutSnapshot BuildCartSnapshot(string sessionId)

@@ -340,9 +340,81 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
             return Task.FromResult(true);
         }
 
+        public Task<StoreInventoryProductDetails?> GetInventoryProductAsync(
+            Guid productId,
+            CancellationToken cancellationToken)
+        {
+            var product = Products.SingleOrDefault(item => item.Id == productId);
+            if (product is null)
+            {
+                return Task.FromResult<StoreInventoryProductDetails?>(null);
+            }
+
+            var availableQuantity = product.IsInStock ? 100 : 0;
+            var details = new StoreInventoryProductDetails(
+                new StoreStockItemSummary(
+                    Guid.NewGuid(),
+                    product.Id,
+                    product.Sku,
+                    100,
+                    0,
+                    availableQuantity,
+                    product.IsTracked,
+                    product.AllowBackorder,
+                    product.IsInStock,
+                    DateTime.UtcNow.AddDays(-5),
+                    DateTime.UtcNow),
+                0,
+                0);
+
+            return Task.FromResult<StoreInventoryProductDetails?>(details);
+        }
+
+        public Task<bool> AdjustInventoryStockAsync(
+            Guid productId,
+            int quantityDelta,
+            string? reason,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(quantityDelta != 0 && Products.Any(product => product.Id == productId));
+        }
+
+        public Task<StoreStockMovementPage> GetInventoryMovementsAsync(
+            Guid productId,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken)
+        {
+            var movements = new List<StoreStockMovement>
+            {
+                new(
+                    Guid.NewGuid(),
+                    productId,
+                    null,
+                    "ManualAdjustment",
+                    10,
+                    null,
+                    "Initial stock",
+                    DateTime.UtcNow.AddDays(-2),
+                    "system"),
+            };
+
+            return Task.FromResult(new StoreStockMovementPage(1, pageSize <= 0 ? 50 : pageSize, movements.Count, movements));
+        }
+
+        public Task<StoreStockReservationPage> GetActiveInventoryReservationsAsync(
+            Guid? productId,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken)
+        {
+            IReadOnlyCollection<StoreStockReservation> reservations = [];
+            return Task.FromResult(new StoreStockReservationPage(1, pageSize <= 0 ? 50 : pageSize, reservations.Count, reservations));
+        }
+
         public Task<StoreCart?> GetCartAsync(string customerId, CancellationToken cancellationToken)
         {
-            return Task.FromResult<StoreCart?>(new StoreCart(Guid.NewGuid(), customerId, []));
+            return Task.FromResult<StoreCart?>(new StoreCart(Guid.NewGuid(), customerId, [], []));
         }
 
         public Task<StoreProduct?> GetProductBySlugAsync(string slug, CancellationToken cancellationToken)
@@ -697,6 +769,9 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
                     "KEY-0001",
                     "/images/mechanical-keyboard.png",
                     true,
+                    true,
+                    false,
+                    20,
                     "keyboards",
                     "Keyboards",
                     "EUR",
@@ -716,6 +791,9 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
                         $"KEY-{index:0000}",
                         $"/images/keyboard-{index}.png",
                         true,
+                        true,
+                        false,
+                        50,
                         "keyboards",
                         "Keyboards",
                         "EUR",
@@ -733,6 +811,9 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
                     "MOU-0001",
                     "/images/wireless-mouse.png",
                     true,
+                    true,
+                    false,
+                    12,
                     "mice",
                     "Mice",
                     "EUR",

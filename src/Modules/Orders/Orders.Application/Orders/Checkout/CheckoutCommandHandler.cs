@@ -10,6 +10,7 @@ namespace Orders.Application.Orders.Checkout;
 
 public sealed class CheckoutCommandHandler(
     ICartCheckoutAccessor cartCheckoutAccessor,
+    IInventoryReservationService inventoryReservationService,
     ICheckoutIdempotencyRepository idempotencyRepository,
     IOrderRepository orderRepository,
     IOrdersUnitOfWork unitOfWork,
@@ -50,6 +51,26 @@ public sealed class CheckoutCommandHandler(
                             new Error("orders.checkout.cart_empty", "Cannot checkout an empty cart."));
                     }
 
+                    var normalizedLines = cart.Lines
+                        .Select(line => new InventoryCartLineRequest(line.ProductId, null, line.Quantity))
+                        .ToList();
+
+                    var reservationValidation = await inventoryReservationService.ValidateCartReservationsAsync(
+                        cart.CustomerId,
+                        normalizedLines,
+                        innerCancellationToken);
+                    if (reservationValidation.IsFailure)
+                    {
+                        return Result<Guid>.Failure(reservationValidation.Error);
+                    }
+
+                    if (!reservationValidation.Value.IsValid)
+                    {
+                        return Result<Guid>.Failure(new Error(
+                            "orders.checkout.reservation.invalid",
+                            "Some cart reservations are invalid or expired. Please refresh your cart."));
+                    }
+
                     var lineData = new List<OrderLineData>(cart.Lines.Count);
                     foreach (var line in cart.Lines)
                     {
@@ -75,6 +96,17 @@ public sealed class CheckoutCommandHandler(
                         orderResult.Value.Id,
                         clock.UtcNow,
                         innerCancellationToken);
+
+                    var consumeResult = await inventoryReservationService.ConsumeCartReservationsAsync(
+                        cart.CustomerId,
+                        orderResult.Value.Id,
+                        normalizedLines,
+                        innerCancellationToken);
+                    if (consumeResult.IsFailure)
+                    {
+                        return Result<Guid>.Failure(consumeResult.Error);
+                    }
+
                     await cartCheckoutAccessor.ClearCartAsync(cart.CartId, innerCancellationToken);
                     await unitOfWork.SaveChangesAsync(innerCancellationToken);
 

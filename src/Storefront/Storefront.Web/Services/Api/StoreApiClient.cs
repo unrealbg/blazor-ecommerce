@@ -341,6 +341,60 @@ public sealed class StoreApiClient(
         return response.IsSuccessStatusCode;
     }
 
+    public Task<StoreInventoryProductDetails?> GetInventoryProductAsync(
+        Guid productId,
+        CancellationToken cancellationToken)
+    {
+        return GetOrDefaultAsync<StoreInventoryProductDetails>(
+            $"/api/v1/inventory/products/{productId}",
+            cancellationToken);
+    }
+
+    public async Task<bool> AdjustInventoryStockAsync(
+        Guid productId,
+        int quantityDelta,
+        string? reason,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/inventory/products/{productId}/adjust")
+        {
+            Content = JsonContent.Create(new AdjustInventoryStockRequest(quantityDelta, reason)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(request, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<StoreStockMovementPage> GetInventoryMovementsAsync(
+        Guid productId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var normalizedPage = page <= 0 ? 1 : page;
+        var normalizedPageSize = pageSize <= 0 ? 50 : pageSize;
+        var uri = $"/api/v1/inventory/products/{productId}/movements?page={normalizedPage}&pageSize={normalizedPageSize}";
+
+        var response = await GetAuthorizedOrDefaultAsync<StoreStockMovementPage>(uri, cancellationToken);
+        return response ?? new StoreStockMovementPage(normalizedPage, normalizedPageSize, 0, []);
+    }
+
+    public async Task<StoreStockReservationPage> GetActiveInventoryReservationsAsync(
+        Guid? productId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var normalizedPage = page <= 0 ? 1 : page;
+        var normalizedPageSize = pageSize <= 0 ? 50 : pageSize;
+        var query = productId is null
+            ? $"/api/v1/inventory/reservations/active?page={normalizedPage}&pageSize={normalizedPageSize}"
+            : $"/api/v1/inventory/reservations/active?productId={productId.Value}&page={normalizedPage}&pageSize={normalizedPageSize}";
+
+        var response = await GetAuthorizedOrDefaultAsync<StoreStockReservationPage>(query, cancellationToken);
+        return response ?? new StoreStockReservationPage(normalizedPage, normalizedPageSize, 0, []);
+    }
+
     private static string BuildSearchUri(StoreSearchProductsRequest request)
     {
         var queryParameters = new List<KeyValuePair<string, string?>>();
@@ -465,4 +519,6 @@ public sealed class StoreApiClient(
     private sealed record CreateRedirectRuleRequest(string FromPath, string ToPath, int StatusCode);
 
     private sealed record CreateRedirectRuleResponse(Guid Id);
+
+    private sealed record AdjustInventoryStockRequest(int QuantityDelta, string? Reason);
 }

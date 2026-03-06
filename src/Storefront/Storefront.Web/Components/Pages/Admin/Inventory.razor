@@ -1,0 +1,74 @@
+@page "/admin/inventory"
+@layout Storefront.Web.Components.Layout.AdminLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>Inventory</PageTitle>
+
+<h1>Inventory</h1>
+<p>Search product inventory details and open the adjustment screen.</p>
+
+<section class="admin-panel">
+    <form class="form-grid" @onsubmit="LoadProductAsync" @onsubmit:preventDefault="true">
+        <label>
+            Product id
+            <input @bind="productIdText" placeholder="00000000-0000-0000-0000-000000000000" />
+        </label>
+        <button class="btn-primary" type="submit" disabled="@isLoading">Load</button>
+    </form>
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <p class="status-message">@message</p>
+    }
+</section>
+
+@if (details is not null)
+{
+    <section class="admin-panel">
+        <h2>Stock item</h2>
+        <table class="cart-table">
+            <tbody>
+                <tr><th>Product</th><td>@details.StockItem.ProductId</td></tr>
+                <tr><th>On-hand</th><td>@details.StockItem.OnHandQuantity</td></tr>
+                <tr><th>Reserved</th><td>@details.StockItem.ReservedQuantity</td></tr>
+                <tr><th>Available</th><td>@details.StockItem.AvailableQuantity</td></tr>
+                <tr><th>Tracked</th><td>@details.StockItem.IsTracked</td></tr>
+                <tr><th>Backorder</th><td>@details.StockItem.AllowBackorder</td></tr>
+                <tr><th>In stock</th><td>@details.StockItem.IsInStock</td></tr>
+                <tr><th>Active reservations</th><td>@details.ActiveReservationCount</td></tr>
+                <tr><th>Reserved qty</th><td>@details.ActiveReservedQuantity</td></tr>
+            </tbody>
+        </table>
+
+        <p><a class="btn-link" href="@($"/admin/inventory/{details.StockItem.ProductId}")">Open inventory details</a></p>
+    </section>
+}
+
+@code {
+    private string productIdText = string.Empty;
+    private bool isLoading;
+    private string? message;
+    private StoreInventoryProductDetails? details;
+
+    private async Task LoadProductAsync()
+    {
+        message = null;
+        details = null;
+
+        if (!Guid.TryParse(productIdText, out var productId))
+        {
+            message = "Enter a valid product id.";
+            return;
+        }
+
+        isLoading = true;
+        details = await StoreApiClient.GetInventoryProductAsync(productId, CancellationToken.None);
+        isLoading = false;
+
+        if (details is null)
+        {
+            message = "Inventory item was not found.";
+        }
+    }
+}

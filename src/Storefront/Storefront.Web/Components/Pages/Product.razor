@@ -48,8 +48,12 @@ else
             <p>Brand: @product.Brand</p>
         }
 
-        <p>Status: @(product.IsInStock ? "In stock" : "Out of stock")</p>
-        <AddToCartButton ProductId="product.Id" @rendermode="InteractiveServer" />
+        <p>Status: @GetStockStatusLabel()</p>
+        <AddToCartButton
+            ProductId="product.Id"
+            Disabled="@IsAddToCartDisabled()"
+            DisabledMessage="This product is currently out of stock."
+            @rendermode="InteractiveServer" />
     </article>
 }
 
@@ -61,6 +65,7 @@ else
     private IReadOnlyCollection<string> jsonLdScripts = [];
     private IReadOnlyList<BreadcrumbItem> breadcrumbs = [];
     private StoreProduct? product;
+    private StoreInventoryProductDetails? inventory;
     private bool isLoading = true;
 
     protected override async Task OnParametersSetAsync()
@@ -87,6 +92,8 @@ else
             return;
         }
 
+        inventory = await StoreApiClient.GetInventoryProductAsync(product.Id, CancellationToken.None);
+
         var productDetailImage = MediaUrlService.ProductImage(product.ImageUrl ?? "/images/og-default.jpg", 1200);
         var openGraphImage = SeoImageMetadata.ResolveOpenGraphImage(MediaUrlService, product.ImageUrl);
 
@@ -103,7 +110,7 @@ else
                 product.Description,
                 product.Currency,
                 product.Amount,
-                product.IsInStock,
+                inventory?.StockItem.IsInStock ?? product.IsInStock,
                 product.Sku,
                 product.Brand,
                 productDetailImage),
@@ -121,6 +128,41 @@ else
     private static string FormatPrice(decimal amount, string currency)
     {
         return $"{amount:0.00} {currency}";
+    }
+
+    private string GetStockStatusLabel()
+    {
+        if (inventory is null)
+        {
+            return product?.IsInStock == true ? "In stock" : "Out of stock";
+        }
+
+        if (!inventory.StockItem.IsTracked)
+        {
+            return "In stock";
+        }
+
+        if (inventory.StockItem.AllowBackorder && inventory.StockItem.AvailableQuantity <= 0)
+        {
+            return "Backorder available";
+        }
+
+        return inventory.StockItem.IsInStock ? "In stock" : "Out of stock";
+    }
+
+    private bool IsAddToCartDisabled()
+    {
+        if (inventory is null)
+        {
+            return product?.IsInStock != true;
+        }
+
+        if (!inventory.StockItem.IsTracked)
+        {
+            return false;
+        }
+
+        return !inventory.StockItem.IsInStock && !inventory.StockItem.AllowBackorder;
     }
 
     private static IReadOnlyList<BreadcrumbItem> BuildProductBreadcrumbs(StoreProduct currentProduct)

@@ -80,9 +80,14 @@ public static class CartModuleExtensions
 
     private static IResult BusinessError(Error error)
     {
-        var statusCode = error.Code.EndsWith(".not_found", StringComparison.Ordinal)
-            ? StatusCodes.Status404NotFound
-            : StatusCodes.Status400BadRequest;
+        var statusCode = error.Code switch
+        {
+            "cart.not_found" => StatusCodes.Status404NotFound,
+            "cart.item.not_found" => StatusCodes.Status404NotFound,
+            "inventory.stock.insufficient" => StatusCodes.Status409Conflict,
+            "inventory.stock.concurrency_conflict" => StatusCodes.Status409Conflict,
+            _ => StatusCodes.Status400BadRequest,
+        };
 
         return Results.Problem(
             statusCode: statusCode,
