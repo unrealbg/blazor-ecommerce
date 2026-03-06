@@ -4,6 +4,7 @@ using Storefront.Web.Services;
 using Storefront.Web.Services.Api;
 using Storefront.Web.Services.Content;
 using Storefront.Web.Services.Customer;
+using Storefront.Web.Services.Media;
 using Storefront.Web.Services.Redirects;
 using Storefront.Web.Services.Seo;
 
@@ -25,6 +26,7 @@ builder.Services.AddScoped<IRssService, RssService>();
 builder.Services.AddScoped<ICustomerContext, CookieCustomerContext>();
 builder.Services.AddScoped<CartState>();
 builder.Services.AddStorefrontRedirects();
+builder.Services.AddMediaPipeline(builder.Configuration);
 
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
 if (string.IsNullOrWhiteSpace(redisConnectionString))
@@ -60,6 +62,8 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseStorefrontRedirects();
+app.UseResponseCompression();
+app.MapMediaEndpoints();
 
 app.MapGet("/robots.txt", (IOptions<SiteOptions> options) =>
 {

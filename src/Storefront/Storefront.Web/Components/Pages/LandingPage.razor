@@ -1,8 +1,12 @@
 @page "/p/{Slug}"
+@using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Http
 @using Storefront.Web.Services.Content
+@using Storefront.Web.Services.Media
 @using Storefront.Web.Services.Seo
 @inject IContentClient ContentClient
+@inject IContentHtmlRenderer ContentHtmlRenderer
+@inject IMediaUrlService MediaUrlService
 @inject IPageMetadataService MetadataService
 @inject IStructuredDataService StructuredDataService
 
@@ -28,7 +32,7 @@ else
 {
     <article class="landing-page">
         <h1>@landingPage.Title</h1>
-        <section class="cms-content">@landingPage.Content</section>
+        <section class="cms-content">@((MarkupString)renderedContent)</section>
     </article>
 }
 
@@ -45,11 +49,13 @@ else
     private LandingPageContent? landingPage;
     private bool isCmsUnavailable;
     private bool isNotFound;
+    private string renderedContent = string.Empty;
 
     protected override async Task OnParametersSetAsync()
     {
         isCmsUnavailable = false;
         isNotFound = false;
+        renderedContent = string.Empty;
         landingPage = null;
         breadcrumbs =
         [
@@ -90,6 +96,7 @@ else
         }
 
         landingPage = result.Value;
+        renderedContent = ContentHtmlRenderer.Render(landingPage.Content);
         var canonical = MetadataService.ResolveCanonicalUrl(landingPage.CanonicalUrl, $"/p/{landingPage.Slug}");
         var description = string.IsNullOrWhiteSpace(landingPage.SeoDescription)
             ? BuildDescription(landingPage.Content)
@@ -99,7 +106,9 @@ else
             string.IsNullOrWhiteSpace(landingPage.SeoTitle) ? landingPage.Title : landingPage.SeoTitle,
             description,
             canonical,
-            landingPage.NoIndex);
+            landingPage.NoIndex,
+            "website",
+            SeoImageMetadata.ResolveOpenGraphImage(MediaUrlService, null));
 
         breadcrumbs =
         [

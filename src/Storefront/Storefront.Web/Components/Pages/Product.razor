@@ -1,9 +1,11 @@
 @page "/product/{Slug}"
 @using Storefront.Web.Services.Api
+@using Storefront.Web.Services.Media
 @using Storefront.Web.Services.Seo
 @inject IStoreApiClient StoreApiClient
 @inject IPageMetadataService MetadataService
 @inject IStructuredDataService StructuredDataService
+@inject IMediaUrlService MediaUrlService
 
 <SeoHead Metadata="metadata" JsonLdScripts="jsonLdScripts" />
 
@@ -25,7 +27,12 @@ else
 
         @if (!string.IsNullOrWhiteSpace(product.ImageUrl))
         {
-            <img class="product-image" src="@product.ImageUrl" alt="@product.Name" />
+            <ResponsiveImage
+                Source="@product.ImageUrl"
+                Alt="@product.Name"
+                Preset="MediaImagePreset.ProductHero"
+                CssClass="product-image"
+                Priority="true" />
         }
 
         <p>@(string.IsNullOrWhiteSpace(product.Description) ? "No description provided." : product.Description)</p>
@@ -80,7 +87,14 @@ else
             return;
         }
 
-        metadata = MetadataService.ForProduct(product.Name, product.Description, product.Slug);
+        var productDetailImage = MediaUrlService.ProductImage(product.ImageUrl ?? "/images/og-default.jpg", 1200);
+        var openGraphImage = SeoImageMetadata.ResolveOpenGraphImage(MediaUrlService, product.ImageUrl);
+
+        metadata = MetadataService.ForProduct(product.Name, product.Description, product.Slug) with
+        {
+            OpenGraphType = "product",
+            OpenGraphImageUrl = openGraphImage,
+        };
         breadcrumbs = BuildProductBreadcrumbs(product);
 
         var productJsonLd = StructuredDataService.BuildProductJsonLd(
@@ -92,7 +106,7 @@ else
                 product.IsInStock,
                 product.Sku,
                 product.Brand,
-                product.ImageUrl),
+                productDetailImage),
             metadata.CanonicalUrl);
 
         jsonLdScripts =

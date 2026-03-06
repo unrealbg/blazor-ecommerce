@@ -2,6 +2,7 @@
 @using Microsoft.AspNetCore.Http
 @using Microsoft.Extensions.Primitives
 @using Storefront.Web.Services.Content
+@using Storefront.Web.Services.Media
 @using Storefront.Web.Services.Seo
 @inject ICanonicalUrlService CanonicalUrlService
 @inject IContentClient ContentClient
@@ -39,6 +40,11 @@ else
         @foreach (var post in posts)
         {
             <article class="blog-card">
+                <ResponsiveImage
+                    Source="@post.CoverImageUrl"
+                    Alt="@post.Title"
+                    Preset="MediaImagePreset.BlogCard"
+                    CssClass="blog-card-image" />
                 <h2><a href="/blog/@post.Slug">@post.Title</a></h2>
                 <p class="blog-meta">
                     <span>By @post.AuthorName</span>
