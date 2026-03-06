@@ -78,6 +78,54 @@ public sealed class StoreApiClient(HttpClient httpClient) : IStoreApiClient
         return payload?.Id;
     }
 
+    public Task<StoreRedirectMatch?> ResolveRedirectAsync(string path, CancellationToken cancellationToken)
+    {
+        var encodedPath = Uri.EscapeDataString(path);
+        return GetOrDefaultAsync<StoreRedirectMatch>($"/api/v1/redirects/resolve?path={encodedPath}", cancellationToken);
+    }
+
+    public async Task<StoreRedirectRulePage> GetRedirectRulesAsync(
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var normalizedPage = page <= 0 ? 1 : page;
+        var normalizedPageSize = pageSize <= 0 ? 20 : pageSize;
+
+        var response = await httpClient.GetFromJsonAsync<StoreRedirectRulePage>(
+            $"/api/v1/redirects?page={normalizedPage}&pageSize={normalizedPageSize}",
+            cancellationToken);
+
+        return response ?? new StoreRedirectRulePage(normalizedPage, normalizedPageSize, 0, []);
+    }
+
+    public async Task<Guid?> CreateRedirectRuleAsync(
+        string fromPath,
+        string toPath,
+        int statusCode,
+        CancellationToken cancellationToken)
+    {
+        var response = await httpClient.PostAsJsonAsync(
+            "/api/v1/redirects",
+            new CreateRedirectRuleRequest(fromPath, toPath, statusCode),
+            cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<CreateRedirectRuleResponse>(cancellationToken);
+        return payload?.Id;
+    }
+
+    public async Task<bool> DeactivateRedirectRuleAsync(Guid redirectRuleId, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/redirects/{redirectRuleId}/deactivate");
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
     private async Task<T?> GetOrDefaultAsync<T>(string uri, CancellationToken cancellationToken)
     {
         using var response = await httpClient.GetAsync(uri, cancellationToken);
@@ -95,4 +143,8 @@ public sealed class StoreApiClient(HttpClient httpClient) : IStoreApiClient
     private sealed record UpdateCartItemQuantityRequest(int Quantity);
 
     private sealed record CheckoutResponse(Guid Id);
+
+    private sealed record CreateRedirectRuleRequest(string FromPath, string ToPath, int StatusCode);
+
+    private sealed record CreateRedirectRuleResponse(Guid Id);
 }

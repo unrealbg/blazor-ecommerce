@@ -1,6 +1,7 @@
 using System.Reflection;
 using BuildingBlocks.Application.Abstractions;
 using BuildingBlocks.Application.Behaviors;
+using BuildingBlocks.Application.Contracts;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +15,7 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.TryAddEnumerable(
             ServiceDescriptor.Transient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>)));
+        services.TryAddScoped<IRedirectRuleWriter, NullRedirectRuleWriter>();
 
         return services;
     }

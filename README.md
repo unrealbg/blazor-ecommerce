@@ -7,6 +7,7 @@ Production-oriented modular monolith starter with strict module boundaries and c
 - Catalog
 - Cart
 - Orders
+- Redirects
 - Storefront.Web (SSR Blazor UI)
 
 ## Architecture
@@ -39,6 +40,7 @@ Production-oriented modular monolith starter with strict module boundaries and c
   - `catalog`
   - `cart`
   - `orders`
+  - `redirects`
   - `shared` (outbox)
 - Migrations are separated by bounded context:
   - `src/Modules/*/*Infrastructure/Persistence/Migrations`
@@ -95,12 +97,18 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `POST /api/v1/catalog/products`
 - `GET /api/v1/catalog/products`
 - `GET /api/v1/catalog/products/by-slug/{slug}`
+- `PATCH /api/v1/catalog/products/{productId}/slug`
 - `POST /api/v1/cart/{customerId}/items`
 - `GET /api/v1/cart/{customerId}`
 - `PATCH /api/v1/cart/{customerId}/items/{productId}`
 - `DELETE /api/v1/cart/{customerId}/items/{productId}`
 - `POST /api/v1/orders/checkout/{customerId}`
 - `GET /api/v1/orders/{orderId}`
+- `POST /api/v1/redirects`
+- `GET /api/v1/redirects?page=1&pageSize=20`
+- `PUT /api/v1/redirects/{redirectRuleId}/deactivate`
+- `GET /api/v1/redirects/resolve?path=/blog/old-slug`
+- `POST /api/webhooks/directus`
 
 ## Storefront Routes
 
@@ -113,6 +121,7 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `GET /p/{slug}` (Landing page, SSR)
 - `GET /cart` (interactive)
 - `GET /checkout` (interactive)
+- `GET /admin/redirects` (admin redirect management UI)
 - `GET /robots.txt`
 - `GET /sitemap.xml`
 - `GET /rss.xml`
@@ -327,6 +336,56 @@ curl -X POST http://localhost:8080/api/v1/orders/checkout/customer-123 \
   -H "Idempotency-Key: checkout-customer-123-001"
 ```
 
+## SEO-Safe Redirects and Slug History
+
+- Redirects are stored in `redirects.redirect_rules` and normalized to lowercase paths.
+- The app applies redirect middleware early in the request pipeline.
+- Rules are resolved from Redis hash cache (`redirects:rules`) with DB fallback and in-memory fallback.
+- Redirect hit counters (`hit_count`, `last_hit_at`) are written asynchronously by a background queue.
+- Query string behavior:
+  - Matching ignores query string.
+  - Incoming query params are preserved on redirect.
+  - If target already has query params, they are safely merged.
+- Loop safety:
+  - Redirect is skipped when normalized source and target paths are equal.
+
+### Manual Redirect Management
+
+- API:
+  - `POST /api/v1/redirects`
+  - `GET /api/v1/redirects?page=1&pageSize=20`
+  - `PUT /api/v1/redirects/{redirectRuleId}/deactivate`
+- UI:
+  - `GET /admin/redirects`
+
+### Automatic Redirect Creation
+
+- Catalog product slug changes:
+  - Update product slug via `PATCH /api/v1/catalog/products/{productId}/slug`.
+  - `ProductSlugChanged` domain event is written to outbox with product update transaction.
+  - Outbox dispatcher runs `ProductSlugChangedDomainEventHandler`, which creates redirect:
+    - `/product/{oldSlug}` -> `/product/{newSlug}`
+- Directus content slug changes:
+  - Configure Directus webhook to call `POST /api/webhooks/directus` on updates.
+  - Supported collections:
+    - `blog_posts`: `/blog/{oldSlug}` -> `/blog/{newSlug}`
+    - `pages`: `/p/{oldSlug}` -> `/p/{newSlug}`
+
+### Directus Webhook Payload
+
+- Minimal payload accepted by the endpoint:
+
+```json
+{
+  "collection": "blog_posts",
+  "event": "items.update",
+  "oldSlug": "old-slug",
+  "newSlug": "new-slug"
+}
+```
+
+- The endpoint also supports `data.slug` and `previous.slug` fields.
+
 ## Add a Migration
 
 ### Shared outbox (schema `shared`)
@@ -362,6 +421,15 @@ dotnet ef migrations add <MigrationName> \
 dotnet ef migrations add <MigrationName> \
   --project src/Modules/Orders/Orders.Infrastructure/Orders.Infrastructure.csproj \
   --context Orders.Infrastructure.Persistence.OrdersDbContext \
+  --output-dir Persistence/Migrations
+```
+
+### Redirects
+
+```bash
+dotnet ef migrations add <MigrationName> \
+  --project src/Modules/Redirects/Redirects.Infrastructure/Redirects.Infrastructure.csproj \
+  --context Redirects.Infrastructure.Persistence.RedirectsDbContext \
   --output-dir Persistence/Migrations
 ```
 

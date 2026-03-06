@@ -26,4 +26,16 @@ public interface IStoreApiClient
         CancellationToken cancellationToken);
 
     Task<Guid?> CheckoutAsync(string customerId, string idempotencyKey, CancellationToken cancellationToken);
+
+    Task<StoreRedirectMatch?> ResolveRedirectAsync(string path, CancellationToken cancellationToken);
+
+    Task<StoreRedirectRulePage> GetRedirectRulesAsync(int page, int pageSize, CancellationToken cancellationToken);
+
+    Task<Guid?> CreateRedirectRuleAsync(
+        string fromPath,
+        string toPath,
+        int statusCode,
+        CancellationToken cancellationToken);
+
+    Task<bool> DeactivateRedirectRuleAsync(Guid redirectRuleId, CancellationToken cancellationToken);
 }

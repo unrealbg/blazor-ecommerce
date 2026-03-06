@@ -3,6 +3,7 @@ using Catalog.Application.DependencyInjection;
 using Catalog.Application.Products.CreateProduct;
 using Catalog.Application.Products.GetProductBySlug;
 using Catalog.Application.Products.GetProducts;
+using Catalog.Application.Products.UpdateProductSlug;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -58,6 +59,21 @@ public static class CatalogModuleExtensions
             return product is not null ? Results.Ok(product) : Results.NotFound();
         });
 
+        group.MapPatch("/products/{productId:guid}/slug", async (
+            Guid productId,
+            UpdateProductSlugRequest request,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await sender.Send(
+                new UpdateProductSlugCommand(productId, request.Slug),
+                cancellationToken);
+
+            return result.IsSuccess
+                ? Results.Ok(new { id = productId, slug = result.Value })
+                : BusinessError(result.Error);
+        });
+
         return endpoints;
     }
 
@@ -85,4 +101,6 @@ public static class CatalogModuleExtensions
         bool IsInStock = true,
         string? CategorySlug = null,
         string? CategoryName = null);
+
+    public sealed record UpdateProductSlugRequest(string Slug);
 }

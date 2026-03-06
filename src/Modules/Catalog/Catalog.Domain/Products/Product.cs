@@ -1,6 +1,7 @@
 using BuildingBlocks.Domain.Primitives;
 using BuildingBlocks.Domain.Results;
 using BuildingBlocks.Domain.Shared;
+using Catalog.Domain.Products.Events;
 
 namespace Catalog.Domain.Products;
 
@@ -136,7 +137,7 @@ public sealed class Product : AggregateRoot<Guid>
                 new Error("catalog.product.image_url.too_long", "Product image URL is too long."));
         }
 
-        if (!IsValidImageUrl(normalizedImageUrl))
+        if (!IsValidImageUrlInternal(normalizedImageUrl))
         {
             return Result<Product>.Failure(
                 new Error("catalog.product.image_url.invalid", "Product image URL is invalid."));
@@ -177,20 +178,47 @@ public sealed class Product : AggregateRoot<Guid>
             isActive);
 
         return Result<Product>.Success(product);
+
+        static bool IsValidImageUrlInternal(string? imageUrl)
+        {
+            if (imageUrl is null)
+            {
+                return true;
+            }
+
+            if (imageUrl.StartsWith("/", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            return Uri.TryCreate(imageUrl, UriKind.Absolute, out _);
+        }
     }
 
-    private static bool IsValidImageUrl(string? imageUrl)
+    public Result<bool> UpdateSlug(string slug)
     {
-        if (imageUrl is null)
+        if (string.IsNullOrWhiteSpace(slug))
         {
-            return true;
+            return Result<bool>.Failure(
+                new Error("catalog.product.slug.required", "Product slug is required."));
         }
 
-        if (imageUrl.StartsWith("/", StringComparison.Ordinal))
+        var normalizedSlug = slug.Trim().ToLowerInvariant();
+        if (normalizedSlug.Length > 220)
         {
-            return true;
+            return Result<bool>.Failure(
+                new Error("catalog.product.slug.too_long", "Product slug is too long."));
         }
 
-        return Uri.TryCreate(imageUrl, UriKind.Absolute, out _);
+        if (string.Equals(Slug, normalizedSlug, StringComparison.Ordinal))
+        {
+            return Result<bool>.Success(false);
+        }
+
+        var previousSlug = Slug;
+        Slug = normalizedSlug;
+        RaiseDomainEvent(new ProductSlugChanged(Id, previousSlug, Slug));
+
+        return Result<bool>.Success(true);
     }
 }
