@@ -12,8 +12,18 @@ public interface IStockReservationRepository
         string? sku,
         CancellationToken cancellationToken);
 
+    Task<StockReservation?> GetActiveByOrderProductSkuAsync(
+        Guid orderId,
+        Guid productId,
+        string? sku,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyCollection<StockReservation>> ListActiveByCartIdAsync(
         string cartId,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<StockReservation>> ListActiveByOrderIdAsync(
+        Guid orderId,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<StockReservation>> ListExpiredActiveAsync(

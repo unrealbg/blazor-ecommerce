@@ -1,0 +1,26 @@
+@page "/checkout/success"
+
+<PageTitle>Payment Success</PageTitle>
+
+<h1>Payment successful</h1>
+<p>Your order has been paid and is now being processed.</p>
+
+@if (OrderId is not null)
+{
+    <p>Order: <strong>@OrderId</strong></p>
+}
+
+@if (PaymentIntentId is not null)
+{
+    <p>Payment intent: <strong>@PaymentIntentId</strong></p>
+}
+
+<p><a class="btn-primary" href="/account/orders">View order history</a></p>
+
+@code {
+    [SupplyParameterFromQuery]
+    public Guid? OrderId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public Guid? PaymentIntentId { get; set; }
+}

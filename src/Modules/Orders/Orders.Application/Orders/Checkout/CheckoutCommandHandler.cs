@@ -83,7 +83,11 @@ public sealed class CheckoutCommandHandler(
                         lineData.Add(new OrderLineData(line.ProductId, line.Name, moneyResult.Value, line.Quantity));
                     }
 
-                    var orderResult = Order.Create(cart.CustomerId, lineData, clock.UtcNow);
+                    var orderResult = Order.Create(
+                        cart.CustomerId,
+                        cart.CustomerId,
+                        lineData,
+                        clock.UtcNow);
                     if (orderResult.IsFailure)
                     {
                         return Result<Guid>.Failure(orderResult.Error);
@@ -97,14 +101,14 @@ public sealed class CheckoutCommandHandler(
                         clock.UtcNow,
                         innerCancellationToken);
 
-                    var consumeResult = await inventoryReservationService.ConsumeCartReservationsAsync(
+                    var promoteResult = await inventoryReservationService.PromoteCartReservationsToOrderAsync(
                         cart.CustomerId,
                         orderResult.Value.Id,
                         normalizedLines,
                         innerCancellationToken);
-                    if (consumeResult.IsFailure)
+                    if (promoteResult.IsFailure)
                     {
-                        return Result<Guid>.Failure(consumeResult.Error);
+                        return Result<Guid>.Failure(promoteResult.Error);
                     }
 
                     await cartCheckoutAccessor.ClearCartAsync(cart.CartId, innerCancellationToken);

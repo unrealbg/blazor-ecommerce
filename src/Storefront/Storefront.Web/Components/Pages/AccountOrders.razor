@@ -32,6 +32,7 @@ else
                 </header>
                 <p>Status: <strong>@order.Status</strong></p>
                 <p>Total: <strong>@FormatPrice(order.TotalAmount, order.Currency)</strong></p>
+                <p><a class="btn-secondary" href="@($"/account/orders/{order.Id:D}")">Payment details</a></p>
                 <ul>
                     @foreach (var line in order.Lines)
                     {

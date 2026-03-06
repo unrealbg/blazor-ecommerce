@@ -126,6 +126,7 @@ public sealed class CheckoutWithProfileCommandHandler(
 
                 var orderResult = Order.Create(
                     customerId,
+                    normalizedCartSessionId,
                     lineData,
                     clock.UtcNow,
                     shippingAddressResult.Value,
@@ -144,14 +145,14 @@ public sealed class CheckoutWithProfileCommandHandler(
                     clock.UtcNow,
                     innerCancellationToken);
 
-                var consumeResult = await inventoryReservationService.ConsumeCartReservationsAsync(
+                var promoteResult = await inventoryReservationService.PromoteCartReservationsToOrderAsync(
                     normalizedCartSessionId,
                     orderResult.Value.Id,
                     normalizedLines,
                     innerCancellationToken);
-                if (consumeResult.IsFailure)
+                if (promoteResult.IsFailure)
                 {
-                    return Result<Guid>.Failure(consumeResult.Error);
+                    return Result<Guid>.Failure(promoteResult.Error);
                 }
 
                 await cartCheckoutAccessor.ClearCartAsync(cart.CartId, innerCancellationToken);

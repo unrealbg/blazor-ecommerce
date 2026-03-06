@@ -34,6 +34,28 @@ internal sealed class StockReservationRepository(InventoryDbContext dbContext) :
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    public Task<StockReservation?> GetActiveByOrderProductSkuAsync(
+        Guid orderId,
+        Guid productId,
+        string? sku,
+        CancellationToken cancellationToken)
+    {
+        var normalizedSku = NormalizeSku(sku);
+        var query = dbContext.StockReservations
+            .Where(reservation => reservation.OrderId == orderId &&
+                                  reservation.ProductId == productId &&
+                                  reservation.Status == StockReservationStatus.Active);
+
+        if (normalizedSku is not null)
+        {
+            query = query.Where(reservation => reservation.Sku == normalizedSku);
+        }
+
+        return query
+            .OrderByDescending(reservation => reservation.CreatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyCollection<StockReservation>> ListActiveByCartIdAsync(
         string cartId,
         CancellationToken cancellationToken)
@@ -42,6 +64,16 @@ internal sealed class StockReservationRepository(InventoryDbContext dbContext) :
 
         return await dbContext.StockReservations
             .Where(reservation => reservation.CartId == normalizedCartId &&
+                                  reservation.Status == StockReservationStatus.Active)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<StockReservation>> ListActiveByOrderIdAsync(
+        Guid orderId,
+        CancellationToken cancellationToken)
+    {
+        return await dbContext.StockReservations
+            .Where(reservation => reservation.OrderId == orderId &&
                                   reservation.Status == StockReservationStatus.Active)
             .ToListAsync(cancellationToken);
     }

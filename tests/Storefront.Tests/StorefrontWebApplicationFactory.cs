@@ -276,6 +276,122 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
             return Task.FromResult<IReadOnlyCollection<StoreOrderSummary>>(currentCustomer is null ? [] : Orders);
         }
 
+        public Task<StoreOrderSummary?> GetOrderAsync(Guid orderId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<StoreOrderSummary?>(Orders.SingleOrDefault(order => order.Id == orderId));
+        }
+
+        public Task<StorePaymentIntentAction?> CreatePaymentIntentAsync(
+            Guid orderId,
+            string? provider,
+            string idempotencyKey,
+            string? customerEmail,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult<StorePaymentIntentAction?>(new StorePaymentIntentAction(
+                Guid.NewGuid(),
+                provider ?? "Demo",
+                "Captured",
+                null,
+                false,
+                null));
+        }
+
+        public Task<StorePaymentIntentAction?> ConfirmPaymentIntentAsync(
+            Guid paymentIntentId,
+            string idempotencyKey,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult<StorePaymentIntentAction?>(new StorePaymentIntentAction(
+                paymentIntentId,
+                "Demo",
+                "Captured",
+                null,
+                false,
+                null));
+        }
+
+        public Task<StorePaymentIntentAction?> CancelPaymentIntentAsync(
+            Guid paymentIntentId,
+            string? reason,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult<StorePaymentIntentAction?>(new StorePaymentIntentAction(
+                paymentIntentId,
+                "Demo",
+                "Cancelled",
+                null,
+                false,
+                null));
+        }
+
+        public Task<StorePaymentIntentAction?> RefundPaymentIntentAsync(
+            Guid paymentIntentId,
+            decimal? amount,
+            string? reason,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult<StorePaymentIntentAction?>(new StorePaymentIntentAction(
+                paymentIntentId,
+                "Demo",
+                "Refunded",
+                null,
+                false,
+                null));
+        }
+
+        public Task<StorePaymentIntentDetails?> GetPaymentIntentAsync(
+            Guid paymentIntentId,
+            CancellationToken cancellationToken)
+        {
+            var details = BuildPaymentIntentDetails(paymentIntentId);
+            return Task.FromResult<StorePaymentIntentDetails?>(details);
+        }
+
+        public Task<StorePaymentIntentDetails?> GetPaymentIntentByOrderAsync(
+            Guid orderId,
+            CancellationToken cancellationToken)
+        {
+            var order = Orders.SingleOrDefault(item => item.Id == orderId);
+            if (order is null)
+            {
+                return Task.FromResult<StorePaymentIntentDetails?>(null);
+            }
+
+            var details = BuildPaymentIntentDetails(Guid.NewGuid(), orderId);
+            return Task.FromResult<StorePaymentIntentDetails?>(details);
+        }
+
+        public Task<StorePaymentIntentPage> GetPaymentIntentsAsync(
+            int page,
+            int pageSize,
+            string? provider,
+            string? status,
+            CancellationToken cancellationToken)
+        {
+            var normalizedPage = page <= 0 ? 1 : page;
+            var normalizedPageSize = pageSize <= 0 ? 20 : pageSize;
+            var items = Orders
+                .Select(order => new StorePaymentIntentSummary(
+                    Guid.NewGuid(),
+                    order.Id,
+                    provider ?? "Demo",
+                    status ?? "Captured",
+                    order.TotalAmount,
+                    order.Currency,
+                    $"demo_pi_{order.Id:N}",
+                    DateTime.UtcNow.AddMinutes(-30),
+                    DateTime.UtcNow.AddMinutes(-10),
+                    DateTime.UtcNow.AddMinutes(-10)))
+                .ToArray();
+
+            return Task.FromResult(new StorePaymentIntentPage(
+                normalizedPage,
+                normalizedPageSize,
+                items.Length,
+                items));
+        }
+
         public Task<StoreRedirectMatch?> ResolveRedirectAsync(string path, CancellationToken cancellationToken)
         {
             return Task.FromResult<StoreRedirectMatch?>(null);
@@ -560,6 +676,52 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
             CancellationToken cancellationToken)
         {
             return Task.FromResult(true);
+        }
+
+        private static StorePaymentIntentDetails BuildPaymentIntentDetails(Guid paymentIntentId, Guid? orderId = null)
+        {
+            var fallbackOrder = Orders[0];
+            var selectedOrder = orderId is null
+                ? fallbackOrder
+                : Orders.SingleOrDefault(order => order.Id == orderId.Value) ?? fallbackOrder;
+
+            var customerId = Guid.TryParse(selectedOrder.CustomerId, out var parsedCustomerId)
+                ? (Guid?)parsedCustomerId
+                : null;
+
+            var createdAtUtc = DateTime.UtcNow.AddMinutes(-30);
+            var updatedAtUtc = DateTime.UtcNow.AddMinutes(-5);
+
+            var transactions = new[]
+            {
+                new StorePaymentTransaction(
+                    Guid.NewGuid(),
+                    "Capture",
+                    $"demo_tx_{paymentIntentId:N}",
+                    selectedOrder.TotalAmount,
+                    selectedOrder.Currency,
+                    "Captured",
+                    $"demo_pi_{selectedOrder.Id:N}",
+                    updatedAtUtc,
+                    null),
+            };
+
+            return new StorePaymentIntentDetails(
+                paymentIntentId,
+                selectedOrder.Id,
+                customerId,
+                "Demo",
+                "Captured",
+                selectedOrder.TotalAmount,
+                selectedOrder.Currency,
+                $"demo_pi_{selectedOrder.Id:N}",
+                $"demo_cs_{paymentIntentId:N}",
+                null,
+                null,
+                createdAtUtc,
+                updatedAtUtc,
+                updatedAtUtc,
+                transactions);
         }
 
         private static IReadOnlyCollection<StoreSearchBrandFacetItem> BuildBrandFacets(

@@ -1,0 +1,125 @@
+@page "/admin/payments"
+@rendermode InteractiveServer
+@layout Storefront.Web.Components.Layout.AdminLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>Admin Payments</PageTitle>
+
+<h1>Payments</h1>
+
+<div class="inventory-panel">
+    <label>
+        Status
+        <select @bind="statusFilter">
+            <option value="">All</option>
+            <option value="Created">Created</option>
+            <option value="Pending">Pending</option>
+            <option value="RequiresAction">RequiresAction</option>
+            <option value="Authorized">Authorized</option>
+            <option value="Captured">Captured</option>
+            <option value="Failed">Failed</option>
+            <option value="Cancelled">Cancelled</option>
+            <option value="Refunded">Refunded</option>
+            <option value="PartiallyRefunded">PartiallyRefunded</option>
+        </select>
+    </label>
+    <button class="btn-primary" @onclick="LoadAsync">Apply</button>
+</div>
+
+@if (isLoading)
+{
+    <p>Loading payments...</p>
+}
+else if (page.Items.Count == 0)
+{
+    <p>No payment intents found.</p>
+}
+else
+{
+    <table class="cart-table">
+        <thead>
+        <tr>
+            <th>Id</th>
+            <th>Order</th>
+            <th>Provider</th>
+            <th>Status</th>
+            <th>Amount</th>
+            <th>Created</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in page.Items)
+        {
+            <tr>
+                <td>@item.Id</td>
+                <td>@item.OrderId</td>
+                <td>@item.Provider</td>
+                <td>@item.Status</td>
+                <td>@FormatPrice(item.Amount, item.Currency)</td>
+                <td>@item.CreatedAtUtc.ToString("u")</td>
+                <td><a href="@($"/admin/payments/{item.Id:D}")">Details</a></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+
+    <div class="cart-actions">
+        <button class="btn-secondary" @onclick="PreviousPage" disabled="@(currentPage <= 1)">Previous</button>
+        <span>Page @currentPage</span>
+        <button class="btn-secondary" @onclick="NextPage" disabled="@((currentPage * pageSize) >= page.TotalCount)">Next</button>
+    </div>
+}
+
+@code {
+    private StorePaymentIntentPage page = new(1, 20, 0, []);
+    private bool isLoading = true;
+    private int currentPage = 1;
+    private const int pageSize = 20;
+    private string? statusFilter;
+
+    protected override Task OnInitializedAsync()
+    {
+        return LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        page = await StoreApiClient.GetPaymentIntentsAsync(
+            currentPage,
+            pageSize,
+            provider: null,
+            statusFilter,
+            CancellationToken.None);
+        isLoading = false;
+    }
+
+    private Task PreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+        }
+
+        return LoadAsync();
+    }
+
+    private Task NextPage()
+    {
+        if ((currentPage * pageSize) < page.TotalCount)
+        {
+            currentPage++;
+        }
+
+        return LoadAsync();
+    }
+
+    private static string FormatPrice(decimal amount, string currency)
+    {
+        return string.Create(
+            System.Globalization.CultureInfo.InvariantCulture,
+            $"{amount:0.00} {currency.ToUpperInvariant()}");
+    }
+}

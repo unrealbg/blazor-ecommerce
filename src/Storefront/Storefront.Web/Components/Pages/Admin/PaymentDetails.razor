@@ -1,0 +1,141 @@
+@page "/admin/payments/{PaymentIntentId:guid}"
+@rendermode InteractiveServer
+@layout Storefront.Web.Components.Layout.AdminLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>Payment Details</PageTitle>
+
+<h1>Payment Details</h1>
+
+@if (isLoading)
+{
+    <p>Loading payment...</p>
+}
+else if (paymentIntent is null)
+{
+    <p>Payment intent was not found.</p>
+}
+else
+{
+    <section class="inventory-panel">
+        <p>Payment intent: <strong>@paymentIntent.Id</strong></p>
+        <p>Order: <strong>@paymentIntent.OrderId</strong></p>
+        <p>Provider: <strong>@paymentIntent.Provider</strong></p>
+        <p>Status: <strong>@paymentIntent.Status</strong></p>
+        <p>Amount: <strong>@FormatPrice(paymentIntent.Amount, paymentIntent.Currency)</strong></p>
+
+        @if (!string.IsNullOrWhiteSpace(paymentIntent.FailureMessage))
+        {
+            <p class="status-message warning">@paymentIntent.FailureMessage</p>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(actionMessage))
+        {
+            <p class="status-message">@actionMessage</p>
+        }
+
+        @if (CanRefund(paymentIntent.Status))
+        {
+            <button class="btn-primary" @onclick="RefundAsync" disabled="@isProcessing">Issue full refund</button>
+        }
+    </section>
+
+    <section class="inventory-panel">
+        <h2>Transactions</h2>
+
+        @if (paymentIntent.Transactions.Count == 0)
+        {
+            <p>No transactions recorded.</p>
+        }
+        else
+        {
+            <table class="cart-table">
+                <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Amount</th>
+                    <th>Reference</th>
+                    <th>Created</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var transaction in paymentIntent.Transactions)
+                {
+                    <tr>
+                        <td>@transaction.Type</td>
+                        <td>@transaction.Status</td>
+                        <td>@FormatPrice(transaction.Amount, transaction.Currency)</td>
+                        <td>@transaction.RawReference</td>
+                        <td>@transaction.CreatedAtUtc.ToString("u")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+    </section>
+}
+
+@code {
+    [Parameter]
+    public Guid PaymentIntentId { get; set; }
+
+    private StorePaymentIntentDetails? paymentIntent;
+    private bool isLoading = true;
+    private bool isProcessing;
+    private string? actionMessage;
+
+    protected override Task OnParametersSetAsync()
+    {
+        return LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        paymentIntent = await StoreApiClient.GetPaymentIntentAsync(PaymentIntentId, CancellationToken.None);
+        isLoading = false;
+    }
+
+    private async Task RefundAsync()
+    {
+        if (paymentIntent is null)
+        {
+            return;
+        }
+
+        isProcessing = true;
+        actionMessage = null;
+
+        var result = await StoreApiClient.RefundPaymentIntentAsync(
+            paymentIntent.Id,
+            amount: null,
+            reason: "Admin full refund",
+            CancellationToken.None);
+
+        isProcessing = false;
+
+        if (result is null)
+        {
+            actionMessage = "Refund failed.";
+            return;
+        }
+
+        actionMessage = "Refund requested successfully.";
+        await LoadAsync();
+    }
+
+    private static bool CanRefund(string status)
+    {
+        return status.Equals("Captured", StringComparison.OrdinalIgnoreCase) ||
+               status.Equals("PartiallyRefunded", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string FormatPrice(decimal amount, string currency)
+    {
+        return string.Create(
+            System.Globalization.CultureInfo.InvariantCulture,
+            $"{amount:0.00} {currency.ToUpperInvariant()}");
+    }
+}

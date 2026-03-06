@@ -7,6 +7,7 @@ Production-oriented modular monolith starter with strict module boundaries and c
 - Catalog
 - Cart
 - Orders
+- Payments
 - Inventory
 - Customers
 - Redirects
@@ -137,6 +138,14 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `POST /api/v1/inventory/products/{productId}/adjust` (authorized)
 - `GET /api/v1/inventory/products/{productId}/movements?page=&pageSize=` (authorized)
 - `GET /api/v1/inventory/reservations/active?productId=&page=&pageSize=` (authorized)
+- `POST /api/v1/payments/intents` (requires `Idempotency-Key`)
+- `GET /api/v1/payments/intents/{id}`
+- `GET /api/v1/payments/intents/by-order/{orderId}`
+- `POST /api/v1/payments/intents/{id}/confirm` (requires `Idempotency-Key`)
+- `POST /api/v1/payments/intents/{id}/cancel`
+- `POST /api/v1/payments/intents/{id}/refund` (authorized)
+- `GET /api/v1/payments/intents?page=&pageSize=&provider=&status=` (authorized)
+- `POST /api/v1/payments/webhooks/{provider}`
 - `POST /api/webhooks/directus`
 
 ## Storefront Routes
@@ -150,14 +159,20 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `GET /p/{slug}` (Landing page, SSR)
 - `GET /cart` (interactive)
 - `GET /checkout` (interactive)
+- `GET /checkout/payment` (interactive)
+- `GET /checkout/success`
+- `GET /checkout/failure`
 - `GET /account` (profile, interactive)
 - `GET /account/login` (interactive)
 - `GET /account/register` (interactive)
 - `GET /account/orders` (interactive)
+- `GET /account/orders/{orderId}` (interactive)
 - `GET /account/addresses` (interactive)
 - `GET /admin/redirects` (admin redirect management UI)
 - `GET /admin/inventory` (admin inventory dashboard)
 - `GET /admin/inventory/{productId}` (admin inventory details)
+- `GET /admin/payments` (admin payments list)
+- `GET /admin/payments/{paymentIntentId}` (admin payment details + refund action)
 - `GET /media/image?src=...&w=...&h=...&fit=max|cover|contain&format=auto|webp|avif|jpeg|png`
 - `GET /robots.txt`
 - `GET /sitemap.xml`
@@ -447,6 +462,39 @@ curl -X POST http://localhost:8080/api/v1/orders/checkout \
 curl http://localhost:8080/api/v1/orders/PUT_ORDER_ID_HERE
 ```
 
+### 6) Create payment intent for the order
+
+```bash
+curl -X POST http://localhost:8080/api/v1/payments/intents \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: payment-order-001-create" \
+  -d '{
+    "orderId": "PUT_ORDER_ID_HERE",
+    "provider": "Demo",
+    "customerEmail": "guest@example.com"
+  }'
+```
+
+### 7) Confirm payment intent (when status is Pending/RequiresAction)
+
+```bash
+curl -X POST http://localhost:8080/api/v1/payments/intents/PUT_PAYMENT_INTENT_ID_HERE/confirm \
+  -H "Idempotency-Key: payment-order-001-confirm"
+```
+
+### 8) Simulate provider webhook (Demo)
+
+```bash
+curl -X POST http://localhost:8080/api/v1/payments/webhooks/Demo \
+  -H "Content-Type: application/json" \
+  -d '{
+    "eventId": "evt-demo-001",
+    "eventType": "payment.succeeded",
+    "providerPaymentIntentId": "PUT_PROVIDER_PAYMENT_INTENT_ID_HERE",
+    "status": "Captured"
+  }'
+```
+
 ## Checkout Idempotency
 
 - Checkout endpoints require `Idempotency-Key` header.
@@ -455,6 +503,91 @@ curl http://localhost:8080/api/v1/orders/PUT_ORDER_ID_HERE
 - Storefront checkout (`/checkout`) sends an `Idempotency-Key` automatically per submit.
 - Preferred endpoint for storefront and guest/account checkout is `POST /api/v1/orders/checkout` with request body (`cartSessionId`, `email`, shipping/billing snapshots).
 - Legacy endpoint `POST /api/v1/orders/checkout/{customerId}` remains available for compatibility.
+
+## Payments
+
+- New bounded context:
+  - `src/Modules/Payments/Payments.Domain`
+  - `src/Modules/Payments/Payments.Application`
+  - `src/Modules/Payments/Payments.Infrastructure`
+  - `src/Modules/Payments/Payments.Api`
+- Schema: `payments`
+- Core persistence:
+  - `payment_intents`
+  - `payment_transactions`
+  - `webhook_inbox_messages`
+  - `payment_idempotency_records`
+
+### Architecture
+
+- Domain is provider-agnostic (`PaymentIntent`, `PaymentTransaction`, webhook inbox entity, internal status transitions).
+- Provider integration is abstracted via:
+  - `IPaymentProvider`
+  - `IPaymentProviderFactory`
+  - `IPaymentWebhookVerifier`
+- Infrastructure currently provides:
+  - `DemoPaymentProvider` (fully functional for local dev)
+  - `StripePaymentProvider` skeleton (not active by default)
+
+### Payment intent lifecycle
+
+- Supported statuses:
+  - `Created`, `Pending`, `RequiresAction`, `Authorized`, `Captured`, `Failed`, `Cancelled`, `Refunded`, `PartiallyRefunded`
+- Typical local flow (`Demo`, auto-capture enabled):
+  1. checkout creates order in `PendingPayment`
+  2. create payment intent
+  3. provider returns `Captured`
+  4. `PaymentCaptured` event marks order as `Paid` and consumes inventory reservations
+
+### Idempotency behavior
+
+- `POST /api/v1/payments/intents` requires `Idempotency-Key`.
+- `POST /api/v1/payments/intents/{id}/confirm` requires `Idempotency-Key`.
+- Same operation + same key returns the original payment intent result and prevents duplicates.
+- Webhooks are deduplicated by unique `(Provider, ExternalEventId)` in `webhook_inbox_messages`.
+
+### Webhook processing
+
+- Endpoint: `POST /api/v1/payments/webhooks/{provider}`
+- Flow:
+  1. verify (configurable; demo mode can skip strict verification)
+  2. persist raw payload in inbox
+  3. parse via provider adapter
+  4. map to payment intent status + append payment transaction
+  5. publish payment domain events through outbox
+- Replay-safe:
+  - duplicate event id is acknowledged and ignored (`processed=false` response payload).
+
+### Demo provider configuration
+
+```json
+{
+  "Payments": {
+    "DefaultProvider": "Demo",
+    "PendingPaymentReservationHoldMinutes": 15,
+    "WebhookProcessingRetryCount": 3,
+    "RequireWebhookVerification": false,
+    "Demo": {
+      "AutoCaptureOnCreate": true,
+      "SimulateRequiresAction": false,
+      "SimulateFailureRate": 0.0
+    },
+    "Stripe": {
+      "SecretKey": "",
+      "PublishableKey": "",
+      "WebhookSecret": ""
+    }
+  }
+}
+```
+
+### Updated order/inventory policy
+
+- Reserve stock in cart.
+- Checkout creates order in `PendingPayment` and promotes cart reservations to order-level reservations.
+- Inventory is consumed on `PaymentCaptured` (not on order creation).
+- On `PaymentFailed` or `PaymentCancelled`, active order reservations are released.
+- Refund emits payment events and updates order status (`Refunded` / `PartiallyRefunded`); stock restock is intentionally left as future extension hook.
 
 ### Example
 
@@ -498,11 +631,12 @@ curl -X POST http://localhost:8080/api/v1/orders/checkout \
 ### Current inventory policy
 
 - Reserve in cart.
-- Consume on successful order placement.
+- Checkout creates order in `PendingPayment` and moves reservation ownership to the order.
+- Consume on successful payment capture.
 - Consumption decrements:
   - `ReservedQuantity`
   - `OnHandQuantity`
-- If checkout fails before consume, reservation remains active until explicit release or TTL expiry.
+- Payment failure/cancellation releases active order reservations.
 
 ### Oversell protection
 
@@ -805,13 +939,23 @@ dotnet ef migrations add <MigrationName> \
   --output-dir Persistence/Migrations
 ```
 
+### Payments
+
+```bash
+dotnet ef migrations add <MigrationName> \
+  --project src/Modules/Payments/Payments.Infrastructure/Payments.Infrastructure.csproj \
+  --startup-project src/Modules/Payments/Payments.Infrastructure/Payments.Infrastructure.csproj \
+  --context Payments.Infrastructure.Persistence.PaymentsDbContext \
+  --output-dir Persistence/Migrations
+```
+
 ## Outbox Flow
 
-1. `Order` aggregate raises `Orders.Domain.Events.OrderPlaced`.
-2. `OrdersDbContext.SaveChanges` captures domain events and writes them to `shared.outbox_messages` in the same transaction as the order write.
+1. Aggregates (Catalog/Orders/Payments/Inventory/etc.) raise domain events.
+2. Module DbContext writes domain events to `shared.outbox_messages` in the same transaction as state changes.
 3. `OutboxDispatcherBackgroundService` polls unprocessed outbox rows.
 4. `IOutboxPublisher` deserializes and dispatches events to in-process `IDomainEventHandler<T>`.
-5. `OrderPlacedDomainEventHandler` logs `OrderPlaced handled...` and writes an `orders.order_audits` record to prove side-effects executed.
+5. Handlers execute cross-module side effects (for example payment capture -> mark order paid -> consume inventory reservations).
 6. Dispatcher marks outbox rows as processed (or stores error details).
 
 This keeps module boundaries strict while enabling reliable eventual consistency in-process.

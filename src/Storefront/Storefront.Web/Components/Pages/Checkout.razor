@@ -4,6 +4,7 @@
 @inject IStoreApiClient StoreApiClient
 @inject Storefront.Web.Services.Customer.ICustomerContext CustomerContext
 @inject Storefront.Web.Services.CartState CartState
+@inject NavigationManager Navigation
 
 <PageTitle>Checkout</PageTitle>
 
@@ -83,6 +84,7 @@
 @if (orderId is not null)
 {
     <p>Order created: <strong>@orderId</strong></p>
+    <p>Redirecting to payment...</p>
 }
 
 @code {
@@ -146,8 +148,9 @@
         }
 
         orderId = createdOrderId;
-        message = "Order placed successfully.";
+        message = "Order created. Continue with payment.";
         CartState.SetItemCount(0);
+        Navigation.NavigateTo($"/checkout/payment?orderId={createdOrderId:D}");
         isSubmitting = false;
     }
 

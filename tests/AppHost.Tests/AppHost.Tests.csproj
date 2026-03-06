@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\src\Modules\Search\Search.Infrastructure\Search.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Modules\Customers\Customers.Infrastructure\Customers.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Modules\Inventory\Inventory.Infrastructure\Inventory.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Payments\Payments.Infrastructure\Payments.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

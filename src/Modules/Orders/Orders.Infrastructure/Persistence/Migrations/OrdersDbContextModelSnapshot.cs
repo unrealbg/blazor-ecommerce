@@ -64,10 +64,25 @@ namespace Orders.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CheckoutSessionId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("CustomerId")
                         .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<Guid?>("LastPaymentIntentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("PaidAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PaymentFailureMessage")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
 
                     b.Property<DateTime>("PlacedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -83,6 +98,8 @@ namespace Orders.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(32)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Status");
 
                     b.ToTable("orders", "orders");
                 });

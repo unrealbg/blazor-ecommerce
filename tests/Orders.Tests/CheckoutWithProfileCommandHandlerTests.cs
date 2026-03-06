@@ -145,6 +145,28 @@ public sealed class CheckoutWithProfileCommandHandlerTests
         {
             return Task.FromResult(Result.Success());
         }
+
+        public Task<Result> PromoteCartReservationsToOrderAsync(
+            string cartId,
+            Guid orderId,
+            IReadOnlyCollection<InventoryCartLineRequest> lines,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Result.Success());
+        }
+
+        public Task<Result> ConsumeOrderReservationsAsync(
+            Guid orderId,
+            IReadOnlyCollection<InventoryCartLineRequest> lines,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Result.Success());
+        }
+
+        public Task<Result> ReleaseOrderReservationsAsync(Guid orderId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Result.Success());
+        }
     }
 
     private static CartCheckoutSnapshot BuildCartSnapshot(string sessionId)

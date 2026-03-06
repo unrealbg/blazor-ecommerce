@@ -23,4 +23,17 @@ public interface IInventoryReservationService
         Guid orderId,
         IReadOnlyCollection<InventoryCartLineRequest> lines,
         CancellationToken cancellationToken);
+
+    Task<Result> PromoteCartReservationsToOrderAsync(
+        string cartId,
+        Guid orderId,
+        IReadOnlyCollection<InventoryCartLineRequest> lines,
+        CancellationToken cancellationToken);
+
+    Task<Result> ConsumeOrderReservationsAsync(
+        Guid orderId,
+        IReadOnlyCollection<InventoryCartLineRequest> lines,
+        CancellationToken cancellationToken);
+
+    Task<Result> ReleaseOrderReservationsAsync(Guid orderId, CancellationToken cancellationToken);
 }

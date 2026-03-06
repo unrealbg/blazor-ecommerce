@@ -88,6 +88,46 @@ public interface IStoreApiClient
 
     Task<IReadOnlyCollection<StoreOrderSummary>> GetMyOrdersAsync(CancellationToken cancellationToken);
 
+    Task<StoreOrderSummary?> GetOrderAsync(Guid orderId, CancellationToken cancellationToken);
+
+    Task<StorePaymentIntentAction?> CreatePaymentIntentAsync(
+        Guid orderId,
+        string? provider,
+        string idempotencyKey,
+        string? customerEmail,
+        CancellationToken cancellationToken);
+
+    Task<StorePaymentIntentAction?> ConfirmPaymentIntentAsync(
+        Guid paymentIntentId,
+        string idempotencyKey,
+        CancellationToken cancellationToken);
+
+    Task<StorePaymentIntentAction?> CancelPaymentIntentAsync(
+        Guid paymentIntentId,
+        string? reason,
+        CancellationToken cancellationToken);
+
+    Task<StorePaymentIntentAction?> RefundPaymentIntentAsync(
+        Guid paymentIntentId,
+        decimal? amount,
+        string? reason,
+        CancellationToken cancellationToken);
+
+    Task<StorePaymentIntentDetails?> GetPaymentIntentAsync(
+        Guid paymentIntentId,
+        CancellationToken cancellationToken);
+
+    Task<StorePaymentIntentDetails?> GetPaymentIntentByOrderAsync(
+        Guid orderId,
+        CancellationToken cancellationToken);
+
+    Task<StorePaymentIntentPage> GetPaymentIntentsAsync(
+        int page,
+        int pageSize,
+        string? provider,
+        string? status,
+        CancellationToken cancellationToken);
+
     Task<StoreRedirectMatch?> ResolveRedirectAsync(string path, CancellationToken cancellationToken);
 
     Task<StoreRedirectRulePage> GetRedirectRulesAsync(int page, int pageSize, CancellationToken cancellationToken);

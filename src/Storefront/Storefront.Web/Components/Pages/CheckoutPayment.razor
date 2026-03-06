@@ -1,0 +1,174 @@
+@page "/checkout/payment"
+@rendermode InteractiveServer
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+@inject NavigationManager Navigation
+
+<PageTitle>Checkout Payment</PageTitle>
+
+<h1>Payment</h1>
+
+@if (OrderId is null)
+{
+    <p class="status-message warning">Missing order id.</p>
+}
+else
+{
+    <p>Order: <strong>@OrderId</strong></p>
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <p class="status-message">@message</p>
+    }
+
+    @if (paymentIntent is null)
+    {
+        <button class="btn-primary" @onclick="StartPaymentAsync" disabled="@isLoading">Pay now</button>
+    }
+    else
+    {
+        <p>Provider: <strong>@paymentIntent.Provider</strong></p>
+        <p>Status: <strong>@paymentIntent.Status</strong></p>
+
+        @if (paymentIntent.RequiresAction)
+        {
+            <p>Additional customer action is required before payment can complete.</p>
+        }
+
+        @if (RequiresConfirmation(paymentIntent.Status))
+        {
+            <button class="btn-primary" @onclick="ConfirmPaymentAsync" disabled="@isLoading">Confirm payment</button>
+            <button class="btn-secondary" @onclick="CancelPaymentAsync" disabled="@isLoading">Cancel payment</button>
+        }
+    }
+}
+
+@code {
+    [SupplyParameterFromQuery]
+    public Guid? OrderId { get; set; }
+
+    private StorePaymentIntentAction? paymentIntent;
+    private bool isLoading;
+    private string? message;
+
+    private async Task StartPaymentAsync()
+    {
+        if (OrderId is null)
+        {
+            message = "Order id is required.";
+            return;
+        }
+
+        isLoading = true;
+        message = null;
+
+        var idempotencyKey = Guid.NewGuid().ToString("N");
+        var result = await StoreApiClient.CreatePaymentIntentAsync(
+            OrderId.Value,
+            "Demo",
+            idempotencyKey,
+            customerEmail: null,
+            CancellationToken.None);
+
+        isLoading = false;
+
+        if (result is null)
+        {
+            message = "Payment intent could not be created.";
+            return;
+        }
+
+        paymentIntent = result;
+        await HandlePaymentResultAsync(result);
+    }
+
+    private async Task ConfirmPaymentAsync()
+    {
+        if (paymentIntent is null)
+        {
+            return;
+        }
+
+        isLoading = true;
+        message = null;
+
+        var idempotencyKey = Guid.NewGuid().ToString("N");
+        var result = await StoreApiClient.ConfirmPaymentIntentAsync(
+            paymentIntent.PaymentIntentId,
+            idempotencyKey,
+            CancellationToken.None);
+
+        isLoading = false;
+
+        if (result is null)
+        {
+            message = "Payment confirmation failed.";
+            return;
+        }
+
+        paymentIntent = result;
+        await HandlePaymentResultAsync(result);
+    }
+
+    private async Task CancelPaymentAsync()
+    {
+        if (paymentIntent is null)
+        {
+            return;
+        }
+
+        isLoading = true;
+        message = null;
+
+        var result = await StoreApiClient.CancelPaymentIntentAsync(
+            paymentIntent.PaymentIntentId,
+            "Cancelled by customer",
+            CancellationToken.None);
+
+        isLoading = false;
+
+        if (result is null)
+        {
+            message = "Payment cancellation failed.";
+            return;
+        }
+
+        paymentIntent = result;
+        await HandlePaymentResultAsync(result);
+    }
+
+    private Task HandlePaymentResultAsync(StorePaymentIntentAction result)
+    {
+        if (OrderId is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (result.Status.Equals("Captured", StringComparison.OrdinalIgnoreCase))
+        {
+            Navigation.NavigateTo($"/checkout/success?orderId={OrderId:D}&paymentIntentId={result.PaymentIntentId:D}");
+            return Task.CompletedTask;
+        }
+
+        if (result.Status.Equals("Failed", StringComparison.OrdinalIgnoreCase) ||
+            result.Status.Equals("Cancelled", StringComparison.OrdinalIgnoreCase))
+        {
+            Navigation.NavigateTo($"/checkout/failure?orderId={OrderId:D}&paymentIntentId={result.PaymentIntentId:D}");
+            return Task.CompletedTask;
+        }
+
+        message = result.RequiresAction
+            ? "Provider requires additional action. Confirm payment after action completes."
+            : "Payment intent is ready for confirmation.";
+
+        return Task.CompletedTask;
+    }
+
+    private static bool RequiresConfirmation(string status)
+    {
+        return status.Equals("Created", StringComparison.OrdinalIgnoreCase) ||
+               status.Equals("Pending", StringComparison.OrdinalIgnoreCase) ||
+               status.Equals("RequiresAction", StringComparison.OrdinalIgnoreCase) ||
+               status.Equals("Authorized", StringComparison.OrdinalIgnoreCase);
+    }
+}

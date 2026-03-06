@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orders.Infrastructure.Persistence;
+using Payments.Infrastructure.Persistence;
 using Redirects.Infrastructure.Persistence;
 using Search.Infrastructure.Persistence;
 
@@ -26,6 +27,17 @@ public sealed class AppHostWebApplicationFactory : WebApplicationFactory<Program
 
     private readonly string sharedDatabaseName = $"apphost-tests-{Guid.NewGuid():N}";
     private readonly InMemoryDatabaseRoot databaseRoot = new();
+    private readonly IReadOnlyDictionary<string, string?> configurationOverrides;
+
+    public AppHostWebApplicationFactory()
+        : this(new Dictionary<string, string?>())
+    {
+    }
+
+    public AppHostWebApplicationFactory(IReadOnlyDictionary<string, string?> configurationOverrides)
+    {
+        this.configurationOverrides = configurationOverrides;
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -33,16 +45,23 @@ public sealed class AppHostWebApplicationFactory : WebApplicationFactory<Program
 
         builder.ConfigureAppConfiguration((_, configurationBuilder) =>
         {
-            configurationBuilder.AddInMemoryCollection(
-            [
-                new KeyValuePair<string, string?>("Infrastructure:SkipInitialization", "true"),
-                new KeyValuePair<string, string?>("ConnectionStrings:Postgres", "Host=localhost;Port=5432;Database=test;Username=test;Password=test"),
-                new KeyValuePair<string, string?>("ConnectionStrings:Redis", string.Empty),
-                new KeyValuePair<string, string?>("Authentication:Jwt:Authority", "https://auth.test/"),
-                new KeyValuePair<string, string?>("Authentication:Jwt:Audience", "apphost-tests"),
-                new KeyValuePair<string, string?>("Outbox:BatchSize", "20"),
-                new KeyValuePair<string, string?>("Outbox:PollingInterval", "00:00:00.2500000"),
-            ]);
+            var configuration = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Infrastructure:SkipInitialization"] = "true",
+                ["ConnectionStrings:Postgres"] = "Host=localhost;Port=5432;Database=test;Username=test;Password=test",
+                ["ConnectionStrings:Redis"] = string.Empty,
+                ["Authentication:Jwt:Authority"] = "https://auth.test/",
+                ["Authentication:Jwt:Audience"] = "apphost-tests",
+                ["Outbox:BatchSize"] = "20",
+                ["Outbox:PollingInterval"] = "00:00:00.2500000",
+            };
+
+            foreach (var overridePair in this.configurationOverrides)
+            {
+                configuration[overridePair.Key] = overridePair.Value;
+            }
+
+            configurationBuilder.AddInMemoryCollection(configuration);
         });
 
         builder.ConfigureTestServices(services =>
@@ -56,6 +75,7 @@ public sealed class AppHostWebApplicationFactory : WebApplicationFactory<Program
             this.ReplaceDbContext<CustomersDbContext>(services);
             this.ReplaceDbContext<IdentityAppDbContext>(services);
             this.ReplaceDbContext<InventoryDbContext>(services);
+            this.ReplaceDbContext<PaymentsDbContext>(services);
         });
     }
 
