@@ -69,6 +69,9 @@ internal sealed class StockReservationConfiguration : IEntityTypeConfiguration<S
         builder.HasIndex(reservation => new { reservation.CustomerId, reservation.Status })
             .HasDatabaseName("ix_stock_reservations_customer_status");
 
+        builder.HasIndex(reservation => new { reservation.OrderId, reservation.Status })
+            .HasDatabaseName("ix_stock_reservations_order_status");
+
         builder.HasIndex(reservation => new { reservation.Status, reservation.ExpiresAtUtc })
             .HasDatabaseName("ix_stock_reservations_status_expires");
     }

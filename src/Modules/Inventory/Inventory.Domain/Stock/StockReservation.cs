@@ -181,6 +181,28 @@ public sealed class StockReservation : AggregateRoot<Guid>
         return Result.Success();
     }
 
+    public Result AssignToOrder(Guid orderId, DateTime utcNow)
+    {
+        if (orderId == Guid.Empty)
+        {
+            return Result.Failure(new Error(
+                "inventory.order_id.required",
+                "Order id is required."));
+        }
+
+        if (Status != StockReservationStatus.Active)
+        {
+            return Result.Failure(new Error(
+                "inventory.reservation.not_active",
+                "Only active reservations can be assigned to an order."));
+        }
+
+        OrderId = orderId;
+        CartId = null;
+        UpdatedAtUtc = utcNow;
+        return Result.Success();
+    }
+
     public Result Release(DateTime utcNow)
     {
         if (Status != StockReservationStatus.Active)

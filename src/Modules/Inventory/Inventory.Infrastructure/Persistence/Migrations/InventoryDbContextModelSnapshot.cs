@@ -239,6 +239,9 @@ namespace Inventory.Infrastructure.Persistence.Migrations
                     b.HasIndex("CustomerId", "Status")
                         .HasDatabaseName("ix_stock_reservations_customer_status");
 
+                    b.HasIndex("OrderId", "Status")
+                        .HasDatabaseName("ix_stock_reservations_order_status");
+
                     b.HasIndex("ProductId", "Status")
                         .HasDatabaseName("ix_stock_reservations_product_status");
 

@@ -3,7 +3,6 @@ using BuildingBlocks.Domain.Abstractions;
 using BuildingBlocks.Domain.Results;
 using Orders.Application.Orders;
 using Orders.Application.Orders.Checkout;
-using Orders.Domain.Events;
 using Orders.Domain.Orders;
 
 namespace Orders.Tests;
@@ -76,12 +75,12 @@ public sealed class CheckoutCommandHandlerTests
         Assert.Equal(1, unitOfWork.SaveChangesCalls);
         Assert.Equal(25.25m, repository.AddedOrder!.Subtotal.Amount);
         Assert.Equal(25.25m, repository.AddedOrder.Total.Amount);
-        Assert.Equal(OrderStatus.Placed, repository.AddedOrder.Status);
+        Assert.Equal(OrderStatus.PendingPayment, repository.AddedOrder.Status);
         Assert.Equal(repository.AddedOrder.Id, idempotencyRepository.LastAdded?.OrderId);
     }
 
     [Fact]
-    public async Task Handle_Should_RaiseOrderPlacedDomainEvent()
+    public async Task Handle_Should_NotRaiseOrderPlacedDomainEvent_BeforePayment()
     {
         var cartAccessor = new StubCartCheckoutAccessor
         {
@@ -100,8 +99,7 @@ public sealed class CheckoutCommandHandlerTests
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(repository.AddedOrder);
-        Assert.Single(repository.AddedOrder!.DomainEvents);
-        Assert.IsType<OrderPlaced>(repository.AddedOrder.DomainEvents.Single());
+        Assert.Empty(repository.AddedOrder!.DomainEvents);
     }
 
     [Fact]
@@ -176,6 +174,7 @@ public sealed class CheckoutCommandHandlerTests
     {
         var order = Order.Create(
             "customer-1",
+            "checkout-session-1",
             [
                 new OrderLineData(Guid.NewGuid(), "Item A", BuildingBlocks.Domain.Shared.Money.Create("USD", 10m).Value, 1),
                 new OrderLineData(Guid.NewGuid(), "Item B", BuildingBlocks.Domain.Shared.Money.Create("EUR", 10m).Value, 1),
@@ -231,6 +230,28 @@ public sealed class CheckoutCommandHandlerTests
             Guid orderId,
             IReadOnlyCollection<InventoryCartLineRequest> lines,
             CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Result.Success());
+        }
+
+        public Task<Result> PromoteCartReservationsToOrderAsync(
+            string cartId,
+            Guid orderId,
+            IReadOnlyCollection<InventoryCartLineRequest> lines,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Result.Success());
+        }
+
+        public Task<Result> ConsumeOrderReservationsAsync(
+            Guid orderId,
+            IReadOnlyCollection<InventoryCartLineRequest> lines,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Result.Success());
+        }
+
+        public Task<Result> ReleaseOrderReservationsAsync(Guid orderId, CancellationToken cancellationToken)
         {
             return Task.FromResult(Result.Success());
         }

@@ -16,8 +16,19 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
             .HasMaxLength(128)
             .IsRequired();
 
+        builder.Property(order => order.CheckoutSessionId)
+            .HasMaxLength(128)
+            .IsRequired();
+
         builder.Property(order => order.PlacedAtUtc)
             .IsRequired();
+
+        builder.Property(order => order.PaidAtUtc);
+
+        builder.Property(order => order.LastPaymentIntentId);
+
+        builder.Property(order => order.PaymentFailureMessage)
+            .HasMaxLength(512);
 
         builder.Property(order => order.RowVersion)
             .HasColumnName("row_version")
@@ -28,6 +39,8 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
             .HasConversion<string>()
             .HasMaxLength(32)
             .IsRequired();
+
+        builder.HasIndex(order => order.Status);
 
         builder.OwnsOne(order => order.Subtotal, subtotalBuilder =>
         {

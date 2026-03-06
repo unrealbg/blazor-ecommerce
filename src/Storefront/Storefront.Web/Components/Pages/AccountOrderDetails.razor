@@ -1,0 +1,87 @@
+@page "/account/orders/{OrderId:guid}"
+@layout Storefront.Web.Components.Layout.AccountLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>Order Details</PageTitle>
+
+<h1>Order Details</h1>
+
+@if (isLoading)
+{
+    <p>Loading order...</p>
+}
+else if (order is null)
+{
+    <p>Order was not found.</p>
+}
+else
+{
+    <article class="order-card">
+        <header>
+            <h2>Order @order.Id</h2>
+            <p>@order.PlacedAtUtc.ToString("u")</p>
+        </header>
+        <p>Status: <strong>@order.Status</strong></p>
+        <p>Total: <strong>@FormatPrice(order.TotalAmount, order.Currency)</strong></p>
+    </article>
+
+    <section class="inventory-panel">
+        <h2>Payment Summary</h2>
+
+        @if (paymentIntent is null)
+        {
+            <p>No payment intent found for this order.</p>
+        }
+        else
+        {
+            <p>Payment intent: <strong>@paymentIntent.Id</strong></p>
+            <p>Provider: <strong>@paymentIntent.Provider</strong></p>
+            <p>Status: <strong>@paymentIntent.Status</strong></p>
+            <p>Amount: <strong>@FormatPrice(paymentIntent.Amount, paymentIntent.Currency)</strong></p>
+
+            @if (!string.IsNullOrWhiteSpace(paymentIntent.FailureMessage))
+            {
+                <p class="status-message warning">@paymentIntent.FailureMessage</p>
+            }
+
+            @if (RequiresPaymentAction(paymentIntent.Status))
+            {
+                <p><a class="btn-primary" href="@($"/checkout/payment?orderId={order.Id:D}")">Continue payment</a></p>
+            }
+        }
+    </section>
+}
+
+@code {
+    [Parameter]
+    public Guid OrderId { get; set; }
+
+    private bool isLoading = true;
+    private StoreOrderSummary? order;
+    private StorePaymentIntentDetails? paymentIntent;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        order = await StoreApiClient.GetOrderAsync(OrderId, CancellationToken.None);
+        paymentIntent = await StoreApiClient.GetPaymentIntentByOrderAsync(OrderId, CancellationToken.None);
+        isLoading = false;
+    }
+
+    private static bool RequiresPaymentAction(string status)
+    {
+        return status.Equals("Pending", StringComparison.OrdinalIgnoreCase) ||
+               status.Equals("Created", StringComparison.OrdinalIgnoreCase) ||
+               status.Equals("RequiresAction", StringComparison.OrdinalIgnoreCase) ||
+               status.Equals("Authorized", StringComparison.OrdinalIgnoreCase) ||
+               status.Equals("Failed", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string FormatPrice(decimal amount, string currency)
+    {
+        return string.Create(
+            System.Globalization.CultureInfo.InvariantCulture,
+            $"{amount:0.00} {currency.ToUpperInvariant()}");
+    }
+}

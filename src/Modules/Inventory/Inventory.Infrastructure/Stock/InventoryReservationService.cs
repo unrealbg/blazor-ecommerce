@@ -155,6 +155,55 @@ internal sealed class InventoryReservationService(
         return ConsumeInternalAsync(normalizedCartId.Value, orderId, lines, cancellationToken);
     }
 
+    public Task<Result> PromoteCartReservationsToOrderAsync(
+        string cartId,
+        Guid orderId,
+        IReadOnlyCollection<InventoryCartLineRequest> lines,
+        CancellationToken cancellationToken)
+    {
+        var normalizedCartId = NormalizeCartId(cartId);
+        if (normalizedCartId.IsFailure)
+        {
+            return Task.FromResult(Result.Failure(normalizedCartId.Error));
+        }
+
+        if (orderId == Guid.Empty)
+        {
+            return Task.FromResult(Result.Failure(new Error(
+                "inventory.order_id.required",
+                "Order id is required.")));
+        }
+
+        return PromoteInternalAsync(normalizedCartId.Value, orderId, lines, cancellationToken);
+    }
+
+    public Task<Result> ConsumeOrderReservationsAsync(
+        Guid orderId,
+        IReadOnlyCollection<InventoryCartLineRequest> lines,
+        CancellationToken cancellationToken)
+    {
+        if (orderId == Guid.Empty)
+        {
+            return Task.FromResult(Result.Failure(new Error(
+                "inventory.order_id.required",
+                "Order id is required.")));
+        }
+
+        return ConsumeOrderInternalAsync(orderId, lines, cancellationToken);
+    }
+
+    public Task<Result> ReleaseOrderReservationsAsync(Guid orderId, CancellationToken cancellationToken)
+    {
+        if (orderId == Guid.Empty)
+        {
+            return Task.FromResult(Result.Failure(new Error(
+                "inventory.order_id.required",
+                "Order id is required.")));
+        }
+
+        return ReleaseOrderInternalAsync(orderId, cancellationToken);
+    }
+
     private async Task<Result> SyncCartReservationInternalAsync(
         string cartId,
         Guid productId,
@@ -394,6 +443,115 @@ internal sealed class InventoryReservationService(
             : Result.Failure(operationResult.Error);
     }
 
+    private async Task<Result> PromoteInternalAsync(
+        string cartId,
+        Guid orderId,
+        IReadOnlyCollection<InventoryCartLineRequest> lines,
+        CancellationToken cancellationToken)
+    {
+        var normalizedLines = NormalizeLines(lines);
+        if (normalizedLines.Count == 0)
+        {
+            return Result.Success();
+        }
+
+        var operationResult = await unitOfWork.ExecuteWithConcurrencyRetryAsync(
+            async innerCancellationToken =>
+            {
+                foreach (var line in normalizedLines)
+                {
+                    var stockItem = await stockItemRepository.GetByProductAndSkuAsync(
+                        line.ProductId,
+                        line.Sku,
+                        innerCancellationToken);
+                    if (stockItem is null)
+                    {
+                        return Result<bool>.Failure(new Error(
+                            "inventory.stock_item.not_found",
+                            "Inventory item was not found."));
+                    }
+
+                    if (!stockItem.IsTracked)
+                    {
+                        continue;
+                    }
+
+                    var reservation = await stockReservationRepository.GetActiveByCartProductSkuAsync(
+                        cartId,
+                        line.ProductId,
+                        line.Sku,
+                        innerCancellationToken);
+                    if (reservation is null)
+                    {
+                        return Result<bool>.Failure(new Error(
+                            "inventory.reservation.not_found",
+                            "Stock reservation was not found."));
+                    }
+
+                    if (reservation.ExpiresAtUtc <= clock.UtcNow)
+                    {
+                        return Result<bool>.Failure(new Error(
+                            "inventory.reservation.expired",
+                            "Stock reservation has expired."));
+                    }
+
+                    if (reservation.Quantity < line.Quantity)
+                    {
+                        return Result<bool>.Failure(new Error(
+                            "inventory.stock.insufficient",
+                            "Insufficient stock."));
+                    }
+
+                    if (reservation.Quantity > line.Quantity)
+                    {
+                        var releaseExtraQuantity = reservation.Quantity - line.Quantity;
+                        var releaseStockResult = stockItem.Release(releaseExtraQuantity, clock.UtcNow);
+                        if (releaseStockResult.IsFailure)
+                        {
+                            return Result<bool>.Failure(releaseStockResult.Error);
+                        }
+
+                        var reduceReservationResult = reservation.SetQuantity(line.Quantity, clock.UtcNow);
+                        if (reduceReservationResult.IsFailure)
+                        {
+                            return Result<bool>.Failure(reduceReservationResult.Error);
+                        }
+
+                        var releaseMovementResult = StockMovement.Create(
+                            reservation.ProductId,
+                            reservation.Sku,
+                            StockMovementType.ReservationReleased,
+                            releaseExtraQuantity,
+                            reservation.Id,
+                            "Reduced reservation during checkout promotion",
+                            "system",
+                            clock.UtcNow);
+                        if (releaseMovementResult.IsFailure)
+                        {
+                            return Result<bool>.Failure(releaseMovementResult.Error);
+                        }
+
+                        await stockMovementRepository.AddAsync(releaseMovementResult.Value, innerCancellationToken);
+                    }
+
+                    var assignResult = reservation.AssignToOrder(orderId, clock.UtcNow);
+                    if (assignResult.IsFailure)
+                    {
+                        return Result<bool>.Failure(assignResult.Error);
+                    }
+                }
+
+                await unitOfWork.SaveChangesAsync(innerCancellationToken);
+                return Result<bool>.Success(true);
+            },
+            Math.Max(1, this.options.RetryOnConcurrencyCount),
+            cancellationToken);
+
+        return operationResult.IsSuccess
+            ? Result.Success()
+            : Result.Failure(operationResult.Error);
+    }
+
     private async Task<Result> ReleaseAllInternalAsync(string cartId, CancellationToken cancellationToken)
     {
         var operationResult = await unitOfWork.ExecuteWithConcurrencyRetryAsync(
@@ -584,6 +742,215 @@ internal sealed class InventoryReservationService(
                     }
 
                     await stockMovementRepository.AddAsync(orderMovementResult.Value, innerCancellationToken);
+                }
+
+                await unitOfWork.SaveChangesAsync(innerCancellationToken);
+                return Result<bool>.Success(true);
+            },
+            Math.Max(1, this.options.RetryOnConcurrencyCount),
+            cancellationToken);
+
+        return operationResult.IsSuccess
+            ? Result.Success()
+            : Result.Failure(operationResult.Error);
+    }
+
+    private async Task<Result> ConsumeOrderInternalAsync(
+        Guid orderId,
+        IReadOnlyCollection<InventoryCartLineRequest> lines,
+        CancellationToken cancellationToken)
+    {
+        var normalizedLines = NormalizeLines(lines);
+        if (normalizedLines.Count == 0)
+        {
+            return Result.Success();
+        }
+
+        var operationResult = await unitOfWork.ExecuteWithConcurrencyRetryAsync(
+            async innerCancellationToken =>
+            {
+                foreach (var line in normalizedLines)
+                {
+                    var stockItem = await stockItemRepository.GetByProductAndSkuAsync(
+                        line.ProductId,
+                        line.Sku,
+                        innerCancellationToken);
+                    if (stockItem is null)
+                    {
+                        return Result<bool>.Failure(new Error(
+                            "inventory.stock_item.not_found",
+                            "Inventory item was not found."));
+                    }
+
+                    if (!stockItem.IsTracked)
+                    {
+                        continue;
+                    }
+
+                    var reservation = await stockReservationRepository.GetActiveByOrderProductSkuAsync(
+                        orderId,
+                        line.ProductId,
+                        line.Sku,
+                        innerCancellationToken);
+                    if (reservation is null)
+                    {
+                        return Result<bool>.Failure(new Error(
+                            "inventory.reservation.not_found",
+                            "Stock reservation was not found."));
+                    }
+
+                    if (reservation.ExpiresAtUtc <= clock.UtcNow)
+                    {
+                        return Result<bool>.Failure(new Error(
+                            "inventory.reservation.expired",
+                            "Stock reservation has expired."));
+                    }
+
+                    if (reservation.Quantity < line.Quantity)
+                    {
+                        return Result<bool>.Failure(new Error(
+                            "inventory.stock.insufficient",
+                            "Insufficient stock."));
+                    }
+
+                    if (reservation.Quantity > line.Quantity)
+                    {
+                        var releaseExtraQuantity = reservation.Quantity - line.Quantity;
+
+                        var releaseStockResult = stockItem.Release(releaseExtraQuantity, clock.UtcNow);
+                        if (releaseStockResult.IsFailure)
+                        {
+                            return Result<bool>.Failure(releaseStockResult.Error);
+                        }
+
+                        var reduceReservationResult = reservation.SetQuantity(line.Quantity, clock.UtcNow);
+                        if (reduceReservationResult.IsFailure)
+                        {
+                            return Result<bool>.Failure(reduceReservationResult.Error);
+                        }
+
+                        var releaseMovementResult = StockMovement.Create(
+                            reservation.ProductId,
+                            reservation.Sku,
+                            StockMovementType.ReservationReleased,
+                            releaseExtraQuantity,
+                            reservation.Id,
+                            "Payment consumed lower quantity than reserved",
+                            "system",
+                            clock.UtcNow);
+                        if (releaseMovementResult.IsFailure)
+                        {
+                            return Result<bool>.Failure(releaseMovementResult.Error);
+                        }
+
+                        await stockMovementRepository.AddAsync(releaseMovementResult.Value, innerCancellationToken);
+                    }
+
+                    var consumeStockResult = stockItem.Consume(line.Quantity, clock.UtcNow);
+                    if (consumeStockResult.IsFailure)
+                    {
+                        return Result<bool>.Failure(consumeStockResult.Error);
+                    }
+
+                    var consumeReservationResult = reservation.Consume(orderId, clock.UtcNow);
+                    if (consumeReservationResult.IsFailure)
+                    {
+                        return Result<bool>.Failure(consumeReservationResult.Error);
+                    }
+
+                    var reservationMovementResult = StockMovement.Create(
+                        reservation.ProductId,
+                        reservation.Sku,
+                        StockMovementType.ReservationConsumed,
+                        -line.Quantity,
+                        reservation.Id,
+                        "Payment captured",
+                        "system",
+                        clock.UtcNow);
+                    if (reservationMovementResult.IsFailure)
+                    {
+                        return Result<bool>.Failure(reservationMovementResult.Error);
+                    }
+
+                    await stockMovementRepository.AddAsync(reservationMovementResult.Value, innerCancellationToken);
+
+                    var orderMovementResult = StockMovement.Create(
+                        reservation.ProductId,
+                        reservation.Sku,
+                        StockMovementType.OrderCompleted,
+                        -line.Quantity,
+                        orderId,
+                        "Order paid",
+                        "system",
+                        clock.UtcNow);
+                    if (orderMovementResult.IsFailure)
+                    {
+                        return Result<bool>.Failure(orderMovementResult.Error);
+                    }
+
+                    await stockMovementRepository.AddAsync(orderMovementResult.Value, innerCancellationToken);
+                }
+
+                await unitOfWork.SaveChangesAsync(innerCancellationToken);
+                return Result<bool>.Success(true);
+            },
+            Math.Max(1, this.options.RetryOnConcurrencyCount),
+            cancellationToken);
+
+        return operationResult.IsSuccess
+            ? Result.Success()
+            : Result.Failure(operationResult.Error);
+    }
+
+    private async Task<Result> ReleaseOrderInternalAsync(Guid orderId, CancellationToken cancellationToken)
+    {
+        var operationResult = await unitOfWork.ExecuteWithConcurrencyRetryAsync(
+            async innerCancellationToken =>
+            {
+                var reservations = await stockReservationRepository.ListActiveByOrderIdAsync(
+                    orderId,
+                    innerCancellationToken);
+                if (reservations.Count == 0)
+                {
+                    return Result<bool>.Success(true);
+                }
+
+                foreach (var reservation in reservations)
+                {
+                    var stockItem = await stockItemRepository.GetByProductAndSkuAsync(
+                        reservation.ProductId,
+                        reservation.Sku,
+                        innerCancellationToken);
+                    if (stockItem is not null && stockItem.IsTracked)
+                    {
+                        var releaseStockResult = stockItem.Release(reservation.Quantity, clock.UtcNow);
+                        if (releaseStockResult.IsFailure)
+                        {
+                            return Result<bool>.Failure(releaseStockResult.Error);
+                        }
+                    }
+
+                    var releaseReservationResult = reservation.Release(clock.UtcNow);
+                    if (releaseReservationResult.IsFailure)
+                    {
+                        return Result<bool>.Failure(releaseReservationResult.Error);
+                    }
+
+                    var movementResult = StockMovement.Create(
+                        reservation.ProductId,
+                        reservation.Sku,
+                        StockMovementType.ReservationReleased,
+                        reservation.Quantity,
+                        reservation.Id,
+                        "Payment failed or cancelled",
+                        "system",
+                        clock.UtcNow);
+                    if (movementResult.IsFailure)
+                    {
+                        return Result<bool>.Failure(movementResult.Error);
+                    }
+
+                    await stockMovementRepository.AddAsync(movementResult.Value, innerCancellationToken);
                 }
 
                 await unitOfWork.SaveChangesAsync(innerCancellationToken);

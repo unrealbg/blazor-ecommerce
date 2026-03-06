@@ -293,6 +293,143 @@ public sealed class StoreApiClient(
         return orders ?? [];
     }
 
+    public Task<StoreOrderSummary?> GetOrderAsync(Guid orderId, CancellationToken cancellationToken)
+    {
+        return GetOrDefaultAsync<StoreOrderSummary>($"/api/v1/orders/{orderId}", cancellationToken);
+    }
+
+    public async Task<StorePaymentIntentAction?> CreatePaymentIntentAsync(
+        Guid orderId,
+        string? provider,
+        string idempotencyKey,
+        string? customerEmail,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/payments/intents")
+        {
+            Content = JsonContent.Create(new CreatePaymentIntentRequest(orderId, provider, customerEmail)),
+        };
+        request.Headers.Add("Idempotency-Key", idempotencyKey);
+
+        using var response = await SendWithCookieForwardingAsync(request, cancellationToken);
+        if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Conflict)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<StorePaymentIntentAction>(cancellationToken);
+    }
+
+    public async Task<StorePaymentIntentAction?> ConfirmPaymentIntentAsync(
+        Guid paymentIntentId,
+        string idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/payments/intents/{paymentIntentId}/confirm");
+        request.Headers.Add("Idempotency-Key", idempotencyKey);
+
+        using var response = await SendWithCookieForwardingAsync(request, cancellationToken);
+        if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Conflict)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<StorePaymentIntentAction>(cancellationToken);
+    }
+
+    public async Task<StorePaymentIntentAction?> CancelPaymentIntentAsync(
+        Guid paymentIntentId,
+        string? reason,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/payments/intents/{paymentIntentId}/cancel")
+        {
+            Content = JsonContent.Create(new CancelPaymentIntentRequest(reason)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(request, cancellationToken);
+        if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Conflict)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<StorePaymentIntentAction>(cancellationToken);
+    }
+
+    public async Task<StorePaymentIntentAction?> RefundPaymentIntentAsync(
+        Guid paymentIntentId,
+        decimal? amount,
+        string? reason,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/payments/intents/{paymentIntentId}/refund")
+        {
+            Content = JsonContent.Create(new RefundPaymentIntentRequest(amount, reason)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(request, cancellationToken);
+        if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Conflict)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<StorePaymentIntentAction>(cancellationToken);
+    }
+
+    public Task<StorePaymentIntentDetails?> GetPaymentIntentAsync(
+        Guid paymentIntentId,
+        CancellationToken cancellationToken)
+    {
+        return GetOrDefaultAsync<StorePaymentIntentDetails>(
+            $"/api/v1/payments/intents/{paymentIntentId}",
+            cancellationToken);
+    }
+
+    public Task<StorePaymentIntentDetails?> GetPaymentIntentByOrderAsync(
+        Guid orderId,
+        CancellationToken cancellationToken)
+    {
+        return GetOrDefaultAsync<StorePaymentIntentDetails>(
+            $"/api/v1/payments/intents/by-order/{orderId}",
+            cancellationToken);
+    }
+
+    public async Task<StorePaymentIntentPage> GetPaymentIntentsAsync(
+        int page,
+        int pageSize,
+        string? provider,
+        string? status,
+        CancellationToken cancellationToken)
+    {
+        var normalizedPage = page <= 0 ? 1 : page;
+        var normalizedPageSize = pageSize <= 0 ? 20 : Math.Min(100, pageSize);
+
+        var queryParameters = new List<KeyValuePair<string, string?>>
+        {
+            new("page", normalizedPage.ToString()),
+            new("pageSize", normalizedPageSize.ToString()),
+        };
+
+        if (!string.IsNullOrWhiteSpace(provider))
+        {
+            queryParameters.Add(new("provider", provider.Trim()));
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            queryParameters.Add(new("status", status.Trim()));
+        }
+
+        var uri = $"/api/v1/payments/intents{QueryString.Create(queryParameters)}";
+        var response = await GetAuthorizedOrDefaultAsync<StorePaymentIntentPage>(uri, cancellationToken);
+
+        return response ?? new StorePaymentIntentPage(normalizedPage, normalizedPageSize, 0, []);
+    }
+
     public Task<StoreRedirectMatch?> ResolveRedirectAsync(string path, CancellationToken cancellationToken)
     {
         var encodedPath = Uri.EscapeDataString(path);
@@ -519,6 +656,12 @@ public sealed class StoreApiClient(
     private sealed record CreateRedirectRuleRequest(string FromPath, string ToPath, int StatusCode);
 
     private sealed record CreateRedirectRuleResponse(Guid Id);
+
+    private sealed record CreatePaymentIntentRequest(Guid OrderId, string? Provider, string? CustomerEmail);
+
+    private sealed record CancelPaymentIntentRequest(string? Reason);
+
+    private sealed record RefundPaymentIntentRequest(decimal? Amount, string? Reason);
 
     private sealed record AdjustInventoryStockRequest(int QuantityDelta, string? Reason);
 }
