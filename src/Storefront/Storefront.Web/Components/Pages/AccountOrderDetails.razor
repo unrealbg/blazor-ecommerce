@@ -23,7 +23,10 @@ else
             <p>@order.PlacedAtUtc.ToString("u")</p>
         </header>
         <p>Status: <strong>@order.Status</strong></p>
+        <p>Fulfillment: <strong>@order.FulfillmentStatus</strong></p>
         <p>Total: <strong>@FormatPrice(order.TotalAmount, order.Currency)</strong></p>
+        <p>Shipping method: <strong>@order.ShippingMethodName (@order.ShippingMethodCode)</strong></p>
+        <p>Shipping price: <strong>@FormatPrice(order.ShippingPriceAmount, order.ShippingCurrency)</strong></p>
     </article>
 
     <section class="inventory-panel">
@@ -51,6 +54,48 @@ else
             }
         }
     </section>
+
+    <section class="inventory-panel">
+        <h2>Shipment</h2>
+
+        @if (shipment is null)
+        {
+            <p>No shipment created yet.</p>
+        }
+        else
+        {
+            <p>Status: <strong>@shipment.Status</strong></p>
+            <p>Carrier: <strong>@shipment.CarrierName</strong></p>
+            <p>Tracking number: <strong>@shipment.TrackingNumber</strong></p>
+            @if (!string.IsNullOrWhiteSpace(shipment.TrackingUrl))
+            {
+                <p><a class="btn-link" href="@shipment.TrackingUrl" target="_blank" rel="noopener noreferrer">Track shipment</a></p>
+            }
+
+            @if (shipment.Events.Count > 0)
+            {
+                <table class="cart-table">
+                    <thead>
+                    <tr>
+                        <th>Event</th>
+                        <th>Message</th>
+                        <th>Occurred</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var shipmentEvent in shipment.Events)
+                    {
+                        <tr>
+                            <td>@shipmentEvent.EventType</td>
+                            <td>@shipmentEvent.Message</td>
+                            <td>@shipmentEvent.OccurredAtUtc.ToString("u")</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            }
+        }
+    </section>
 }
 
 @code {
@@ -60,12 +105,14 @@ else
     private bool isLoading = true;
     private StoreOrderSummary? order;
     private StorePaymentIntentDetails? paymentIntent;
+    private StoreShipment? shipment;
 
     protected override async Task OnParametersSetAsync()
     {
         isLoading = true;
         order = await StoreApiClient.GetOrderAsync(OrderId, CancellationToken.None);
         paymentIntent = await StoreApiClient.GetPaymentIntentByOrderAsync(OrderId, CancellationToken.None);
+        shipment = await StoreApiClient.GetShipmentByOrderAsync(OrderId, CancellationToken.None);
         isLoading = false;
     }
 

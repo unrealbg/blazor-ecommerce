@@ -532,6 +532,302 @@ public sealed class StoreApiClient(
         return response ?? new StoreStockReservationPage(normalizedPage, normalizedPageSize, 0, []);
     }
 
+    public async Task<IReadOnlyCollection<StoreShippingQuoteMethod>> GetShippingQuotesAsync(
+        string countryCode,
+        decimal subtotalAmount,
+        string currency,
+        CancellationToken cancellationToken)
+    {
+        var normalizedCountryCode = string.IsNullOrWhiteSpace(countryCode) ? "BG" : countryCode.Trim().ToUpperInvariant();
+        var normalizedCurrency = string.IsNullOrWhiteSpace(currency) ? "EUR" : currency.Trim().ToUpperInvariant();
+        var normalizedSubtotal = subtotalAmount < 0m ? 0m : decimal.Round(subtotalAmount, 2, MidpointRounding.AwayFromZero);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/shipping/quotes")
+        {
+            Content = JsonContent.Create(new QuoteShippingRequest(
+                normalizedCountryCode,
+                normalizedSubtotal,
+                normalizedCurrency)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return [];
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<ShippingQuoteResponse>(cancellationToken);
+        return payload?.Methods ?? [];
+    }
+
+    public async Task<IReadOnlyCollection<StoreShippingMethod>> GetShippingMethodsAsync(
+        bool activeOnly,
+        CancellationToken cancellationToken)
+    {
+        var response = await GetAuthorizedOrDefaultAsync<IReadOnlyCollection<StoreShippingMethod>>(
+            $"/api/v1/shipping/methods?activeOnly={(activeOnly ? "true" : "false")}",
+            cancellationToken);
+        return response ?? [];
+    }
+
+    public async Task<IReadOnlyCollection<StoreShippingZone>> GetShippingZonesAsync(
+        bool activeOnly,
+        CancellationToken cancellationToken)
+    {
+        var response = await GetAuthorizedOrDefaultAsync<IReadOnlyCollection<StoreShippingZone>>(
+            $"/api/v1/shipping/zones?activeOnly={(activeOnly ? "true" : "false")}",
+            cancellationToken);
+        return response ?? [];
+    }
+
+    public async Task<IReadOnlyCollection<StoreShippingRateRule>> GetShippingRateRulesAsync(
+        bool activeOnly,
+        CancellationToken cancellationToken)
+    {
+        var response = await GetAuthorizedOrDefaultAsync<IReadOnlyCollection<StoreShippingRateRule>>(
+            $"/api/v1/shipping/rules?activeOnly={(activeOnly ? "true" : "false")}",
+            cancellationToken);
+        return response ?? [];
+    }
+
+    public async Task<Guid?> CreateShippingMethodAsync(
+        StoreShippingMethod request,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/shipping/methods")
+        {
+            Content = JsonContent.Create(new CreateShippingMethodRequest(
+                request.Code,
+                request.Name,
+                request.Description,
+                request.Provider,
+                request.Type,
+                request.BasePriceAmount,
+                request.Currency,
+                request.SupportsTracking,
+                request.SupportsPickupPoint,
+                request.EstimatedMinDays,
+                request.EstimatedMaxDays,
+                request.Priority)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<CreateShippingEntityResponse>(cancellationToken);
+        return payload?.Id;
+    }
+
+    public async Task<bool> UpdateShippingMethodAsync(
+        Guid shippingMethodId,
+        StoreShippingMethod request,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/shipping/methods/{shippingMethodId}")
+        {
+            Content = JsonContent.Create(new UpdateShippingMethodRequest(
+                request.Name,
+                request.Description,
+                request.Provider,
+                request.Type,
+                request.BasePriceAmount,
+                request.Currency,
+                request.SupportsTracking,
+                request.SupportsPickupPoint,
+                request.EstimatedMinDays,
+                request.EstimatedMaxDays,
+                request.Priority,
+                request.IsActive)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<Guid?> CreateShippingZoneAsync(
+        StoreShippingZone request,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/shipping/zones")
+        {
+            Content = JsonContent.Create(new CreateShippingZoneRequest(
+                request.Code,
+                request.Name,
+                request.CountryCodes)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<CreateShippingEntityResponse>(cancellationToken);
+        return payload?.Id;
+    }
+
+    public async Task<bool> UpdateShippingZoneAsync(
+        Guid shippingZoneId,
+        StoreShippingZone request,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/shipping/zones/{shippingZoneId}")
+        {
+            Content = JsonContent.Create(new UpdateShippingZoneRequest(
+                request.Name,
+                request.CountryCodes,
+                request.IsActive)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<Guid?> CreateShippingRateRuleAsync(
+        StoreShippingRateRule request,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/shipping/rules")
+        {
+            Content = JsonContent.Create(new CreateShippingRateRuleRequest(
+                request.ShippingMethodId,
+                request.ShippingZoneId,
+                request.MinOrderAmount,
+                request.MaxOrderAmount,
+                request.MinWeightKg,
+                request.MaxWeightKg,
+                request.PriceAmount,
+                request.FreeShippingThresholdAmount,
+                request.Currency)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<CreateShippingEntityResponse>(cancellationToken);
+        return payload?.Id;
+    }
+
+    public async Task<bool> UpdateShippingRateRuleAsync(
+        Guid shippingRateRuleId,
+        StoreShippingRateRule request,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/shipping/rules/{shippingRateRuleId}")
+        {
+            Content = JsonContent.Create(new UpdateShippingRateRuleRequest(
+                request.MinOrderAmount,
+                request.MaxOrderAmount,
+                request.MinWeightKg,
+                request.MaxWeightKg,
+                request.PriceAmount,
+                request.FreeShippingThresholdAmount,
+                request.Currency,
+                request.IsActive)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<StoreShipmentPage> GetShipmentsAsync(
+        string? status,
+        Guid? orderId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var normalizedPage = page <= 0 ? 1 : page;
+        var normalizedPageSize = pageSize <= 0 ? 20 : Math.Min(100, pageSize);
+
+        var queryParameters = new List<KeyValuePair<string, string?>>
+        {
+            new("page", normalizedPage.ToString()),
+            new("pageSize", normalizedPageSize.ToString()),
+        };
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            queryParameters.Add(new("status", status.Trim()));
+        }
+
+        if (orderId is not null)
+        {
+            queryParameters.Add(new("orderId", orderId.Value.ToString("D")));
+        }
+
+        var uri = $"/api/v1/shipping/shipments{QueryString.Create(queryParameters)}";
+        var response = await GetAuthorizedOrDefaultAsync<StoreShipmentPage>(uri, cancellationToken);
+        return response ?? new StoreShipmentPage(normalizedPage, normalizedPageSize, 0, []);
+    }
+
+    public Task<StoreShipment?> GetShipmentAsync(Guid shipmentId, CancellationToken cancellationToken)
+    {
+        return GetAuthorizedOrDefaultAsync<StoreShipment>(
+            $"/api/v1/shipping/shipments/{shipmentId:D}",
+            cancellationToken);
+    }
+
+    public Task<StoreShipment?> GetShipmentByOrderAsync(Guid orderId, CancellationToken cancellationToken)
+    {
+        return GetAuthorizedOrDefaultAsync<StoreShipment>(
+            $"/api/v1/shipping/shipments/by-order/{orderId:D}",
+            cancellationToken);
+    }
+
+    public async Task<Guid?> CreateShipmentAsync(
+        Guid orderId,
+        string? shippingMethodCode,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/shipping/shipments")
+        {
+            Content = JsonContent.Create(new CreateShipmentRequest(orderId, shippingMethodCode)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<CreateShippingEntityResponse>(cancellationToken);
+        return payload?.Id;
+    }
+
+    public async Task<bool> CreateShipmentLabelAsync(Guid shipmentId, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/shipping/shipments/{shipmentId:D}/create-label");
+        using var response = await SendWithCookieForwardingAsync(request, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> MarkShipmentShippedAsync(Guid shipmentId, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/shipping/shipments/{shipmentId:D}/mark-shipped");
+        using var response = await SendWithCookieForwardingAsync(request, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> CancelShipmentAsync(
+        Guid shipmentId,
+        string? reason,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/shipping/shipments/{shipmentId:D}/cancel")
+        {
+            Content = JsonContent.Create(new CancelShipmentRequest(reason)),
+        };
+        using var response = await SendWithCookieForwardingAsync(request, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
     private static string BuildSearchUri(StoreSearchProductsRequest request)
     {
         var queryParameters = new List<KeyValuePair<string, string?>>();
@@ -664,4 +960,73 @@ public sealed class StoreApiClient(
     private sealed record RefundPaymentIntentRequest(decimal? Amount, string? Reason);
 
     private sealed record AdjustInventoryStockRequest(int QuantityDelta, string? Reason);
+
+    private sealed record QuoteShippingRequest(string CountryCode, decimal SubtotalAmount, string Currency);
+
+    private sealed record ShippingQuoteResponse(IReadOnlyCollection<StoreShippingQuoteMethod> Methods);
+
+    private sealed record CreateShippingEntityResponse(Guid Id);
+
+    private sealed record CreateShippingMethodRequest(
+        string Code,
+        string Name,
+        string? Description,
+        string Provider,
+        string Type,
+        decimal BasePriceAmount,
+        string Currency,
+        bool SupportsTracking,
+        bool SupportsPickupPoint,
+        int? EstimatedMinDays,
+        int? EstimatedMaxDays,
+        int Priority);
+
+    private sealed record UpdateShippingMethodRequest(
+        string Name,
+        string? Description,
+        string Provider,
+        string Type,
+        decimal BasePriceAmount,
+        string Currency,
+        bool SupportsTracking,
+        bool SupportsPickupPoint,
+        int? EstimatedMinDays,
+        int? EstimatedMaxDays,
+        int Priority,
+        bool IsActive);
+
+    private sealed record CreateShippingZoneRequest(
+        string Code,
+        string Name,
+        IReadOnlyCollection<string> CountryCodes);
+
+    private sealed record UpdateShippingZoneRequest(
+        string Name,
+        IReadOnlyCollection<string> CountryCodes,
+        bool IsActive);
+
+    private sealed record CreateShippingRateRuleRequest(
+        Guid ShippingMethodId,
+        Guid ShippingZoneId,
+        decimal? MinOrderAmount,
+        decimal? MaxOrderAmount,
+        decimal? MinWeightKg,
+        decimal? MaxWeightKg,
+        decimal PriceAmount,
+        decimal? FreeShippingThresholdAmount,
+        string Currency);
+
+    private sealed record UpdateShippingRateRuleRequest(
+        decimal? MinOrderAmount,
+        decimal? MaxOrderAmount,
+        decimal? MinWeightKg,
+        decimal? MaxWeightKg,
+        decimal PriceAmount,
+        decimal? FreeShippingThresholdAmount,
+        string Currency,
+        bool IsActive);
+
+    private sealed record CreateShipmentRequest(Guid OrderId, string? ShippingMethodCode);
+
+    private sealed record CancelShipmentRequest(string? Reason);
 }

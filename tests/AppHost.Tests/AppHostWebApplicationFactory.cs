@@ -1,4 +1,6 @@
+using BuildingBlocks.Application.Contracts;
 using BuildingBlocks.Infrastructure.Persistence;
+using Cart.Application.Carts;
 using Cart.Infrastructure.Persistence;
 using Catalog.Infrastructure.Persistence;
 using Customers.Infrastructure.Identity;
@@ -16,6 +18,7 @@ using Orders.Infrastructure.Persistence;
 using Payments.Infrastructure.Persistence;
 using Redirects.Infrastructure.Persistence;
 using Search.Infrastructure.Persistence;
+using Shipping.Infrastructure.Persistence;
 
 namespace AppHost.Tests;
 
@@ -68,7 +71,7 @@ public sealed class AppHostWebApplicationFactory : WebApplicationFactory<Program
         {
             this.ReplaceDbContext<OutboxDbContext>(services);
             this.ReplaceDbContext<CatalogDbContext>(services);
-            this.ReplaceDbContext<CartDbContext>(services);
+            this.ReplaceDbContext<CartDbContext>(services, $"{this.sharedDatabaseName}-cart");
             this.ReplaceDbContext<OrdersDbContext>(services);
             this.ReplaceDbContext<RedirectsDbContext>(services);
             this.ReplaceDbContext<SearchDbContext>(services);
@@ -76,10 +79,13 @@ public sealed class AppHostWebApplicationFactory : WebApplicationFactory<Program
             this.ReplaceDbContext<IdentityAppDbContext>(services);
             this.ReplaceDbContext<InventoryDbContext>(services);
             this.ReplaceDbContext<PaymentsDbContext>(services);
+            this.ReplaceDbContext<ShippingDbContext>(services);
+            services.RemoveAll<ICartCheckoutAccessor>();
+            services.AddScoped<ICartCheckoutAccessor, TestCartCheckoutAccessor>();
         });
     }
 
-    private void ReplaceDbContext<TContext>(IServiceCollection services)
+    private void ReplaceDbContext<TContext>(IServiceCollection services, string? databaseName = null)
         where TContext : DbContext
     {
         services.RemoveAll<TContext>();
@@ -87,7 +93,46 @@ public sealed class AppHostWebApplicationFactory : WebApplicationFactory<Program
 
         services.AddDbContext<TContext>(options =>
             options
-                .UseInMemoryDatabase(this.sharedDatabaseName, this.databaseRoot)
+                .UseInMemoryDatabase(databaseName ?? this.sharedDatabaseName, this.databaseRoot)
                 .UseInternalServiceProvider(InMemoryServiceProvider));
+    }
+
+    private sealed class TestCartCheckoutAccessor(
+        ICartRepository cartRepository,
+        CartDbContext cartDbContext) : ICartCheckoutAccessor
+    {
+        public async Task<CartCheckoutSnapshot?> GetByCustomerIdAsync(string customerId, CancellationToken cancellationToken)
+        {
+            var cart = await cartRepository.GetByCustomerIdAsync(customerId, cancellationToken);
+
+            if (cart is null)
+            {
+                return null;
+            }
+
+            var lines = cart.Lines
+                .Select(line => new CartCheckoutLineSnapshot(
+                    line.ProductId,
+                    line.ProductName,
+                    line.UnitPrice.Currency,
+                    line.UnitPrice.Amount,
+                    line.Quantity))
+                .ToList();
+
+            return new CartCheckoutSnapshot(cart.Id, cart.CustomerId, lines);
+        }
+
+        public async Task ClearCartAsync(Guid cartId, CancellationToken cancellationToken)
+        {
+            var cart = await cartDbContext.Carts.FirstOrDefaultAsync(item => item.Id == cartId, cancellationToken);
+            if (cart is null)
+            {
+                return;
+            }
+
+            cart.Clear();
+            cartDbContext.Carts.Remove(cart);
+            await cartDbContext.SaveChangesAsync(cancellationToken);
+        }
     }
 }

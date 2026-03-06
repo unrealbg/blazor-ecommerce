@@ -56,6 +56,12 @@
     <Project Path="src/Modules/Search/Search.Domain/Search.Domain.csproj" />
     <Project Path="src/Modules/Search/Search.Infrastructure/Search.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Shipping/">
+    <Project Path="src/Modules/Shipping/Shipping.Api/Shipping.Api.csproj" />
+    <Project Path="src/Modules/Shipping/Shipping.Application/Shipping.Application.csproj" />
+    <Project Path="src/Modules/Shipping/Shipping.Domain/Shipping.Domain.csproj" />
+    <Project Path="src/Modules/Shipping/Shipping.Infrastructure/Shipping.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/Storefront/">
     <Project Path="src/Storefront/Storefront.Web/Storefront.Web.csproj" />
   </Folder>
@@ -67,6 +73,7 @@
     <Project Path="tests/Inventory.Tests/Inventory.Tests.csproj" />
     <Project Path="tests/Orders.Tests/Orders.Tests.csproj" />
     <Project Path="tests/Payments.Tests/Payments.Tests.csproj" />
+    <Project Path="tests/Shipping.Tests/Shipping.Tests.csproj" />
     <Project Path="tests/Storefront.Tests/Storefront.Tests.csproj" />
   </Folder>
 </Solution>

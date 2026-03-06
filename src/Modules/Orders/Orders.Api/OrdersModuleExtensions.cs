@@ -75,6 +75,7 @@ public static class OrdersModuleExtensions
                 new CheckoutWithProfileCommand(
                     request.CartSessionId,
                     request.Email,
+                    request.ShippingMethodCode,
                     new CheckoutAddressInput(
                         request.ShippingAddress.FirstName,
                         request.ShippingAddress.LastName,
@@ -152,6 +153,7 @@ public static class OrdersModuleExtensions
     public sealed record CheckoutRequest(
         string CartSessionId,
         string Email,
+        string? ShippingMethodCode,
         CheckoutAddressRequest ShippingAddress,
         CheckoutAddressRequest BillingAddress);
 

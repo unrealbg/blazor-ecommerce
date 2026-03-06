@@ -161,4 +161,74 @@ public interface IStoreApiClient
         int page,
         int pageSize,
         CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<StoreShippingQuoteMethod>> GetShippingQuotesAsync(
+        string countryCode,
+        decimal subtotalAmount,
+        string currency,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<StoreShippingMethod>> GetShippingMethodsAsync(
+        bool activeOnly,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<StoreShippingZone>> GetShippingZonesAsync(
+        bool activeOnly,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<StoreShippingRateRule>> GetShippingRateRulesAsync(
+        bool activeOnly,
+        CancellationToken cancellationToken);
+
+    Task<Guid?> CreateShippingMethodAsync(
+        StoreShippingMethod request,
+        CancellationToken cancellationToken);
+
+    Task<bool> UpdateShippingMethodAsync(
+        Guid shippingMethodId,
+        StoreShippingMethod request,
+        CancellationToken cancellationToken);
+
+    Task<Guid?> CreateShippingZoneAsync(
+        StoreShippingZone request,
+        CancellationToken cancellationToken);
+
+    Task<bool> UpdateShippingZoneAsync(
+        Guid shippingZoneId,
+        StoreShippingZone request,
+        CancellationToken cancellationToken);
+
+    Task<Guid?> CreateShippingRateRuleAsync(
+        StoreShippingRateRule request,
+        CancellationToken cancellationToken);
+
+    Task<bool> UpdateShippingRateRuleAsync(
+        Guid shippingRateRuleId,
+        StoreShippingRateRule request,
+        CancellationToken cancellationToken);
+
+    Task<StoreShipmentPage> GetShipmentsAsync(
+        string? status,
+        Guid? orderId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken);
+
+    Task<StoreShipment?> GetShipmentAsync(Guid shipmentId, CancellationToken cancellationToken);
+
+    Task<StoreShipment?> GetShipmentByOrderAsync(Guid orderId, CancellationToken cancellationToken);
+
+    Task<Guid?> CreateShipmentAsync(
+        Guid orderId,
+        string? shippingMethodCode,
+        CancellationToken cancellationToken);
+
+    Task<bool> CreateShipmentLabelAsync(Guid shipmentId, CancellationToken cancellationToken);
+
+    Task<bool> MarkShipmentShippedAsync(Guid shipmentId, CancellationToken cancellationToken);
+
+    Task<bool> CancelShipmentAsync(
+        Guid shipmentId,
+        string? reason,
+        CancellationToken cancellationToken);
 }

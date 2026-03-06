@@ -20,6 +20,9 @@ public sealed class Order : AggregateRoot<Guid>
         IReadOnlyCollection<OrderLine> orderLines,
         OrderAddressSnapshot shippingAddress,
         OrderAddressSnapshot billingAddress,
+        string shippingMethodCode,
+        string shippingMethodName,
+        Money shippingPrice,
         Money subtotal,
         Money total,
         DateTime placedAtUtc)
@@ -30,10 +33,14 @@ public sealed class Order : AggregateRoot<Guid>
         lines = [..orderLines];
         ShippingAddress = shippingAddress;
         BillingAddress = billingAddress;
+        ShippingMethodCode = shippingMethodCode;
+        ShippingMethodName = shippingMethodName;
+        ShippingPrice = shippingPrice;
         Subtotal = subtotal;
         Total = total;
         PlacedAtUtc = placedAtUtc;
         Status = OrderStatus.PendingPayment;
+        FulfillmentStatus = OrderFulfillmentStatus.Unfulfilled;
         RowVersion = 0L;
     }
 
@@ -47,6 +54,12 @@ public sealed class Order : AggregateRoot<Guid>
 
     public OrderAddressSnapshot BillingAddress { get; private set; } = null!;
 
+    public string ShippingMethodCode { get; private set; } = string.Empty;
+
+    public string ShippingMethodName { get; private set; } = string.Empty;
+
+    public Money ShippingPrice { get; private set; } = null!;
+
     public Money Subtotal { get; private set; } = null!;
 
     public Money Total { get; private set; } = null!;
@@ -57,9 +70,13 @@ public sealed class Order : AggregateRoot<Guid>
 
     public Guid? LastPaymentIntentId { get; private set; }
 
+    public Guid? LastShipmentId { get; private set; }
+
     public string? PaymentFailureMessage { get; private set; }
 
     public OrderStatus Status { get; private set; }
+
+    public OrderFulfillmentStatus FulfillmentStatus { get; private set; }
 
     public long RowVersion { get; private set; }
 
@@ -69,7 +86,11 @@ public sealed class Order : AggregateRoot<Guid>
         IReadOnlyCollection<OrderLineData> lineData,
         DateTime placedAtUtc,
         OrderAddressSnapshot? shippingAddress = null,
-        OrderAddressSnapshot? billingAddress = null)
+        OrderAddressSnapshot? billingAddress = null,
+        string? shippingMethodCode = null,
+        string? shippingMethodName = null,
+        decimal shippingPriceAmount = 0m,
+        string? shippingCurrency = null)
     {
         if (string.IsNullOrWhiteSpace(customerId))
         {
@@ -86,6 +107,13 @@ public sealed class Order : AggregateRoot<Guid>
         if (lineData.Count == 0)
         {
             return Result<Order>.Failure(new Error("orders.lines.required", "Order must contain at least one line."));
+        }
+
+        if (shippingPriceAmount < 0m)
+        {
+            return Result<Order>.Failure(new Error(
+                "orders.shipping.price.invalid",
+                "Shipping price cannot be negative."));
         }
 
         var firstCurrency = lineData.First().UnitPrice.Currency;
@@ -122,7 +150,25 @@ public sealed class Order : AggregateRoot<Guid>
             return Result<Order>.Failure(subtotalResult.Error);
         }
 
-        var totalResult = Money.Create(firstCurrency, subtotalAmount);
+        var resolvedShippingCurrency = string.IsNullOrWhiteSpace(shippingCurrency)
+            ? firstCurrency
+            : shippingCurrency.Trim().ToUpperInvariant();
+
+        if (!string.Equals(firstCurrency, resolvedShippingCurrency, StringComparison.Ordinal))
+        {
+            return Result<Order>.Failure(new Error(
+                "orders.shipping.currency.mismatch",
+                "Shipping currency must match order currency."));
+        }
+
+        var shippingPriceResult = Money.Create(resolvedShippingCurrency, shippingPriceAmount);
+        if (shippingPriceResult.IsFailure)
+        {
+            return Result<Order>.Failure(shippingPriceResult.Error);
+        }
+
+        var totalAmount = Money.Round(subtotalAmount + shippingPriceAmount);
+        var totalResult = Money.Create(firstCurrency, totalAmount);
         if (totalResult.IsFailure)
         {
             return Result<Order>.Failure(totalResult.Error);
@@ -135,6 +181,9 @@ public sealed class Order : AggregateRoot<Guid>
             orderLines,
             shippingAddress ?? OrderAddressSnapshot.Empty(),
             billingAddress ?? OrderAddressSnapshot.Empty(),
+            string.IsNullOrWhiteSpace(shippingMethodCode) ? "standard" : shippingMethodCode.Trim().ToLowerInvariant(),
+            string.IsNullOrWhiteSpace(shippingMethodName) ? "Standard Delivery" : shippingMethodName.Trim(),
+            shippingPriceResult.Value,
             subtotalResult.Value,
             totalResult.Value,
             placedAtUtc));
@@ -215,6 +264,86 @@ public sealed class Order : AggregateRoot<Guid>
 
         Status = partial ? OrderStatus.PartiallyRefunded : OrderStatus.Refunded;
         LastPaymentIntentId = paymentIntentId == Guid.Empty ? LastPaymentIntentId : paymentIntentId;
+        Touch();
+        return Result.Success();
+    }
+
+    public Result MarkFulfillmentPending(Guid shipmentId)
+    {
+        if (shipmentId == Guid.Empty)
+        {
+            return Result.Failure(new Error(
+                "orders.shipment.required",
+                "Shipment id is required."));
+        }
+
+        if (Status is not (OrderStatus.Paid or OrderStatus.PartiallyRefunded or OrderStatus.Refunded))
+        {
+            return Result.Failure(new Error(
+                "orders.fulfillment.not_allowed",
+                "Order is not eligible for fulfillment."));
+        }
+
+        if (FulfillmentStatus == OrderFulfillmentStatus.Fulfilled)
+        {
+            return Result.Failure(new Error(
+                "orders.fulfillment.completed",
+                "Order is already fulfilled."));
+        }
+
+        LastShipmentId = shipmentId;
+        FulfillmentStatus = OrderFulfillmentStatus.FulfillmentPending;
+        Touch();
+        return Result.Success();
+    }
+
+    public Result MarkFulfilled(Guid shipmentId)
+    {
+        if (shipmentId == Guid.Empty)
+        {
+            return Result.Failure(new Error(
+                "orders.shipment.required",
+                "Shipment id is required."));
+        }
+
+        if (Status is not (OrderStatus.Paid or OrderStatus.PartiallyRefunded or OrderStatus.Refunded))
+        {
+            return Result.Failure(new Error(
+                "orders.fulfillment.not_allowed",
+                "Order is not eligible for fulfillment."));
+        }
+
+        if (FulfillmentStatus == OrderFulfillmentStatus.Returned)
+        {
+            return Result.Failure(new Error(
+                "orders.fulfillment.returned",
+                "Returned order cannot be fulfilled."));
+        }
+
+        LastShipmentId = shipmentId;
+        FulfillmentStatus = OrderFulfillmentStatus.Fulfilled;
+        Touch();
+        return Result.Success();
+    }
+
+    public Result MarkReturned(Guid shipmentId)
+    {
+        if (shipmentId == Guid.Empty)
+        {
+            return Result.Failure(new Error(
+                "orders.shipment.required",
+                "Shipment id is required."));
+        }
+
+        if (FulfillmentStatus is not (OrderFulfillmentStatus.Fulfilled or OrderFulfillmentStatus.FulfillmentPending))
+        {
+            return Result.Failure(new Error(
+                "orders.fulfillment.return.not_allowed",
+                "Order cannot be marked as returned."));
+        }
+
+        LastShipmentId = shipmentId;
+        FulfillmentStatus = OrderFulfillmentStatus.Returned;
         Touch();
         return Result.Success();
     }

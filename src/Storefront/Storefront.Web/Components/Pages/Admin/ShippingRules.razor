@@ -1,0 +1,189 @@
+@page "/admin/shipping/rules"
+@layout Storefront.Web.Components.Layout.AdminLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>Shipping Rules</PageTitle>
+
+<h1>Shipping Rules</h1>
+<p><a class="btn-link" href="/admin/shipping">Back to shipping dashboard</a></p>
+
+<section class="admin-panel">
+    <h2>Create rate rule</h2>
+    <form class="form-grid" @onsubmit="CreateAsync" @onsubmit:preventDefault="true">
+        <label>
+            Method
+            <select @bind="selectedMethodId">
+                @foreach (var method in methods)
+                {
+                    <option value="@method.Id">@method.Name (@method.Code)</option>
+                }
+            </select>
+        </label>
+        <label>
+            Zone
+            <select @bind="selectedZoneId">
+                @foreach (var zone in zones)
+                {
+                    <option value="@zone.Id">@zone.Name (@zone.Code)</option>
+                }
+            </select>
+        </label>
+        <label>Min order <input type="number" step="0.01" @bind="minOrderAmount" /></label>
+        <label>Max order <input type="number" step="0.01" @bind="maxOrderAmount" /></label>
+        <label>Price <input type="number" step="0.01" @bind="priceAmount" required /></label>
+        <label>Free shipping threshold <input type="number" step="0.01" @bind="freeThreshold" /></label>
+        <button class="btn-primary" type="submit" disabled="@isSaving">Create</button>
+    </form>
+</section>
+
+<section class="admin-panel">
+    <h2>Rules</h2>
+    @if (rules.Count == 0)
+    {
+        <p>No shipping rules configured.</p>
+    }
+    else
+    {
+        <table class="cart-table">
+            <thead>
+                <tr>
+                    <th>Method</th>
+                    <th>Zone</th>
+                    <th>Range</th>
+                    <th>Price</th>
+                    <th>Free from</th>
+                    <th>Active</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var rule in rules)
+                {
+                    <tr>
+                        <td>@ResolveMethod(rule.ShippingMethodId)</td>
+                        <td>@ResolveZone(rule.ShippingZoneId)</td>
+                        <td>@($"{rule.MinOrderAmount?.ToString("0.00") ?? "-"} - {rule.MaxOrderAmount?.ToString("0.00") ?? "-"}")</td>
+                        <td>@rule.PriceAmount.ToString("0.00") @rule.Currency</td>
+                        <td>@(rule.FreeShippingThresholdAmount?.ToString("0.00") ?? "-")</td>
+                        <td>@rule.IsActive</td>
+                        <td>
+                            <button class="btn-link" @onclick="() => ToggleRuleAsync(rule)">
+                                @(rule.IsActive ? "Deactivate" : "Activate")
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <p class="status-message">@message</p>
+}
+
+@code {
+    private readonly List<StoreShippingMethod> methods = [];
+    private readonly List<StoreShippingZone> zones = [];
+    private readonly List<StoreShippingRateRule> rules = [];
+
+    private Guid selectedMethodId;
+    private Guid selectedZoneId;
+    private decimal? minOrderAmount;
+    private decimal? maxOrderAmount;
+    private decimal priceAmount = 5.99m;
+    private decimal? freeThreshold = 100m;
+    private bool isSaving;
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        methods.Clear();
+        zones.Clear();
+        rules.Clear();
+
+        methods.AddRange(await StoreApiClient.GetShippingMethodsAsync(activeOnly: false, CancellationToken.None));
+        zones.AddRange(await StoreApiClient.GetShippingZonesAsync(activeOnly: false, CancellationToken.None));
+        rules.AddRange(await StoreApiClient.GetShippingRateRulesAsync(activeOnly: false, CancellationToken.None));
+
+        if (methods.Count > 0 && selectedMethodId == Guid.Empty)
+        {
+            selectedMethodId = methods[0].Id;
+        }
+
+        if (zones.Count > 0 && selectedZoneId == Guid.Empty)
+        {
+            selectedZoneId = zones[0].Id;
+        }
+    }
+
+    private async Task CreateAsync()
+    {
+        if (selectedMethodId == Guid.Empty || selectedZoneId == Guid.Empty)
+        {
+            message = "Create at least one shipping method and zone first.";
+            return;
+        }
+
+        isSaving = true;
+        message = null;
+
+        var createModel = new StoreShippingRateRule(
+            Guid.Empty,
+            selectedMethodId,
+            selectedZoneId,
+            minOrderAmount,
+            maxOrderAmount,
+            null,
+            null,
+            priceAmount,
+            freeThreshold,
+            "EUR",
+            IsActive: true,
+            DateTime.UtcNow,
+            DateTime.UtcNow);
+
+        var id = await StoreApiClient.CreateShippingRateRuleAsync(createModel, CancellationToken.None);
+        message = id is null ? "Failed to create shipping rule." : $"Shipping rule created ({id}).";
+        isSaving = false;
+
+        if (id is not null)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private async Task ToggleRuleAsync(StoreShippingRateRule rule)
+    {
+        var success = await StoreApiClient.UpdateShippingRateRuleAsync(
+            rule.Id,
+            rule with { IsActive = !rule.IsActive },
+            CancellationToken.None);
+
+        message = success
+            ? "Shipping rule updated."
+            : "Shipping rule update failed.";
+
+        if (success)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private string ResolveMethod(Guid methodId)
+    {
+        return methods.FirstOrDefault(method => method.Id == methodId)?.Code ?? methodId.ToString("D");
+    }
+
+    private string ResolveZone(Guid zoneId)
+    {
+        return zones.FirstOrDefault(zone => zone.Id == zoneId)?.Code ?? zoneId.ToString("D");
+    }
+}

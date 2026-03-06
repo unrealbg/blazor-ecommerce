@@ -1,0 +1,174 @@
+@page "/admin/shipping/methods"
+@layout Storefront.Web.Components.Layout.AdminLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>Shipping Methods</PageTitle>
+
+<h1>Shipping Methods</h1>
+<p><a class="btn-link" href="/admin/shipping">Back to shipping dashboard</a></p>
+
+<section class="admin-panel">
+    <h2>Create method</h2>
+    <form class="form-grid" @onsubmit="CreateAsync" @onsubmit:preventDefault="true">
+        <label>Code <input @bind="createModel.Code" required /></label>
+        <label>Name <input @bind="createModel.Name" required /></label>
+        <label>Description <input @bind="createModel.Description" /></label>
+        <label>Provider <input @bind="createModel.Provider" required /></label>
+        <label>Type <input @bind="createModel.Type" required /></label>
+        <label>Base price <input type="number" step="0.01" @bind="createModel.BasePriceAmount" /></label>
+        <label>Currency <input @bind="createModel.Currency" required /></label>
+        <label>Priority <input type="number" @bind="createModel.Priority" /></label>
+        <label>Min days <input type="number" @bind="createModel.EstimatedMinDays" /></label>
+        <label>Max days <input type="number" @bind="createModel.EstimatedMaxDays" /></label>
+        <label><input type="checkbox" @bind="createModel.SupportsTracking" /> Supports tracking</label>
+        <label><input type="checkbox" @bind="createModel.SupportsPickupPoint" /> Supports pickup point</label>
+        <button class="btn-primary" type="submit" disabled="@isSaving">Create</button>
+    </form>
+</section>
+
+<section class="admin-panel">
+    <h2>Methods</h2>
+    @if (methods.Count == 0)
+    {
+        <p>No shipping methods configured.</p>
+    }
+    else
+    {
+        <table class="cart-table">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>Provider</th>
+                    <th>Price</th>
+                    <th>Priority</th>
+                    <th>Active</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var method in methods)
+                {
+                    <tr>
+                        <td>@method.Code</td>
+                        <td>@method.Name</td>
+                        <td>@method.Provider</td>
+                        <td>@method.BasePriceAmount.ToString("0.00") @method.Currency</td>
+                        <td>@method.Priority</td>
+                        <td>@method.IsActive</td>
+                        <td>
+                            <button class="btn-link" @onclick="() => ToggleMethodAsync(method)">
+                                @(method.IsActive ? "Deactivate" : "Activate")
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <p class="status-message">@message</p>
+}
+
+@code {
+    private readonly List<StoreShippingMethod> methods = [];
+    private readonly CreateMethodModel createModel = new();
+
+    private bool isSaving;
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        methods.Clear();
+        methods.AddRange(await StoreApiClient.GetShippingMethodsAsync(activeOnly: false, CancellationToken.None));
+    }
+
+    private async Task CreateAsync()
+    {
+        isSaving = true;
+        message = null;
+
+        var id = await StoreApiClient.CreateShippingMethodAsync(
+            new StoreShippingMethod(
+                Guid.Empty,
+                createModel.Code,
+                createModel.Name,
+                createModel.Description,
+                createModel.Provider,
+                createModel.Type,
+                createModel.BasePriceAmount,
+                createModel.Currency,
+                IsActive: true,
+                createModel.SupportsTracking,
+                createModel.SupportsPickupPoint,
+                createModel.EstimatedMinDays,
+                createModel.EstimatedMaxDays,
+                createModel.Priority,
+                DateTime.UtcNow,
+                DateTime.UtcNow),
+            CancellationToken.None);
+        message = id is null
+            ? "Failed to create shipping method."
+            : $"Shipping method created ({id}).";
+
+        isSaving = false;
+
+        if (id is not null)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private async Task ToggleMethodAsync(StoreShippingMethod method)
+    {
+        var success = await StoreApiClient.UpdateShippingMethodAsync(
+            method.Id,
+            method with { IsActive = !method.IsActive },
+            CancellationToken.None);
+
+        message = success
+            ? "Shipping method updated."
+            : "Shipping method update failed.";
+
+        if (success)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private sealed class CreateMethodModel
+    {
+        public string Code { get; set; } = "standard";
+
+        public string Name { get; set; } = "Standard Delivery";
+
+        public string? Description { get; set; }
+
+        public string Provider { get; set; } = "DemoCarrier";
+
+        public string Type { get; set; } = "Delivery";
+
+        public decimal BasePriceAmount { get; set; }
+
+        public string Currency { get; set; } = "EUR";
+
+        public int Priority { get; set; } = 10;
+
+        public int? EstimatedMinDays { get; set; } = 2;
+
+        public int? EstimatedMaxDays { get; set; } = 4;
+
+        public bool SupportsTracking { get; set; } = true;
+
+        public bool SupportsPickupPoint { get; set; }
+    }
+}

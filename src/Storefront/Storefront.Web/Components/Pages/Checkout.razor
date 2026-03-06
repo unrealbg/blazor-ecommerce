@@ -73,6 +73,76 @@
             <InputText @bind-Value="model.BillingPhone" />
         </label>
     </div>
+
+    <section class="admin-panel">
+        <h2>Shipping Method</h2>
+
+        @if (isLoadingQuotes)
+        {
+            <p>Loading shipping options...</p>
+        }
+        else if (shippingQuotes.Count == 0)
+        {
+            <p>No shipping methods available for destination country.</p>
+        }
+        else
+        {
+            <div class="checkout-shipping-methods">
+                @foreach (var quote in shippingQuotes)
+                {
+                    <label class="checkout-shipping-option">
+                        <input
+                            type="radio"
+                            name="shipping-method"
+                            value="@quote.Code"
+                            checked="@(model.ShippingMethodCode == quote.Code)"
+                            @onchange="(_)=> SelectShippingMethod(quote.Code)" />
+                        <span>
+                            <strong>@quote.Name</strong>
+                            @if (!string.IsNullOrWhiteSpace(quote.Description))
+                            {
+                                <span> - @quote.Description</span>
+                            }
+                            <span>
+                                @if (quote.IsFreeShipping)
+                                {
+                                    <strong>Free</strong>
+                                }
+                                else
+                                {
+                                    <strong>@FormatPrice(quote.PriceAmount, quote.Currency)</strong>
+                                }
+                            </span>
+                            @if (quote.EstimatedMinDays is not null || quote.EstimatedMaxDays is not null)
+                            {
+                                <span>
+                                    (ETA:
+                                    @if (quote.EstimatedMinDays == quote.EstimatedMaxDays)
+                                    {
+                                        @($"{quote.EstimatedMinDays} days")
+                                    }
+                                    else
+                                    {
+                                        @($"{quote.EstimatedMinDays}-{quote.EstimatedMaxDays} days")
+                                    })
+                                </span>
+                            }
+                        </span>
+                    </label>
+                }
+            </div>
+        }
+
+        <button class="btn-link" type="button" @onclick="RefreshQuotesAsync" disabled="@isLoadingQuotes">Refresh shipping methods</button>
+    </section>
+
+    <section class="admin-panel">
+        <h2>Order Summary</h2>
+        <p>Subtotal: <strong>@FormatPrice(subtotalAmount, currency)</strong></p>
+        <p>Shipping: <strong>@FormatShipping()</strong></p>
+        <p>Total: <strong>@FormatPrice(subtotalAmount + selectedShippingAmount, currency)</strong></p>
+    </section>
+
     <button class="btn-primary" type="submit" disabled="@isSubmitting">Place order</button>
 </EditForm>
 
@@ -90,14 +160,25 @@
 @code {
     private readonly CheckoutModel model = new();
     private bool isSubmitting;
+    private bool isLoadingQuotes;
     private string? message;
     private Guid? orderId;
+    private List<StoreShippingQuoteMethod> shippingQuotes = [];
+    private decimal subtotalAmount;
+    private decimal selectedShippingAmount;
+    private string currency = "EUR";
 
     protected override async Task OnInitializedAsync()
     {
+        var customerId = CustomerContext.GetCustomerId();
+        var cart = await StoreApiClient.GetCartAsync(customerId, CancellationToken.None);
+        subtotalAmount = cart?.Lines.Sum(line => line.Amount * line.Quantity) ?? 0m;
+        currency = cart?.Lines.FirstOrDefault()?.Currency ?? "EUR";
+
         var profile = await StoreApiClient.GetCurrentCustomerAsync(CancellationToken.None);
         if (profile is null)
         {
+            await LoadShippingQuotesAsync();
             return;
         }
 
@@ -108,6 +189,8 @@
         model.BillingLastName = model.ShippingLastName;
         model.ShippingPhone = profile.PhoneNumber;
         model.BillingPhone = profile.PhoneNumber;
+
+        await LoadShippingQuotesAsync();
     }
 
     private async Task SubmitAsync()
@@ -116,11 +199,28 @@
         message = null;
         orderId = null;
 
+        await LoadShippingQuotesAsync();
+
+        if (shippingQuotes.Count == 0)
+        {
+            message = "No shipping methods are available for this destination.";
+            isSubmitting = false;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(model.ShippingMethodCode))
+        {
+            message = "Select a shipping method before placing the order.";
+            isSubmitting = false;
+            return;
+        }
+
         var cartSessionId = CustomerContext.GetCustomerId();
         var idempotencyKey = Guid.NewGuid().ToString("N");
         var request = new StoreCheckoutRequest(
             cartSessionId,
             model.Email,
+            model.ShippingMethodCode,
             new StoreCheckoutAddress(
                 model.ShippingFirstName,
                 model.ShippingLastName,
@@ -154,9 +254,67 @@
         isSubmitting = false;
     }
 
+    private async Task RefreshQuotesAsync()
+    {
+        await LoadShippingQuotesAsync();
+    }
+
+    private async Task LoadShippingQuotesAsync()
+    {
+        isLoadingQuotes = true;
+        shippingQuotes = [..await StoreApiClient.GetShippingQuotesAsync(
+            model.ShippingCountry,
+            subtotalAmount,
+            currency,
+            CancellationToken.None)];
+        isLoadingQuotes = false;
+
+        if (shippingQuotes.Count == 0)
+        {
+            model.ShippingMethodCode = null;
+            selectedShippingAmount = 0m;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(model.ShippingMethodCode) ||
+            shippingQuotes.All(quote => !string.Equals(quote.Code, model.ShippingMethodCode, StringComparison.Ordinal)))
+        {
+            model.ShippingMethodCode = shippingQuotes[0].Code;
+        }
+
+        UpdateSelectedShippingAmount();
+    }
+
+    private void SelectShippingMethod(string shippingMethodCode)
+    {
+        model.ShippingMethodCode = shippingMethodCode;
+        UpdateSelectedShippingAmount();
+    }
+
+    private void UpdateSelectedShippingAmount()
+    {
+        selectedShippingAmount = shippingQuotes
+            .FirstOrDefault(quote => quote.Code == model.ShippingMethodCode)
+            ?.PriceAmount ?? 0m;
+    }
+
+    private string FormatShipping()
+    {
+        return selectedShippingAmount == 0m ? "Free" : FormatPrice(selectedShippingAmount, currency);
+    }
+
+    private static string FormatPrice(decimal amount, string currentCurrency)
+    {
+        return string.Create(
+            System.Globalization.CultureInfo.InvariantCulture,
+            $"{amount:0.00} {currentCurrency.ToUpperInvariant()}");
+    }
+
     private sealed class CheckoutModel
     {
         public string Email { get; set; } = string.Empty;
+
+        public string? ShippingMethodCode { get; set; }
 
         public string ShippingFirstName { get; set; } = string.Empty;
 

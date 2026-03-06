@@ -16,6 +16,7 @@ using Orders.Api;
 using Payments.Api;
 using Redirects.Api;
 using Search.Api;
+using Shipping.Api;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -102,6 +103,7 @@ builder.Services.AddSearchModule();
 builder.Services.AddCustomersModule();
 builder.Services.AddInventoryModule();
 builder.Services.AddPaymentsModule();
+builder.Services.AddShippingModule();
 
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<OutboxDbContext>("postgres", tags: ["ready"]);
@@ -140,6 +142,7 @@ apiV1.MapSearchEndpoints();
 apiV1.MapCustomersEndpoints();
 apiV1.MapInventoryEndpoints();
 apiV1.MapPaymentsEndpoints();
+apiV1.MapShippingEndpoints();
 app.MapDirectusWebhookEndpoint();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions

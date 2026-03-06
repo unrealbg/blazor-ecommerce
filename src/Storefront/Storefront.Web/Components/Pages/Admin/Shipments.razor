@@ -1,0 +1,119 @@
+@page "/admin/shipments"
+@layout Storefront.Web.Components.Layout.AdminLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>Shipments</PageTitle>
+
+<h1>Shipments</h1>
+<p><a class="btn-link" href="/admin/shipping">Back to shipping dashboard</a></p>
+
+<section class="admin-panel">
+    <h2>Create shipment for order</h2>
+    <form class="form-grid" @onsubmit="CreateShipmentAsync" @onsubmit:preventDefault="true">
+        <label>Order id <input @bind="orderIdText" placeholder="00000000-0000-0000-0000-000000000000" required /></label>
+        <label>Shipping method code (optional) <input @bind="shippingMethodCode" /></label>
+        <button class="btn-primary" type="submit" disabled="@isSaving">Create shipment</button>
+    </form>
+</section>
+
+<section class="admin-panel">
+    <h2>Shipment list</h2>
+    <form class="form-grid" @onsubmit="ReloadAsync" @onsubmit:preventDefault="true">
+        <label>Status <input @bind="statusFilter" placeholder="Shipped" /></label>
+        <label>Order id <input @bind="orderFilterText" placeholder="optional order id" /></label>
+        <button class="btn-link" type="submit">Apply filters</button>
+    </form>
+
+    @if (shipments.Items.Count == 0)
+    {
+        <p>No shipments found.</p>
+    }
+    else
+    {
+        <table class="cart-table">
+            <thead>
+                <tr>
+                    <th>Shipment</th>
+                    <th>Order</th>
+                    <th>Status</th>
+                    <th>Carrier</th>
+                    <th>Tracking</th>
+                    <th>Created</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var shipment in shipments.Items)
+                {
+                    <tr>
+                        <td>@shipment.Id</td>
+                        <td>@shipment.OrderId</td>
+                        <td>@shipment.Status</td>
+                        <td>@shipment.CarrierName</td>
+                        <td>@shipment.TrackingNumber</td>
+                        <td>@shipment.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td><a class="btn-link" href="@($"/admin/shipments/{shipment.Id:D}")">Open</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <p class="status-message">@message</p>
+}
+
+@code {
+    private StoreShipmentPage shipments = new(1, 20, 0, []);
+    private string orderIdText = string.Empty;
+    private string? shippingMethodCode;
+    private bool isSaving;
+    private string? statusFilter;
+    private string? orderFilterText;
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        Guid? orderFilter = null;
+        if (Guid.TryParse(orderFilterText, out var parsedOrderFilter))
+        {
+            orderFilter = parsedOrderFilter;
+        }
+
+        shipments = await StoreApiClient.GetShipmentsAsync(
+            statusFilter,
+            orderFilter,
+            page: 1,
+            pageSize: 50,
+            CancellationToken.None);
+    }
+
+    private async Task CreateShipmentAsync()
+    {
+        if (!Guid.TryParse(orderIdText, out var orderId))
+        {
+            message = "Enter a valid order id.";
+            return;
+        }
+
+        isSaving = true;
+        var shipmentId = await StoreApiClient.CreateShipmentAsync(orderId, shippingMethodCode, CancellationToken.None);
+        message = shipmentId is null
+            ? "Shipment creation failed."
+            : $"Shipment created ({shipmentId}).";
+        isSaving = false;
+
+        if (shipmentId is not null)
+        {
+            await ReloadAsync();
+        }
+    }
+}

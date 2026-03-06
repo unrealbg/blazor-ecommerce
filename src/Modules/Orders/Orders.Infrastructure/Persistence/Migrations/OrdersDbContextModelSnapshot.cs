@@ -74,7 +74,16 @@ namespace Orders.Infrastructure.Persistence.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<string>("FulfillmentStatus")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("fulfillment_status");
+
                     b.Property<Guid?>("LastPaymentIntentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("LastShipmentId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("PaidAtUtc")
@@ -92,12 +101,26 @@ namespace Orders.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("row_version");
 
+                    b.Property<string>("ShippingMethodCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("shipping_method_code");
+
+                    b.Property<string>("ShippingMethodName")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("shipping_method_name");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("FulfillmentStatus");
 
                     b.HasIndex("Status");
 
@@ -281,6 +304,30 @@ namespace Orders.Infrastructure.Persistence.Migrations
                                 .HasForeignKey("OrderId");
                         });
 
+                    b.OwnsOne("BuildingBlocks.Domain.Shared.Money", "ShippingPrice", b1 =>
+                        {
+                            b1.Property<Guid>("OrderId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("shipping_amount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("shipping_currency");
+
+                            b1.HasKey("OrderId");
+
+                            b1.ToTable("orders", "orders");
+
+                            b1.WithOwner()
+                                .HasForeignKey("OrderId");
+                        });
+
                     b.OwnsOne("BuildingBlocks.Domain.Shared.Money", "Subtotal", b1 =>
                         {
                             b1.Property<Guid>("OrderId")
@@ -393,6 +440,9 @@ namespace Orders.Infrastructure.Persistence.Migrations
                     b.Navigation("Lines");
 
                     b.Navigation("ShippingAddress")
+                        .IsRequired();
+
+                    b.Navigation("ShippingPrice")
                         .IsRequired();
 
                     b.Navigation("Subtotal")
