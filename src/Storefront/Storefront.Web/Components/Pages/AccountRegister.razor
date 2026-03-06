@@ -1,0 +1,96 @@
+@page "/account/register"
+@inject NavigationManager NavigationManager
+@inject Storefront.Web.Services.Api.IStoreApiClient StoreApiClient
+
+<PageTitle>Account Register</PageTitle>
+
+<h1>Create account</h1>
+<p>Create an account to manage orders and addresses.</p>
+
+<EditForm Model="model" OnValidSubmit="SubmitAsync">
+    <div class="form-grid">
+        <label>
+            Email
+            <InputText @bind-Value="model.Email" />
+        </label>
+        <label>
+            Password
+            <InputText @bind-Value="model.Password" Type="password" />
+        </label>
+        <label>
+            First name
+            <InputText @bind-Value="model.FirstName" />
+        </label>
+        <label>
+            Last name
+            <InputText @bind-Value="model.LastName" />
+        </label>
+        <label>
+            Phone
+            <InputText @bind-Value="model.PhoneNumber" />
+        </label>
+    </div>
+    <button class="btn-primary" type="submit" disabled="@isSubmitting">Register</button>
+</EditForm>
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <p class="status-message">@message</p>
+}
+
+<p><a class="btn-link" href="/account/login">Already have an account?</a></p>
+
+@code {
+    private readonly RegisterModel model = new();
+    private bool isSubmitting;
+    private string? message;
+
+    private async Task SubmitAsync()
+    {
+        isSubmitting = true;
+        message = null;
+
+        var registerResponse = await StoreApiClient.RegisterAsync(
+            model.Email,
+            model.Password,
+            model.FirstName,
+            model.LastName,
+            model.PhoneNumber,
+            CancellationToken.None);
+
+        if (registerResponse is null)
+        {
+            message = "Unable to register account.";
+            isSubmitting = false;
+            return;
+        }
+
+        var loginResponse = await StoreApiClient.LoginAsync(
+            model.Email,
+            model.Password,
+            rememberMe: true,
+            CancellationToken.None);
+
+        if (loginResponse is null)
+        {
+            message = "Account created. Please sign in.";
+            NavigationManager.NavigateTo("/account/login", forceLoad: true);
+            return;
+        }
+
+        NavigationManager.NavigateTo("/account/profile", forceLoad: true);
+    }
+
+    private sealed class RegisterModel
+    {
+        public string Email { get; set; } = string.Empty;
+
+        public string Password { get; set; } = string.Empty;
+
+        public string? FirstName { get; set; }
+
+        public string? LastName { get; set; }
+
+        public string? PhoneNumber { get; set; }
+    }
+}

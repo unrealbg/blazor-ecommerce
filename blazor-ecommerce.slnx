@@ -26,6 +26,12 @@
     <Project Path="src/Modules/Orders/Orders.Domain/Orders.Domain.csproj" />
     <Project Path="src/Modules/Orders/Orders.Infrastructure/Orders.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Customers/">
+    <Project Path="src/Modules/Customers/Customers.Api/Customers.Api.csproj" />
+    <Project Path="src/Modules/Customers/Customers.Application/Customers.Application.csproj" />
+    <Project Path="src/Modules/Customers/Customers.Domain/Customers.Domain.csproj" />
+    <Project Path="src/Modules/Customers/Customers.Infrastructure/Customers.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Redirects/">
     <Project Path="src/Modules/Redirects/Redirects.Api/Redirects.Api.csproj" />
     <Project Path="src/Modules/Redirects/Redirects.Application/Redirects.Application.csproj" />
@@ -45,6 +51,7 @@
     <Project Path="tests/AppHost.Tests/AppHost.Tests.csproj" />
     <Project Path="tests/Cart.Tests/Cart.Tests.csproj" />
     <Project Path="tests/Catalog.Tests/Catalog.Tests.csproj" />
+    <Project Path="tests/Customers.Tests/Customers.Tests.csproj" />
     <Project Path="tests/Orders.Tests/Orders.Tests.csproj" />
     <Project Path="tests/Storefront.Tests/Storefront.Tests.csproj" />
   </Folder>

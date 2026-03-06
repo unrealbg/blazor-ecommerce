@@ -4,10 +4,12 @@ using BuildingBlocks.Infrastructure.Modules;
 using BuildingBlocks.Infrastructure.Persistence;
 using Cart.Api;
 using Catalog.Api;
+using Customers.Api;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Identity;
 using OpenTelemetry.Trace;
 using Orders.Api;
 using Redirects.Api;
@@ -41,7 +43,40 @@ else
 }
 
 builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = IdentityConstants.ApplicationScheme;
+        options.DefaultChallengeScheme = IdentityConstants.ApplicationScheme;
+        options.DefaultSignInScheme = IdentityConstants.ApplicationScheme;
+    })
+    .AddCookie(IdentityConstants.ApplicationScheme, options =>
+    {
+        options.Cookie.Name = "blazor-ecommerce-auth";
+        options.SlidingExpiration = true;
+        options.ExpireTimeSpan = TimeSpan.FromDays(14);
+        options.Events.OnRedirectToLogin = context =>
+        {
+            if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return Task.CompletedTask;
+            }
+
+            context.Response.Redirect(context.RedirectUri);
+            return Task.CompletedTask;
+        };
+        options.Events.OnRedirectToAccessDenied = context =>
+        {
+            if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return Task.CompletedTask;
+            }
+
+            context.Response.Redirect(context.RedirectUri);
+            return Task.CompletedTask;
+        };
+    })
     .AddJwtBearer(options =>
     {
         options.Authority = builder.Configuration["Authentication:Jwt:Authority"];
@@ -62,6 +97,7 @@ builder.Services.AddCartModule();
 builder.Services.AddOrdersModule();
 builder.Services.AddRedirectsModule();
 builder.Services.AddSearchModule();
+builder.Services.AddCustomersModule();
 
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<OutboxDbContext>("postgres", tags: ["ready"]);
@@ -97,6 +133,7 @@ apiV1.MapCartEndpoints();
 apiV1.MapOrdersEndpoints();
 apiV1.MapRedirectEndpoints();
 apiV1.MapSearchEndpoints();
+apiV1.MapCustomersEndpoints();
 app.MapDirectusWebhookEndpoint();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions

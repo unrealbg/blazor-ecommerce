@@ -12,16 +12,64 @@
 <EditForm Model="model" OnValidSubmit="SubmitAsync">
     <div class="form-grid">
         <label>
-            Full Name
-            <InputText @bind-Value="model.FullName" />
-        </label>
-        <label>
             Email
             <InputText @bind-Value="model.Email" />
         </label>
         <label>
-            Shipping Address
-            <InputTextArea @bind-Value="model.ShippingAddress" />
+            Shipping first name
+            <InputText @bind-Value="model.ShippingFirstName" />
+        </label>
+        <label>
+            Shipping last name
+            <InputText @bind-Value="model.ShippingLastName" />
+        </label>
+        <label>
+            Shipping street
+            <InputText @bind-Value="model.ShippingStreet" />
+        </label>
+        <label>
+            Shipping city
+            <InputText @bind-Value="model.ShippingCity" />
+        </label>
+        <label>
+            Shipping postal code
+            <InputText @bind-Value="model.ShippingPostalCode" />
+        </label>
+        <label>
+            Shipping country
+            <InputText @bind-Value="model.ShippingCountry" />
+        </label>
+        <label>
+            Shipping phone
+            <InputText @bind-Value="model.ShippingPhone" />
+        </label>
+        <label>
+            Billing first name
+            <InputText @bind-Value="model.BillingFirstName" />
+        </label>
+        <label>
+            Billing last name
+            <InputText @bind-Value="model.BillingLastName" />
+        </label>
+        <label>
+            Billing street
+            <InputText @bind-Value="model.BillingStreet" />
+        </label>
+        <label>
+            Billing city
+            <InputText @bind-Value="model.BillingCity" />
+        </label>
+        <label>
+            Billing postal code
+            <InputText @bind-Value="model.BillingPostalCode" />
+        </label>
+        <label>
+            Billing country
+            <InputText @bind-Value="model.BillingCountry" />
+        </label>
+        <label>
+            Billing phone
+            <InputText @bind-Value="model.BillingPhone" />
         </label>
     </div>
     <button class="btn-primary" type="submit" disabled="@isSubmitting">Place order</button>
@@ -43,15 +91,52 @@
     private string? message;
     private Guid? orderId;
 
+    protected override async Task OnInitializedAsync()
+    {
+        var profile = await StoreApiClient.GetCurrentCustomerAsync(CancellationToken.None);
+        if (profile is null)
+        {
+            return;
+        }
+
+        model.Email = profile.Email;
+        model.ShippingFirstName = profile.FirstName ?? string.Empty;
+        model.ShippingLastName = profile.LastName ?? string.Empty;
+        model.BillingFirstName = model.ShippingFirstName;
+        model.BillingLastName = model.ShippingLastName;
+        model.ShippingPhone = profile.PhoneNumber;
+        model.BillingPhone = profile.PhoneNumber;
+    }
+
     private async Task SubmitAsync()
     {
         isSubmitting = true;
         message = null;
         orderId = null;
 
-        var customerId = CustomerContext.GetCustomerId();
+        var cartSessionId = CustomerContext.GetCustomerId();
         var idempotencyKey = Guid.NewGuid().ToString("N");
-        var createdOrderId = await StoreApiClient.CheckoutAsync(customerId, idempotencyKey, CancellationToken.None);
+        var request = new StoreCheckoutRequest(
+            cartSessionId,
+            model.Email,
+            new StoreCheckoutAddress(
+                model.ShippingFirstName,
+                model.ShippingLastName,
+                model.ShippingStreet,
+                model.ShippingCity,
+                model.ShippingPostalCode,
+                model.ShippingCountry,
+                model.ShippingPhone),
+            new StoreCheckoutAddress(
+                model.BillingFirstName,
+                model.BillingLastName,
+                model.BillingStreet,
+                model.BillingCity,
+                model.BillingPostalCode,
+                model.BillingCountry,
+                model.BillingPhone));
+
+        var createdOrderId = await StoreApiClient.CheckoutAsync(request, idempotencyKey, CancellationToken.None);
 
         if (createdOrderId is null)
         {
@@ -68,10 +153,34 @@
 
     private sealed class CheckoutModel
     {
-        public string FullName { get; set; } = string.Empty;
-
         public string Email { get; set; } = string.Empty;
 
-        public string ShippingAddress { get; set; } = string.Empty;
+        public string ShippingFirstName { get; set; } = string.Empty;
+
+        public string ShippingLastName { get; set; } = string.Empty;
+
+        public string ShippingStreet { get; set; } = string.Empty;
+
+        public string ShippingCity { get; set; } = string.Empty;
+
+        public string ShippingPostalCode { get; set; } = string.Empty;
+
+        public string ShippingCountry { get; set; } = "BG";
+
+        public string? ShippingPhone { get; set; }
+
+        public string BillingFirstName { get; set; } = string.Empty;
+
+        public string BillingLastName { get; set; } = string.Empty;
+
+        public string BillingStreet { get; set; } = string.Empty;
+
+        public string BillingCity { get; set; } = string.Empty;
+
+        public string BillingPostalCode { get; set; } = string.Empty;
+
+        public string BillingCountry { get; set; } = "BG";
+
+        public string? BillingPhone { get; set; }
     }
 }

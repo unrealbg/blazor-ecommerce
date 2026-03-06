@@ -21,6 +21,22 @@ public sealed class GetOrderQueryHandler(IOrderRepository orderRepository)
             order.Total.Amount,
             order.Status.ToString(),
             order.PlacedAtUtc,
+            new OrderAddressDto(
+                order.ShippingAddress.FirstName,
+                order.ShippingAddress.LastName,
+                order.ShippingAddress.Street,
+                order.ShippingAddress.City,
+                order.ShippingAddress.PostalCode,
+                order.ShippingAddress.Country,
+                order.ShippingAddress.Phone),
+            new OrderAddressDto(
+                order.BillingAddress.FirstName,
+                order.BillingAddress.LastName,
+                order.BillingAddress.Street,
+                order.BillingAddress.City,
+                order.BillingAddress.PostalCode,
+                order.BillingAddress.Country,
+                order.BillingAddress.Phone),
             order.Lines
                 .Select(line => new OrderLineDto(
                     line.ProductId,

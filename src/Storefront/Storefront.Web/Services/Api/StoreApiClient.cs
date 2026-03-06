@@ -5,7 +5,10 @@ using Microsoft.AspNetCore.Http;
 
 namespace Storefront.Web.Services.Api;
 
-public sealed class StoreApiClient(HttpClient httpClient) : IStoreApiClient
+public sealed class StoreApiClient(
+    HttpClient httpClient,
+    IHttpContextAccessor httpContextAccessor)
+    : IStoreApiClient
 {
     public async Task<IReadOnlyCollection<StoreProduct>> GetProductsAsync(CancellationToken cancellationToken)
     {
@@ -98,16 +101,196 @@ public sealed class StoreApiClient(HttpClient httpClient) : IStoreApiClient
         using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/orders/checkout/{customerId}");
         request.Headers.Add("Idempotency-Key", idempotencyKey);
 
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using var response = await SendWithCookieForwardingAsync(request, cancellationToken);
         if (response.StatusCode == HttpStatusCode.BadRequest || response.StatusCode == HttpStatusCode.Conflict)
         {
             return null;
         }
 
         response.EnsureSuccessStatusCode();
-
         var payload = await response.Content.ReadFromJsonAsync<CheckoutResponse>(cancellationToken);
         return payload?.Id;
+    }
+
+    public async Task<Guid?> CheckoutAsync(
+        StoreCheckoutRequest request,
+        string idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/orders/checkout")
+        {
+            Content = JsonContent.Create(request),
+        };
+        httpRequest.Headers.Add("Idempotency-Key", idempotencyKey);
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.BadRequest || response.StatusCode == HttpStatusCode.Conflict)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<CheckoutResponse>(cancellationToken);
+        return payload?.Id;
+    }
+
+    public async Task<StoreAuthResponse?> RegisterAsync(
+        string email,
+        string password,
+        string? firstName,
+        string? lastName,
+        string? phoneNumber,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/register")
+        {
+            Content = JsonContent.Create(new RegisterRequest(email, password, firstName, lastName, phoneNumber)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        return await response.Content.ReadFromJsonAsync<StoreAuthResponse>(cancellationToken);
+    }
+
+    public async Task<StoreAuthResponse?> LoginAsync(
+        string email,
+        string password,
+        bool rememberMe,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/login")
+        {
+            Content = JsonContent.Create(new LoginRequest(email, password, rememberMe)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        return await response.Content.ReadFromJsonAsync<StoreAuthResponse>(cancellationToken);
+    }
+
+    public async Task<bool> LogoutAsync(CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/logout");
+        using var response = await SendWithCookieForwardingAsync(request, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> ForgotPasswordAsync(string email, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/forgot-password")
+        {
+            Content = JsonContent.Create(new ForgotPasswordRequest(email)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(request, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> ResetPasswordAsync(
+        string email,
+        string token,
+        string newPassword,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/reset-password")
+        {
+            Content = JsonContent.Create(new ResetPasswordRequest(email, token, newPassword)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(request, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> VerifyEmailAsync(Guid userId, string token, CancellationToken cancellationToken)
+    {
+        var uri = $"/api/v1/auth/verify-email?userId={userId}&token={Uri.EscapeDataString(token)}";
+        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        using var response = await SendWithCookieForwardingAsync(request, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public Task<StoreCustomerProfile?> GetCurrentCustomerAsync(CancellationToken cancellationToken)
+    {
+        return GetAuthorizedOrDefaultAsync<StoreCustomerProfile>("/api/v1/customers/me", cancellationToken);
+    }
+
+    public async Task<bool> UpdateCurrentCustomerAsync(
+        StoreUpdateProfileRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Put, "/api/v1/customers/me")
+        {
+            Content = JsonContent.Create(request),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<IReadOnlyCollection<StoreCustomerAddress>> GetCurrentCustomerAddressesAsync(CancellationToken cancellationToken)
+    {
+        var addresses = await GetAuthorizedOrDefaultAsync<IReadOnlyCollection<StoreCustomerAddress>>(
+            "/api/v1/customers/me/addresses",
+            cancellationToken);
+
+        return addresses ?? [];
+    }
+
+    public async Task<Guid?> AddCurrentCustomerAddressAsync(
+        StoreAddressRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/customers/me/addresses")
+        {
+            Content = JsonContent.Create(request),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<CreateAddressResponse>(cancellationToken);
+        return payload?.Id;
+    }
+
+    public async Task<bool> UpdateCurrentCustomerAddressAsync(
+        Guid addressId,
+        StoreAddressRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/customers/me/addresses/{addressId}")
+        {
+            Content = JsonContent.Create(request),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> DeleteCurrentCustomerAddressAsync(Guid addressId, CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Delete, $"/api/v1/customers/me/addresses/{addressId}");
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<IReadOnlyCollection<StoreOrderSummary>> GetMyOrdersAsync(CancellationToken cancellationToken)
+    {
+        var orders = await GetAuthorizedOrDefaultAsync<IReadOnlyCollection<StoreOrderSummary>>(
+            "/api/v1/orders/my",
+            cancellationToken);
+
+        return orders ?? [];
     }
 
     public Task<StoreRedirectMatch?> ResolveRedirectAsync(string path, CancellationToken cancellationToken)
@@ -221,11 +404,63 @@ public sealed class StoreApiClient(HttpClient httpClient) : IStoreApiClient
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken);
     }
 
+    private async Task<T?> GetAuthorizedOrDefaultAsync<T>(string uri, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        using var response = await SendWithCookieForwardingAsync(request, cancellationToken);
+
+        if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        {
+            return default;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<T>(cancellationToken);
+    }
+
+    private async Task<HttpResponseMessage> SendWithCookieForwardingAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        var context = httpContextAccessor.HttpContext;
+        if (context is not null && context.Request.Headers.TryGetValue("Cookie", out var cookieHeader))
+        {
+            request.Headers.TryAddWithoutValidation("Cookie", cookieHeader.ToString());
+        }
+
+        var response = await httpClient.SendAsync(request, cancellationToken);
+
+        if (context is not null && response.Headers.TryGetValues("Set-Cookie", out var setCookieHeaders))
+        {
+            foreach (var setCookie in setCookieHeaders)
+            {
+                context.Response.Headers.Append("Set-Cookie", setCookie);
+            }
+        }
+
+        return response;
+    }
+
     private sealed record AddCartItemRequest(Guid ProductId, int Quantity);
 
     private sealed record UpdateCartItemQuantityRequest(int Quantity);
 
     private sealed record CheckoutResponse(Guid Id);
+
+    private sealed record CreateAddressResponse(Guid Id);
+
+    private sealed record RegisterRequest(
+        string Email,
+        string Password,
+        string? FirstName,
+        string? LastName,
+        string? PhoneNumber);
+
+    private sealed record LoginRequest(string Email, string Password, bool RememberMe);
+
+    private sealed record ForgotPasswordRequest(string Email);
+
+    private sealed record ResetPasswordRequest(string Email, string Token, string NewPassword);
 
     private sealed record CreateRedirectRuleRequest(string FromPath, string ToPath, int StatusCode);
 

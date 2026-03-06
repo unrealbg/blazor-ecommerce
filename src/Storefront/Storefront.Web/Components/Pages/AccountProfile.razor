@@ -1,0 +1,107 @@
+@page "/account"
+@page "/account/profile"
+@layout Storefront.Web.Components.Layout.AccountLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>Account Profile</PageTitle>
+
+<h1>Profile</h1>
+
+@if (isLoading)
+{
+    <p>Loading profile...</p>
+}
+else if (!isAuthenticated)
+{
+    <p>You need to sign in to access your account.</p>
+    <p><a class="btn-link" href="/account/login">Go to login</a></p>
+}
+else
+{
+    <EditForm Model="profileModel" OnValidSubmit="SaveAsync">
+        <div class="form-grid">
+            <label>
+                Email
+                <input value="@profileModel.Email" disabled />
+            </label>
+            <label>
+                First name
+                <InputText @bind-Value="profileModel.FirstName" />
+            </label>
+            <label>
+                Last name
+                <InputText @bind-Value="profileModel.LastName" />
+            </label>
+            <label>
+                Phone
+                <InputText @bind-Value="profileModel.PhoneNumber" />
+            </label>
+        </div>
+        <button class="btn-primary" type="submit" disabled="@isSaving">Save profile</button>
+    </EditForm>
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <p class="status-message">@message</p>
+    }
+}
+
+@code {
+    private readonly ProfileModel profileModel = new();
+    private bool isLoading = true;
+    private bool isSaving;
+    private bool isAuthenticated;
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var customer = await StoreApiClient.GetCurrentCustomerAsync(CancellationToken.None);
+        if (customer is null)
+        {
+            isAuthenticated = false;
+            isLoading = false;
+            return;
+        }
+
+        profileModel.Email = customer.Email;
+        profileModel.FirstName = customer.FirstName ?? string.Empty;
+        profileModel.LastName = customer.LastName ?? string.Empty;
+        profileModel.PhoneNumber = customer.PhoneNumber ?? string.Empty;
+
+        isAuthenticated = true;
+        isLoading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!isAuthenticated)
+        {
+            return;
+        }
+
+        isSaving = true;
+        message = null;
+
+        var success = await StoreApiClient.UpdateCurrentCustomerAsync(
+            new StoreUpdateProfileRequest(
+                profileModel.FirstName,
+                profileModel.LastName,
+                profileModel.PhoneNumber),
+            CancellationToken.None);
+
+        message = success ? "Profile updated." : "Unable to update profile.";
+        isSaving = false;
+    }
+
+    private sealed class ProfileModel
+    {
+        public string Email { get; set; } = string.Empty;
+
+        public string? FirstName { get; set; }
+
+        public string? LastName { get; set; }
+
+        public string? PhoneNumber { get; set; }
+    }
+}

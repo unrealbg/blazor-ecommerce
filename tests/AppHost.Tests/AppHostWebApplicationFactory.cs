@@ -1,8 +1,11 @@
 using BuildingBlocks.Infrastructure.Persistence;
 using Cart.Infrastructure.Persistence;
 using Catalog.Infrastructure.Persistence;
+using Customers.Infrastructure.Identity;
+using Customers.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
@@ -41,7 +44,7 @@ public sealed class AppHostWebApplicationFactory : WebApplicationFactory<Program
             ]);
         });
 
-        builder.ConfigureServices(services =>
+        builder.ConfigureTestServices(services =>
         {
             this.ReplaceDbContext<OutboxDbContext>(services);
             this.ReplaceDbContext<CatalogDbContext>(services);
@@ -49,6 +52,8 @@ public sealed class AppHostWebApplicationFactory : WebApplicationFactory<Program
             this.ReplaceDbContext<OrdersDbContext>(services);
             this.ReplaceDbContext<RedirectsDbContext>(services);
             this.ReplaceDbContext<SearchDbContext>(services);
+            this.ReplaceDbContext<CustomersDbContext>(services);
+            this.ReplaceDbContext<IdentityAppDbContext>(services);
         });
     }
 

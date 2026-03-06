@@ -492,6 +492,13 @@ a {
     font-weight: 600;
 }
 
+.form-grid label.checkbox-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+}
+
 .form-grid input,
 .form-grid textarea {
     border: 1px solid var(--border);
@@ -508,6 +515,89 @@ a {
 .status-message {
     margin-top: 0.7rem;
     color: var(--muted);
+}
+
+.account-shell {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(220px, 260px) 1fr;
+}
+
+.account-sidebar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+    position: sticky;
+    top: 5.8rem;
+    align-self: start;
+}
+
+.account-sidebar h2 {
+    margin-top: 0;
+    margin-bottom: 0.8rem;
+}
+
+.account-nav {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.account-nav a,
+.account-nav button {
+    text-align: left;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.4rem 0.6rem;
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+}
+
+.account-nav a:hover,
+.account-nav button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.account-content {
+    min-width: 0;
+}
+
+.address-list {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.address-actions {
+    display: inline-flex;
+    gap: 0.6rem;
+    margin: 0.3rem 0 0.8rem;
+}
+
+.order-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.order-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+}
+
+.order-card header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.6rem;
+}
+
+.order-card header h2 {
+    margin: 0;
+    font-size: 1.05rem;
 }
 
 .blog-list {
@@ -710,6 +800,14 @@ a {
     }
 
     .facet-sidebar {
+        position: static;
+    }
+
+    .account-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .account-sidebar {
         position: static;
     }
 }

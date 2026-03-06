@@ -1,0 +1,70 @@
+@page "/account/orders"
+@layout Storefront.Web.Components.Layout.AccountLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>My Orders</PageTitle>
+
+<h1>Orders</h1>
+
+@if (isLoading)
+{
+    <p>Loading orders...</p>
+}
+else if (!isAuthenticated)
+{
+    <p>You need to sign in to view order history.</p>
+    <p><a class="btn-link" href="/account/login">Go to login</a></p>
+}
+else if (orders.Count == 0)
+{
+    <p>No orders yet.</p>
+}
+else
+{
+    <div class="order-list">
+        @foreach (var order in orders)
+        {
+            <article class="order-card">
+                <header>
+                    <h2>Order @order.Id</h2>
+                    <p>@order.PlacedAtUtc.ToString("u")</p>
+                </header>
+                <p>Status: <strong>@order.Status</strong></p>
+                <p>Total: <strong>@FormatPrice(order.TotalAmount, order.Currency)</strong></p>
+                <ul>
+                    @foreach (var line in order.Lines)
+                    {
+                        <li>@line.Name × @line.Quantity</li>
+                    }
+                </ul>
+            </article>
+        }
+    </div>
+}
+
+@code {
+    private IReadOnlyCollection<StoreOrderSummary> orders = [];
+    private bool isLoading = true;
+    private bool isAuthenticated;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var profile = await StoreApiClient.GetCurrentCustomerAsync(CancellationToken.None);
+        isAuthenticated = profile is not null;
+
+        if (!isAuthenticated)
+        {
+            isLoading = false;
+            return;
+        }
+
+        orders = await StoreApiClient.GetMyOrdersAsync(CancellationToken.None);
+        isLoading = false;
+    }
+
+    private static string FormatPrice(decimal amount, string currency)
+    {
+        return $"{amount:0.00} {currency}";
+    }
+}

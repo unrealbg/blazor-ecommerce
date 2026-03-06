@@ -274,6 +274,13 @@ public sealed class CheckoutCommandHandlerTests
         {
             return Task.FromResult<Order?>(null);
         }
+
+        public Task<IReadOnlyCollection<Order>> ListByCustomerIdAsync(
+            string customerId,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult<IReadOnlyCollection<Order>>([]);
+        }
     }
 
     private sealed class StubOrdersUnitOfWork : IOrdersUnitOfWork

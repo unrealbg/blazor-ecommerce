@@ -55,6 +55,80 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
                 .IsRequired();
         });
 
+        builder.OwnsOne(order => order.ShippingAddress, shippingBuilder =>
+        {
+            shippingBuilder.Property(address => address.FirstName)
+                .HasColumnName("shipping_first_name")
+                .HasMaxLength(120)
+                .IsRequired();
+
+            shippingBuilder.Property(address => address.LastName)
+                .HasColumnName("shipping_last_name")
+                .HasMaxLength(120)
+                .IsRequired();
+
+            shippingBuilder.Property(address => address.Street)
+                .HasColumnName("shipping_street")
+                .HasMaxLength(200)
+                .IsRequired();
+
+            shippingBuilder.Property(address => address.City)
+                .HasColumnName("shipping_city")
+                .HasMaxLength(120)
+                .IsRequired();
+
+            shippingBuilder.Property(address => address.PostalCode)
+                .HasColumnName("shipping_postal_code")
+                .HasMaxLength(40)
+                .IsRequired();
+
+            shippingBuilder.Property(address => address.Country)
+                .HasColumnName("shipping_country")
+                .HasMaxLength(2)
+                .IsRequired();
+
+            shippingBuilder.Property(address => address.Phone)
+                .HasColumnName("shipping_phone")
+                .HasMaxLength(64);
+        });
+
+        builder.OwnsOne(order => order.BillingAddress, billingBuilder =>
+        {
+            billingBuilder.Property(address => address.FirstName)
+                .HasColumnName("billing_first_name")
+                .HasMaxLength(120)
+                .IsRequired();
+
+            billingBuilder.Property(address => address.LastName)
+                .HasColumnName("billing_last_name")
+                .HasMaxLength(120)
+                .IsRequired();
+
+            billingBuilder.Property(address => address.Street)
+                .HasColumnName("billing_street")
+                .HasMaxLength(200)
+                .IsRequired();
+
+            billingBuilder.Property(address => address.City)
+                .HasColumnName("billing_city")
+                .HasMaxLength(120)
+                .IsRequired();
+
+            billingBuilder.Property(address => address.PostalCode)
+                .HasColumnName("billing_postal_code")
+                .HasMaxLength(40)
+                .IsRequired();
+
+            billingBuilder.Property(address => address.Country)
+                .HasColumnName("billing_country")
+                .HasMaxLength(2)
+                .IsRequired();
+
+            billingBuilder.Property(address => address.Phone)
+                .HasColumnName("billing_phone")
+                .HasMaxLength(64);
+        });
+
         builder.OwnsMany(order => order.Lines, linesBuilder =>
         {
             linesBuilder.ToTable("order_lines");
