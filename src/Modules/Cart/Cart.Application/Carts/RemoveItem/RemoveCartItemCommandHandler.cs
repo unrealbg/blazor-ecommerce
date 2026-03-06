@@ -1,3 +1,4 @@
+using BuildingBlocks.Application.Contracts;
 using BuildingBlocks.Application.Abstractions;
 using BuildingBlocks.Domain.Results;
 
@@ -5,7 +6,8 @@ namespace Cart.Application.Carts.RemoveItem;
 
 public sealed class RemoveCartItemCommandHandler(
     ICartRepository cartRepository,
-    ICartUnitOfWork unitOfWork)
+    ICartUnitOfWork unitOfWork,
+    ICustomerSessionCache customerSessionCache)
     : ICommandHandler<RemoveCartItemCommand, Guid>
 {
     public async Task<Result<Guid>> Handle(
@@ -25,6 +27,7 @@ public sealed class RemoveCartItemCommandHandler(
         }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await customerSessionCache.TouchCartSessionAsync(request.CustomerId, cancellationToken);
         return Result<Guid>.Success(cart.Id);
     }
 }

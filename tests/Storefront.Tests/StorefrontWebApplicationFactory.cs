@@ -78,6 +78,23 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
     {
         private static readonly IReadOnlyCollection<StoreProduct> Products = BuildProducts();
         private static readonly List<StoreRedirectRule> RedirectRules = [];
+        private static readonly List<StoreCustomerAddress> Addresses = [];
+        private static readonly List<StoreOrderSummary> Orders =
+        [
+            new StoreOrderSummary(
+                Guid.Parse("4672fbc9-c711-49a1-a4df-419f95dd70ab"),
+                "sample-customer",
+                "EUR",
+                89m,
+                89m,
+                "Placed",
+                DateTime.UtcNow.AddDays(-1),
+                new StoreOrderAddress("Alex", "Mercer", "Ship Street", "Sofia", "1000", "BG", "+359888000000"),
+                new StoreOrderAddress("Alex", "Mercer", "Bill Street", "Sofia", "1000", "BG", "+359888000000"),
+                [new StoreOrderLine(Guid.NewGuid(), "Mechanical Keyboard", "EUR", 89m, 1)]),
+        ];
+
+        private static StoreCustomerProfile? currentCustomer;
 
         public Task<bool> AddItemToCartAsync(
             string customerId,
@@ -91,6 +108,172 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
         public Task<Guid?> CheckoutAsync(string customerId, string idempotencyKey, CancellationToken cancellationToken)
         {
             return Task.FromResult<Guid?>(Guid.Parse("7e840d4c-4994-4993-b344-e8219be85656"));
+        }
+
+        public Task<Guid?> CheckoutAsync(
+            StoreCheckoutRequest request,
+            string idempotencyKey,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult<Guid?>(Guid.Parse("7e840d4c-4994-4993-b344-e8219be85656"));
+        }
+
+        public Task<StoreAuthResponse?> RegisterAsync(
+            string email,
+            string password,
+            string? firstName,
+            string? lastName,
+            string? phoneNumber,
+            CancellationToken cancellationToken)
+        {
+            var auth = new StoreAuthResponse(Guid.NewGuid(), Guid.NewGuid(), email.Trim().ToLowerInvariant());
+            currentCustomer = new StoreCustomerProfile(
+                auth.CustomerId,
+                auth.Email,
+                firstName,
+                lastName,
+                phoneNumber,
+                false,
+                true,
+                Addresses.ToArray());
+
+            return Task.FromResult<StoreAuthResponse?>(auth);
+        }
+
+        public Task<StoreAuthResponse?> LoginAsync(
+            string email,
+            string password,
+            bool rememberMe,
+            CancellationToken cancellationToken)
+        {
+            var normalizedEmail = email.Trim().ToLowerInvariant();
+            currentCustomer ??= new StoreCustomerProfile(
+                Guid.NewGuid(),
+                normalizedEmail,
+                "Alex",
+                "Mercer",
+                "+359888000000",
+                true,
+                true,
+                Addresses.ToArray());
+
+            var auth = new StoreAuthResponse(Guid.NewGuid(), currentCustomer.Id, normalizedEmail);
+            return Task.FromResult<StoreAuthResponse?>(auth);
+        }
+
+        public Task<bool> LogoutAsync(CancellationToken cancellationToken)
+        {
+            currentCustomer = null;
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> ForgotPasswordAsync(string email, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> ResetPasswordAsync(
+            string email,
+            string token,
+            string newPassword,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> VerifyEmailAsync(Guid userId, string token, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(true);
+        }
+
+        public Task<StoreCustomerProfile?> GetCurrentCustomerAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult(currentCustomer);
+        }
+
+        public Task<bool> UpdateCurrentCustomerAsync(
+            StoreUpdateProfileRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (currentCustomer is null)
+            {
+                return Task.FromResult(false);
+            }
+
+            currentCustomer = currentCustomer with
+            {
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                PhoneNumber = request.PhoneNumber,
+            };
+
+            return Task.FromResult(true);
+        }
+
+        public Task<IReadOnlyCollection<StoreCustomerAddress>> GetCurrentCustomerAddressesAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult<IReadOnlyCollection<StoreCustomerAddress>>(Addresses.ToArray());
+        }
+
+        public Task<Guid?> AddCurrentCustomerAddressAsync(StoreAddressRequest request, CancellationToken cancellationToken)
+        {
+            var address = new StoreCustomerAddress(
+                Guid.NewGuid(),
+                request.Label,
+                request.FirstName,
+                request.LastName,
+                request.Company,
+                request.Street1,
+                request.Street2,
+                request.City,
+                request.PostalCode,
+                request.CountryCode,
+                request.Phone,
+                request.IsDefaultShipping,
+                request.IsDefaultBilling);
+
+            Addresses.Add(address);
+            return Task.FromResult<Guid?>(address.Id);
+        }
+
+        public Task<bool> UpdateCurrentCustomerAddressAsync(
+            Guid addressId,
+            StoreAddressRequest request,
+            CancellationToken cancellationToken)
+        {
+            var index = Addresses.FindIndex(address => address.Id == addressId);
+            if (index < 0)
+            {
+                return Task.FromResult(false);
+            }
+
+            Addresses[index] = new StoreCustomerAddress(
+                addressId,
+                request.Label,
+                request.FirstName,
+                request.LastName,
+                request.Company,
+                request.Street1,
+                request.Street2,
+                request.City,
+                request.PostalCode,
+                request.CountryCode,
+                request.Phone,
+                request.IsDefaultShipping,
+                request.IsDefaultBilling);
+
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> DeleteCurrentCustomerAddressAsync(Guid addressId, CancellationToken cancellationToken)
+        {
+            Addresses.RemoveAll(address => address.Id == addressId);
+            return Task.FromResult(true);
+        }
+
+        public Task<IReadOnlyCollection<StoreOrderSummary>> GetMyOrdersAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult<IReadOnlyCollection<StoreOrderSummary>>(currentCustomer is null ? [] : Orders);
         }
 
         public Task<StoreRedirectMatch?> ResolveRedirectAsync(string path, CancellationToken cancellationToken)

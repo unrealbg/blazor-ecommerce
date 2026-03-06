@@ -7,6 +7,7 @@ Production-oriented modular monolith starter with strict module boundaries and c
 - Catalog
 - Cart
 - Orders
+- Customers
 - Redirects
 - Search
 - Storefront.Web (SSR Blazor UI)
@@ -41,6 +42,8 @@ Production-oriented modular monolith starter with strict module boundaries and c
   - `catalog`
   - `cart`
   - `orders`
+  - `customers`
+  - `identity`
   - `redirects`
   - `search`
   - `shared` (outbox)
@@ -106,7 +109,21 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `PATCH /api/v1/cart/{customerId}/items/{productId}`
 - `DELETE /api/v1/cart/{customerId}/items/{productId}`
 - `POST /api/v1/orders/checkout/{customerId}`
+- `POST /api/v1/orders/checkout`
 - `GET /api/v1/orders/{orderId}`
+- `GET /api/v1/orders/my`
+- `GET /api/v1/customers/me`
+- `PUT /api/v1/customers/me`
+- `GET /api/v1/customers/me/addresses`
+- `POST /api/v1/customers/me/addresses`
+- `PUT /api/v1/customers/me/addresses/{addressId}`
+- `DELETE /api/v1/customers/me/addresses/{addressId}`
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/logout`
+- `POST /api/v1/auth/forgot-password`
+- `POST /api/v1/auth/reset-password`
+- `GET /api/v1/auth/verify-email?userId={guid}&token={token}`
 - `POST /api/v1/redirects`
 - `GET /api/v1/redirects?page=1&pageSize=20`
 - `PUT /api/v1/redirects/{redirectRuleId}/deactivate`
@@ -127,6 +144,11 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `GET /p/{slug}` (Landing page, SSR)
 - `GET /cart` (interactive)
 - `GET /checkout` (interactive)
+- `GET /account` (profile, interactive)
+- `GET /account/login` (interactive)
+- `GET /account/register` (interactive)
+- `GET /account/orders` (interactive)
+- `GET /account/addresses` (interactive)
 - `GET /admin/redirects` (admin redirect management UI)
 - `GET /media/image?src=...&w=...&h=...&fit=max|cover|contain&format=auto|webp|avif|jpeg|png`
 - `GET /robots.txt`
@@ -381,11 +403,34 @@ curl -X POST http://localhost:8080/api/v1/cart/customer-123/items \
 curl http://localhost:8080/api/v1/cart/customer-123
 ```
 
-### 4) Checkout: create Order from Cart
+### 4) Checkout: create Order from Cart (guest flow)
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/orders/checkout/customer-123 \
-  -H "Idempotency-Key: checkout-customer-123-001"
+curl -X POST http://localhost:8080/api/v1/orders/checkout \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: checkout-customer-123-001" \
+  -d '{
+    "cartSessionId": "customer-123",
+    "email": "guest@example.com",
+    "shippingAddress": {
+      "firstName": "John",
+      "lastName": "Doe",
+      "street": "Main St 1",
+      "city": "Sofia",
+      "postalCode": "1000",
+      "country": "BG",
+      "phone": "+359888000111"
+    },
+    "billingAddress": {
+      "firstName": "John",
+      "lastName": "Doe",
+      "street": "Main St 1",
+      "city": "Sofia",
+      "postalCode": "1000",
+      "country": "BG",
+      "phone": "+359888000111"
+    }
+  }'
 ```
 
 ### 5) Fetch created order
@@ -396,24 +441,101 @@ curl http://localhost:8080/api/v1/orders/PUT_ORDER_ID_HERE
 
 ## Checkout Idempotency
 
-- The checkout endpoint requires `Idempotency-Key` header.
+- Checkout endpoints require `Idempotency-Key` header.
 - Reusing the same key for the same customer returns the same `orderId` and does not create a duplicate order.
 - Reusing the same key for a different customer returns a business error.
 - Storefront checkout (`/checkout`) sends an `Idempotency-Key` automatically per submit.
+- Preferred endpoint for storefront and guest/account checkout is `POST /api/v1/orders/checkout` with request body (`cartSessionId`, `email`, shipping/billing snapshots).
+- Legacy endpoint `POST /api/v1/orders/checkout/{customerId}` remains available for compatibility.
 
 ### Example
 
 ```bash
 # First call creates an order
-curl -X POST http://localhost:8080/api/v1/orders/checkout/customer-123 \
-  -H "Idempotency-Key: checkout-customer-123-001"
+curl -X POST http://localhost:8080/api/v1/orders/checkout \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: checkout-customer-123-001" \
+  -d '{"cartSessionId":"customer-123","email":"guest@example.com","shippingAddress":{"firstName":"John","lastName":"Doe","street":"Main St 1","city":"Sofia","postalCode":"1000","country":"BG","phone":"+359888000111"},"billingAddress":{"firstName":"John","lastName":"Doe","street":"Main St 1","city":"Sofia","postalCode":"1000","country":"BG","phone":"+359888000111"}}'
 ```
 
 ```bash
 # Second call with the same key returns the same order id
-curl -X POST http://localhost:8080/api/v1/orders/checkout/customer-123 \
-  -H "Idempotency-Key: checkout-customer-123-001"
+curl -X POST http://localhost:8080/api/v1/orders/checkout \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: checkout-customer-123-001" \
+  -d '{"cartSessionId":"customer-123","email":"guest@example.com","shippingAddress":{"firstName":"John","lastName":"Doe","street":"Main St 1","city":"Sofia","postalCode":"1000","country":"BG","phone":"+359888000111"},"billingAddress":{"firstName":"John","lastName":"Doe","street":"Main St 1","city":"Sofia","postalCode":"1000","country":"BG","phone":"+359888000111"}}'
 ```
+
+## Customers and Identity
+
+- New bounded context:
+  - `src/Modules/Customers/Customers.Domain`
+  - `src/Modules/Customers/Customers.Application`
+  - `src/Modules/Customers/Customers.Infrastructure`
+  - `src/Modules/Customers/Customers.Api`
+- Schemas:
+  - `customers` for customer profiles, addresses, sessions
+  - `identity` for ASP.NET Core Identity (`ApplicationUser : IdentityUser<Guid>`)
+- Customer profile:
+  - unique email (`NormalizedEmail` indexed)
+  - optional link to identity user (`Customer.UserId`)
+  - soft deactivation support
+- Addresses:
+  - multiple addresses per customer
+  - one default shipping and one default billing (enforced by filtered unique indexes)
+- Guest checkout:
+  - checkout with email creates or reuses a guest customer profile
+  - no identity user is required for guest orders
+  - orders store immutable shipping/billing snapshots (no foreign keys)
+- Auth model:
+  - cookie auth configured for SSR flows
+  - JWT bearer config is present as baseline placeholder
+  - protected APIs require authentication (`/api/v1/customers/*`, `/api/v1/orders/my`)
+- Session cache:
+  - customer session and cart session cached in Redis with 24h TTL
+  - graceful fallback when Redis is unavailable
+- Domain events emitted through outbox:
+  - `CustomerRegistered`
+  - `CustomerAddressAdded`
+  - `CustomerAddressUpdated`
+  - `CustomerLoggedIn`
+
+### Auth and Account API examples
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alice@example.com","password":"P@ssw0rd123!","firstName":"Alice","lastName":"Doe","phoneNumber":"+359888000111"}'
+```
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alice@example.com","password":"P@ssw0rd123!","rememberMe":true}'
+```
+
+```bash
+curl http://localhost:8080/api/v1/customers/me
+```
+
+```bash
+curl -X POST http://localhost:8080/api/v1/customers/me/addresses \
+  -H "Content-Type: application/json" \
+  -d '{"label":"Home","firstName":"Alice","lastName":"Doe","company":null,"street1":"Main St 1","street2":null,"city":"Sofia","postalCode":"1000","countryCode":"BG","phone":"+359888000111","isDefaultShipping":true,"isDefaultBilling":true}'
+```
+
+```bash
+curl http://localhost:8080/api/v1/orders/my
+```
+
+### Storefront account pages
+
+- `/account`
+- `/account/login`
+- `/account/register`
+- `/account/profile`
+- `/account/addresses`
+- `/account/orders`
 
 ## SEO-Safe Redirects and Slug History
 
@@ -572,6 +694,26 @@ dotnet ef migrations add <MigrationName> \
   --startup-project src/Modules/Search/Search.Infrastructure/Search.Infrastructure.csproj \
   --context Search.Infrastructure.Persistence.SearchDbContext \
   --output-dir Persistence/Migrations
+```
+
+### Customers
+
+```bash
+dotnet ef migrations add <MigrationName> \
+  --project src/Modules/Customers/Customers.Infrastructure/Customers.Infrastructure.csproj \
+  --startup-project src/Modules/Customers/Customers.Infrastructure/Customers.Infrastructure.csproj \
+  --context Customers.Infrastructure.Persistence.CustomersDbContext \
+  --output-dir Persistence/Migrations
+```
+
+### Identity
+
+```bash
+dotnet ef migrations add <MigrationName> \
+  --project src/Modules/Customers/Customers.Infrastructure/Customers.Infrastructure.csproj \
+  --startup-project src/Modules/Customers/Customers.Infrastructure/Customers.Infrastructure.csproj \
+  --context Customers.Infrastructure.Identity.IdentityAppDbContext \
+  --output-dir Identity/Migrations
 ```
 
 ## Outbox Flow

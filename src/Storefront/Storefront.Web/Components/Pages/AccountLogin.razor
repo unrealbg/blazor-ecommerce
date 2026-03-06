@@ -1,0 +1,69 @@
+@page "/account/login"
+@inject NavigationManager NavigationManager
+@inject Storefront.Web.Services.Api.IStoreApiClient StoreApiClient
+
+<PageTitle>Account Login</PageTitle>
+
+<h1>Sign in</h1>
+<p>Access your profile, addresses, and order history.</p>
+
+<EditForm Model="model" OnValidSubmit="SubmitAsync">
+    <div class="form-grid">
+        <label>
+            Email
+            <InputText @bind-Value="model.Email" />
+        </label>
+        <label>
+            Password
+            <InputText @bind-Value="model.Password" Type="password" />
+        </label>
+        <label class="checkbox-row">
+            <InputCheckbox @bind-Value="model.RememberMe" />
+            <span>Remember me</span>
+        </label>
+    </div>
+    <button class="btn-primary" type="submit" disabled="@isSubmitting">Login</button>
+</EditForm>
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <p class="status-message">@message</p>
+}
+
+<p><a class="btn-link" href="/account/register">Create account</a></p>
+
+@code {
+    private readonly LoginModel model = new();
+    private bool isSubmitting;
+    private string? message;
+
+    private async Task SubmitAsync()
+    {
+        isSubmitting = true;
+        message = null;
+
+        var response = await StoreApiClient.LoginAsync(
+            model.Email,
+            model.Password,
+            model.RememberMe,
+            CancellationToken.None);
+
+        if (response is null)
+        {
+            message = "Invalid email or password.";
+            isSubmitting = false;
+            return;
+        }
+
+        NavigationManager.NavigateTo("/account/profile", forceLoad: true);
+    }
+
+    private sealed class LoginModel
+    {
+        public string Email { get; set; } = string.Empty;
+
+        public string Password { get; set; } = string.Empty;
+
+        public bool RememberMe { get; set; } = true;
+    }
+}

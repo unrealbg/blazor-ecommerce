@@ -10,7 +10,8 @@ namespace Cart.Application.Carts.AddItem;
 public sealed class AddItemToCartCommandHandler(
     ICartRepository cartRepository,
     ICartUnitOfWork unitOfWork,
-    IProductCatalogReader productCatalogReader)
+    IProductCatalogReader productCatalogReader,
+    ICustomerSessionCache customerSessionCache)
     : ICommandHandler<AddItemToCartCommand, Guid>
 {
     public async Task<Result<Guid>> Handle(AddItemToCartCommand request, CancellationToken cancellationToken)
@@ -54,6 +55,7 @@ public sealed class AddItemToCartCommandHandler(
         }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await customerSessionCache.TouchCartSessionAsync(request.CustomerId, cancellationToken);
         return Result<Guid>.Success(cart.Id);
     }
 }

@@ -33,3 +33,7 @@ dotnet_diagnostic.SA1632.severity = none
 
 [src/BuildingBlocks/BuildingBlocks.Domain/Results/ResultOfT.cs]
 dotnet_diagnostic.SA1649.severity = none
+
+[**/Migrations/*.cs]
+dotnet_diagnostic.SA1122.severity = none
+dotnet_diagnostic.SA1413.severity = none

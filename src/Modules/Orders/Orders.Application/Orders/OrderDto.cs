@@ -8,4 +8,6 @@ public sealed record OrderDto(
     decimal TotalAmount,
     string Status,
     DateTime PlacedAtUtc,
+    OrderAddressDto ShippingAddress,
+    OrderAddressDto BillingAddress,
     IReadOnlyCollection<OrderLineDto> Lines);

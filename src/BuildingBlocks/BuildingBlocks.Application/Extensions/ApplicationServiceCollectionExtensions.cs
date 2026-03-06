@@ -17,6 +17,8 @@ public static class ApplicationServiceCollectionExtensions
             ServiceDescriptor.Transient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>)));
         services.TryAddScoped<IRedirectRuleWriter, NullRedirectRuleWriter>();
         services.TryAddScoped<IProductSearchIndexer, NullProductSearchIndexer>();
+        services.TryAddScoped<ICustomerCheckoutAccessor, NullCustomerCheckoutAccessor>();
+        services.TryAddScoped<ICustomerSessionCache, NullCustomerSessionCache>();
 
         return services;
     }

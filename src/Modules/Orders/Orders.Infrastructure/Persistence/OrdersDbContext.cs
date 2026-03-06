@@ -21,7 +21,8 @@ public sealed class OrdersDbContext(
         Func<CancellationToken, Task<TResult>> operation,
         CancellationToken cancellationToken)
     {
-        if (Database.CurrentTransaction is not null)
+        if (Database.CurrentTransaction is not null ||
+            string.Equals(Database.ProviderName, "Microsoft.EntityFrameworkCore.InMemory", StringComparison.Ordinal))
         {
             return await operation(cancellationToken);
         }

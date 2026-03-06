@@ -1,0 +1,26 @@
+@inherits LayoutComponentBase
+@inject Storefront.Web.Services.Api.IStoreApiClient StoreApiClient
+@inject NavigationManager NavigationManager
+
+<div class="account-shell">
+    <aside class="account-sidebar">
+        <h2>My account</h2>
+        <nav class="account-nav">
+            <a href="/account/profile">Profile</a>
+            <a href="/account/addresses">Addresses</a>
+            <a href="/account/orders">Orders</a>
+            <button type="button" class="btn-link danger" @onclick="LogoutAsync">Logout</button>
+        </nav>
+    </aside>
+    <section class="account-content">
+        @Body
+    </section>
+</div>
+
+@code {
+    private async Task LogoutAsync()
+    {
+        await StoreApiClient.LogoutAsync(CancellationToken.None);
+        NavigationManager.NavigateTo("/account/login", forceLoad: true);
+    }
+}

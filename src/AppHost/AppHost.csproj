@@ -8,6 +8,7 @@
     <ProjectReference Include="..\Modules\Orders\Orders.Api\Orders.Api.csproj" />
     <ProjectReference Include="..\Modules\Redirects\Redirects.Api\Redirects.Api.csproj" />
     <ProjectReference Include="..\Modules\Search\Search.Api\Search.Api.csproj" />
+    <ProjectReference Include="..\Modules\Customers\Customers.Api\Customers.Api.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -30,6 +31,7 @@
     <InfrastructureProject Include="..\Modules\Orders\Orders.Infrastructure\Orders.Infrastructure.csproj" />
     <InfrastructureProject Include="..\Modules\Redirects\Redirects.Infrastructure\Redirects.Infrastructure.csproj" />
     <InfrastructureProject Include="..\Modules\Search\Search.Infrastructure\Search.Infrastructure.csproj" />
+    <InfrastructureProject Include="..\Modules\Customers\Customers.Infrastructure\Customers.Infrastructure.csproj" />
   </ItemGroup>
 
   <Target Name="BuildInfrastructureProjects" BeforeTargets="Build">
@@ -45,6 +47,7 @@
       <InfrastructureOutputs Include="..\Modules\Orders\Orders.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Orders.Infrastructure.*" />
       <InfrastructureOutputs Include="..\Modules\Redirects\Redirects.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Redirects.Infrastructure.*" />
       <InfrastructureOutputs Include="..\Modules\Search\Search.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Search.Infrastructure.*" />
+      <InfrastructureOutputs Include="..\Modules\Customers\Customers.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Customers.Infrastructure.*" />
     </ItemGroup>
 
     <Copy SourceFiles="@(InfrastructureOutputs)"
@@ -60,6 +63,7 @@
       <InfrastructureOutputs Include="..\Modules\Orders\Orders.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Orders.Infrastructure.*" />
       <InfrastructureOutputs Include="..\Modules\Redirects\Redirects.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Redirects.Infrastructure.*" />
       <InfrastructureOutputs Include="..\Modules\Search\Search.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Search.Infrastructure.*" />
+      <InfrastructureOutputs Include="..\Modules\Customers\Customers.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Customers.Infrastructure.*" />
     </ItemGroup>
 
     <Copy SourceFiles="@(InfrastructureOutputs)"

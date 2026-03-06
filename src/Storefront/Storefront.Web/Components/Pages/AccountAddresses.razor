@@ -1,0 +1,309 @@
+@page "/account/addresses"
+@layout Storefront.Web.Components.Layout.AccountLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>My Addresses</PageTitle>
+
+<h1>Addresses</h1>
+
+@if (isLoading)
+{
+    <p>Loading addresses...</p>
+}
+else if (!isAuthenticated)
+{
+    <p>You need to sign in to manage addresses.</p>
+    <p><a class="btn-link" href="/account/login">Go to login</a></p>
+}
+else
+{
+    @if (addressModels.Count == 0)
+    {
+        <p>No saved addresses.</p>
+    }
+    else
+    {
+        <div class="address-list">
+            @foreach (var address in addressModels)
+            {
+                <EditForm Model="address" OnValidSubmit="@(() => UpdateAddressAsync(address))">
+                    <div class="form-grid">
+                        <label>
+                            Label
+                            <InputText @bind-Value="address.Label" />
+                        </label>
+                        <label>
+                            First name
+                            <InputText @bind-Value="address.FirstName" />
+                        </label>
+                        <label>
+                            Last name
+                            <InputText @bind-Value="address.LastName" />
+                        </label>
+                        <label>
+                            Company
+                            <InputText @bind-Value="address.Company" />
+                        </label>
+                        <label>
+                            Street 1
+                            <InputText @bind-Value="address.Street1" />
+                        </label>
+                        <label>
+                            Street 2
+                            <InputText @bind-Value="address.Street2" />
+                        </label>
+                        <label>
+                            City
+                            <InputText @bind-Value="address.City" />
+                        </label>
+                        <label>
+                            Postal code
+                            <InputText @bind-Value="address.PostalCode" />
+                        </label>
+                        <label>
+                            Country code
+                            <InputText @bind-Value="address.CountryCode" />
+                        </label>
+                        <label>
+                            Phone
+                            <InputText @bind-Value="address.Phone" />
+                        </label>
+                        <label class="checkbox-row">
+                            <InputCheckbox @bind-Value="address.IsDefaultShipping" />
+                            <span>Default shipping</span>
+                        </label>
+                        <label class="checkbox-row">
+                            <InputCheckbox @bind-Value="address.IsDefaultBilling" />
+                            <span>Default billing</span>
+                        </label>
+                    </div>
+                    <div class="address-actions">
+                        <button class="btn-primary" type="submit">Save</button>
+                        <button class="btn-link danger" type="button" @onclick="() => DeleteAddressAsync(address.Id)">Delete</button>
+                    </div>
+                </EditForm>
+            }
+        </div>
+    }
+
+    <h2>Add address</h2>
+    <EditForm Model="newAddress" OnValidSubmit="AddAddressAsync">
+        <div class="form-grid">
+            <label>
+                Label
+                <InputText @bind-Value="newAddress.Label" />
+            </label>
+            <label>
+                First name
+                <InputText @bind-Value="newAddress.FirstName" />
+            </label>
+            <label>
+                Last name
+                <InputText @bind-Value="newAddress.LastName" />
+            </label>
+            <label>
+                Company
+                <InputText @bind-Value="newAddress.Company" />
+            </label>
+            <label>
+                Street 1
+                <InputText @bind-Value="newAddress.Street1" />
+            </label>
+            <label>
+                Street 2
+                <InputText @bind-Value="newAddress.Street2" />
+            </label>
+            <label>
+                City
+                <InputText @bind-Value="newAddress.City" />
+            </label>
+            <label>
+                Postal code
+                <InputText @bind-Value="newAddress.PostalCode" />
+            </label>
+            <label>
+                Country code
+                <InputText @bind-Value="newAddress.CountryCode" />
+            </label>
+            <label>
+                Phone
+                <InputText @bind-Value="newAddress.Phone" />
+            </label>
+            <label class="checkbox-row">
+                <InputCheckbox @bind-Value="newAddress.IsDefaultShipping" />
+                <span>Default shipping</span>
+            </label>
+            <label class="checkbox-row">
+                <InputCheckbox @bind-Value="newAddress.IsDefaultBilling" />
+                <span>Default billing</span>
+            </label>
+        </div>
+        <button class="btn-primary" type="submit">Add address</button>
+    </EditForm>
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <p class="status-message">@message</p>
+    }
+}
+
+@code {
+    private readonly AddressModel newAddress = AddressModel.CreateDefault();
+    private List<AddressModel> addressModels = [];
+    private bool isLoading = true;
+    private bool isAuthenticated;
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task AddAddressAsync()
+    {
+        message = null;
+        var createdId = await StoreApiClient.AddCurrentCustomerAddressAsync(ToRequest(newAddress), CancellationToken.None);
+        if (createdId is null)
+        {
+            message = "Unable to add address.";
+            return;
+        }
+
+        ResetNewAddress();
+        await ReloadAsync();
+        message = "Address added.";
+    }
+
+    private async Task UpdateAddressAsync(AddressModel address)
+    {
+        message = null;
+        var success = await StoreApiClient.UpdateCurrentCustomerAddressAsync(
+            address.Id,
+            ToRequest(address),
+            CancellationToken.None);
+
+        message = success ? "Address updated." : "Unable to update address.";
+        if (success)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private async Task DeleteAddressAsync(Guid addressId)
+    {
+        message = null;
+        var success = await StoreApiClient.DeleteCurrentCustomerAddressAsync(addressId, CancellationToken.None);
+        message = success ? "Address deleted." : "Unable to delete address.";
+        if (success)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        isLoading = true;
+
+        var profile = await StoreApiClient.GetCurrentCustomerAsync(CancellationToken.None);
+        isAuthenticated = profile is not null;
+
+        if (!isAuthenticated)
+        {
+            addressModels = [];
+            isLoading = false;
+            return;
+        }
+
+        var addresses = await StoreApiClient.GetCurrentCustomerAddressesAsync(CancellationToken.None);
+        addressModels = addresses
+            .Select(AddressModel.FromDto)
+            .ToList();
+
+        isLoading = false;
+    }
+
+    private void ResetNewAddress()
+    {
+        newAddress.Label = "Home";
+        newAddress.FirstName = string.Empty;
+        newAddress.LastName = string.Empty;
+        newAddress.Company = null;
+        newAddress.Street1 = string.Empty;
+        newAddress.Street2 = null;
+        newAddress.City = string.Empty;
+        newAddress.PostalCode = string.Empty;
+        newAddress.CountryCode = "BG";
+        newAddress.Phone = null;
+        newAddress.IsDefaultShipping = false;
+        newAddress.IsDefaultBilling = false;
+    }
+
+    private static StoreAddressRequest ToRequest(AddressModel address)
+    {
+        return new StoreAddressRequest(
+            address.Label,
+            address.FirstName,
+            address.LastName,
+            address.Company,
+            address.Street1,
+            address.Street2,
+            address.City,
+            address.PostalCode,
+            address.CountryCode,
+            address.Phone,
+            address.IsDefaultShipping,
+            address.IsDefaultBilling);
+    }
+
+    private sealed class AddressModel
+    {
+        public Guid Id { get; set; }
+
+        public string Label { get; set; } = "Home";
+
+        public string FirstName { get; set; } = string.Empty;
+
+        public string LastName { get; set; } = string.Empty;
+
+        public string? Company { get; set; }
+
+        public string Street1 { get; set; } = string.Empty;
+
+        public string? Street2 { get; set; }
+
+        public string City { get; set; } = string.Empty;
+
+        public string PostalCode { get; set; } = string.Empty;
+
+        public string CountryCode { get; set; } = "BG";
+
+        public string? Phone { get; set; }
+
+        public bool IsDefaultShipping { get; set; }
+
+        public bool IsDefaultBilling { get; set; }
+
+        public static AddressModel CreateDefault() => new();
+
+        public static AddressModel FromDto(StoreCustomerAddress address)
+        {
+            return new AddressModel
+            {
+                Id = address.Id,
+                Label = address.Label,
+                FirstName = address.FirstName,
+                LastName = address.LastName,
+                Company = address.Company,
+                Street1 = address.Street1,
+                Street2 = address.Street2,
+                City = address.City,
+                PostalCode = address.PostalCode,
+                CountryCode = address.CountryCode,
+                Phone = address.Phone,
+                IsDefaultShipping = address.IsDefaultShipping,
+                IsDefaultBilling = address.IsDefaultBilling,
+            };
+        }
+    }
+}

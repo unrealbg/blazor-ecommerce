@@ -17,6 +17,8 @@ public sealed class Order : AggregateRoot<Guid>
         Guid id,
         string customerId,
         IReadOnlyCollection<OrderLine> lines,
+        OrderAddressSnapshot shippingAddress,
+        OrderAddressSnapshot billingAddress,
         Money subtotal,
         Money total,
         DateTime placedAtUtc)
@@ -24,6 +26,8 @@ public sealed class Order : AggregateRoot<Guid>
         Id = id;
         CustomerId = customerId;
         _lines = [..lines];
+        ShippingAddress = shippingAddress;
+        BillingAddress = billingAddress;
         Subtotal = subtotal;
         Total = total;
         PlacedAtUtc = placedAtUtc;
@@ -36,6 +40,10 @@ public sealed class Order : AggregateRoot<Guid>
     public string CustomerId { get; private set; } = string.Empty;
 
     public IReadOnlyCollection<OrderLine> Lines => _lines.AsReadOnly();
+
+    public OrderAddressSnapshot ShippingAddress { get; private set; } = null!;
+
+    public OrderAddressSnapshot BillingAddress { get; private set; } = null!;
 
     public Money Subtotal { get; private set; } = null!;
 
@@ -50,7 +58,9 @@ public sealed class Order : AggregateRoot<Guid>
     public static Result<Order> Create(
         string customerId,
         IReadOnlyCollection<OrderLineData> lineData,
-        DateTime placedAtUtc)
+        DateTime placedAtUtc,
+        OrderAddressSnapshot? shippingAddress = null,
+        OrderAddressSnapshot? billingAddress = null)
     {
         if (string.IsNullOrWhiteSpace(customerId))
         {
@@ -106,6 +116,8 @@ public sealed class Order : AggregateRoot<Guid>
             Guid.NewGuid(),
             customerId.Trim(),
             lines,
+            shippingAddress ?? OrderAddressSnapshot.Empty(),
+            billingAddress ?? OrderAddressSnapshot.Empty(),
             subtotalResult.Value,
             totalResult.Value,
             placedAtUtc));
