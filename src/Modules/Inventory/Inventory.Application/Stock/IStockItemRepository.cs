@@ -6,7 +6,11 @@ public interface IStockItemRepository
 {
     Task AddAsync(StockItem stockItem, CancellationToken cancellationToken);
 
-    Task<StockItem?> GetByProductAndSkuAsync(Guid productId, string? sku, CancellationToken cancellationToken);
+    Task<StockItem?> GetByVariantIdAsync(Guid variantId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<StockItem>> ListByVariantIdsAsync(
+        IReadOnlyCollection<Guid> variantIds,
+        CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<StockItem>> ListByProductIdsAsync(
         IReadOnlyCollection<Guid> productIds,

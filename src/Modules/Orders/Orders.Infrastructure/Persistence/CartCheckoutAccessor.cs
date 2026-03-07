@@ -14,7 +14,12 @@ internal sealed class CartCheckoutAccessor(OrdersDbContext dbContext) : ICartChe
                                c."Id" AS cart_id,
                                c."CustomerId" AS customer_id,
                                l.product_id,
+                               l.variant_id,
+                               l.sku,
                                l.product_name,
+                               l.variant_name,
+                               l.image_url,
+                               l.selected_options_json,
                                l.unit_currency,
                                l.unit_amount,
                                l.quantity
@@ -64,7 +69,12 @@ internal sealed class CartCheckoutAccessor(OrdersDbContext dbContext) : ICartChe
 
                 lines.Add(new CartCheckoutLineSnapshot(
                     reader.GetGuid(reader.GetOrdinal("product_id")),
+                    reader.GetGuid(reader.GetOrdinal("variant_id")),
+                    reader.IsDBNull(reader.GetOrdinal("sku")) ? null : reader.GetString(reader.GetOrdinal("sku")),
                     reader.GetString(reader.GetOrdinal("product_name")),
+                    reader.IsDBNull(reader.GetOrdinal("variant_name")) ? null : reader.GetString(reader.GetOrdinal("variant_name")),
+                    reader.IsDBNull(reader.GetOrdinal("image_url")) ? null : reader.GetString(reader.GetOrdinal("image_url")),
+                    reader.IsDBNull(reader.GetOrdinal("selected_options_json")) ? null : reader.GetString(reader.GetOrdinal("selected_options_json")),
                     reader.GetString(reader.GetOrdinal("unit_currency")),
                     reader.GetDecimal(reader.GetOrdinal("unit_amount")),
                     reader.GetInt32(reader.GetOrdinal("quantity"))));

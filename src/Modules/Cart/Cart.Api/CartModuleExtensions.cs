@@ -1,3 +1,4 @@
+using BuildingBlocks.Application.Contracts;
 using BuildingBlocks.Domain.Results;
 using Cart.Application.Carts.AddItem;
 using Cart.Application.Carts.GetCart;
@@ -28,11 +29,24 @@ public static class CartModuleExtensions
         group.MapPost("/{customerId}/items", async (
             string customerId,
             AddItemRequest request,
+            IProductCatalogReader productCatalogReader,
             ISender sender,
             CancellationToken cancellationToken) =>
         {
+            var variantId = request.VariantId;
+            if (variantId == Guid.Empty)
+            {
+                var product = await productCatalogReader.GetByIdAsync(request.ProductId, cancellationToken);
+                if (product is null)
+                {
+                    return Results.NotFound();
+                }
+
+                variantId = product.DefaultVariantId;
+            }
+
             var result = await sender.Send(
-                new AddItemToCartCommand(customerId, request.ProductId, request.Quantity),
+                new AddItemToCartCommand(customerId, request.ProductId, variantId, request.Quantity),
                 cancellationToken);
 
             return result.IsSuccess
@@ -46,15 +60,15 @@ public static class CartModuleExtensions
             return cart is not null ? Results.Ok(cart) : Results.NotFound();
         });
 
-        group.MapPatch("/{customerId}/items/{productId:guid}", async (
+        group.MapPatch("/{customerId}/items/{variantId:guid}", async (
             string customerId,
-            Guid productId,
+            Guid variantId,
             UpdateItemQuantityRequest request,
             ISender sender,
             CancellationToken cancellationToken) =>
         {
             var result = await sender.Send(
-                new UpdateCartItemQuantityCommand(customerId, productId, request.Quantity),
+                new UpdateCartItemQuantityCommand(customerId, variantId, request.Quantity),
                 cancellationToken);
 
             return result.IsSuccess
@@ -62,13 +76,13 @@ public static class CartModuleExtensions
                 : BusinessError(result.Error);
         });
 
-        group.MapDelete("/{customerId}/items/{productId:guid}", async (
+        group.MapDelete("/{customerId}/items/{variantId:guid}", async (
             string customerId,
-            Guid productId,
+            Guid variantId,
             ISender sender,
             CancellationToken cancellationToken) =>
         {
-            var result = await sender.Send(new RemoveCartItemCommand(customerId, productId), cancellationToken);
+            var result = await sender.Send(new RemoveCartItemCommand(customerId, variantId), cancellationToken);
 
             return result.IsSuccess
                 ? Results.NoContent()
@@ -99,7 +113,32 @@ public static class CartModuleExtensions
             });
     }
 
-    public sealed record AddItemRequest(Guid ProductId, int Quantity);
+    public sealed class AddItemRequest
+    {
+        public AddItemRequest()
+        {
+        }
+
+        public AddItemRequest(Guid productId, int quantity)
+        {
+            ProductId = productId;
+            VariantId = Guid.Empty;
+            Quantity = quantity;
+        }
+
+        public AddItemRequest(Guid productId, Guid variantId, int quantity)
+        {
+            ProductId = productId;
+            VariantId = variantId;
+            Quantity = quantity;
+        }
+
+        public Guid ProductId { get; init; }
+
+        public Guid VariantId { get; init; }
+
+        public int Quantity { get; init; }
+    }
 
     public sealed record UpdateItemQuantityRequest(int Quantity);
 }

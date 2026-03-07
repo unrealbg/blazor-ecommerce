@@ -35,11 +35,25 @@ public sealed class Cart : AggregateRoot<Guid>
         return Result<Cart>.Success(new Cart(Guid.NewGuid(), customerId.Trim()));
     }
 
-    public Result AddItem(Guid productId, string productName, Money unitPrice, int quantity)
+    public Result AddItem(
+        Guid productId,
+        Guid variantId,
+        string? sku,
+        string productName,
+        string? variantName,
+        string? selectedOptionsJson,
+        string? imageUrl,
+        Money unitPrice,
+        int quantity)
     {
         if (productId == Guid.Empty)
         {
             return Result.Failure(new Error("cart.item.product.required", "Product id is required."));
+        }
+
+        if (variantId == Guid.Empty)
+        {
+            return Result.Failure(new Error("cart.item.variant.required", "Variant id is required."));
         }
 
         if (string.IsNullOrWhiteSpace(productName))
@@ -52,7 +66,7 @@ public sealed class Cart : AggregateRoot<Guid>
             return Result.Failure(new Error("cart.item.quantity.invalid", "Quantity must be greater than zero."));
         }
 
-        var existingLine = _lines.FirstOrDefault(line => line.ProductId == productId);
+        var existingLine = _lines.FirstOrDefault(line => line.VariantId == variantId);
         if (existingLine is not null)
         {
             existingLine.IncreaseQuantity(quantity);
@@ -60,16 +74,25 @@ public sealed class Cart : AggregateRoot<Guid>
             return Result.Success();
         }
 
-        _lines.Add(CartLine.Create(productId, productName.Trim(), unitPrice, quantity));
+        _lines.Add(CartLine.Create(
+            productId,
+            variantId,
+            sku,
+            productName.Trim(),
+            string.IsNullOrWhiteSpace(variantName) ? null : variantName.Trim(),
+            string.IsNullOrWhiteSpace(selectedOptionsJson) ? null : selectedOptionsJson.Trim(),
+            string.IsNullOrWhiteSpace(imageUrl) ? null : imageUrl.Trim(),
+            unitPrice,
+            quantity));
         IncrementRowVersion();
         return Result.Success();
     }
 
-    public Result UpdateItemQuantity(Guid productId, int quantity)
+    public Result UpdateItemQuantity(Guid variantId, int quantity)
     {
-        if (productId == Guid.Empty)
+        if (variantId == Guid.Empty)
         {
-            return Result.Failure(new Error("cart.item.product.required", "Product id is required."));
+            return Result.Failure(new Error("cart.item.variant.required", "Variant id is required."));
         }
 
         if (quantity <= 0)
@@ -77,7 +100,7 @@ public sealed class Cart : AggregateRoot<Guid>
             return Result.Failure(new Error("cart.item.quantity.invalid", "Quantity must be greater than zero."));
         }
 
-        var existingLine = _lines.FirstOrDefault(line => line.ProductId == productId);
+        var existingLine = _lines.FirstOrDefault(line => line.VariantId == variantId);
         if (existingLine is null)
         {
             return Result.Failure(new Error("cart.item.not_found", "Cart item was not found."));
@@ -88,14 +111,14 @@ public sealed class Cart : AggregateRoot<Guid>
         return Result.Success();
     }
 
-    public Result RemoveItem(Guid productId)
+    public Result RemoveItem(Guid variantId)
     {
-        if (productId == Guid.Empty)
+        if (variantId == Guid.Empty)
         {
-            return Result.Failure(new Error("cart.item.product.required", "Product id is required."));
+            return Result.Failure(new Error("cart.item.variant.required", "Variant id is required."));
         }
 
-        var existingLine = _lines.FirstOrDefault(line => line.ProductId == productId);
+        var existingLine = _lines.FirstOrDefault(line => line.VariantId == variantId);
         if (existingLine is null)
         {
             return Result.Failure(new Error("cart.item.not_found", "Cart item was not found."));

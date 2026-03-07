@@ -15,6 +15,10 @@ internal sealed class StockReservationConfiguration : IEntityTypeConfiguration<S
             .HasColumnName("product_id")
             .IsRequired();
 
+        builder.Property(reservation => reservation.VariantId)
+            .HasColumnName("variant_id")
+            .IsRequired();
+
         builder.Property(reservation => reservation.Sku)
             .HasColumnName("sku")
             .HasMaxLength(64);
@@ -62,6 +66,9 @@ internal sealed class StockReservationConfiguration : IEntityTypeConfiguration<S
 
         builder.HasIndex(reservation => new { reservation.ProductId, reservation.Status })
             .HasDatabaseName("ix_stock_reservations_product_status");
+
+        builder.HasIndex(reservation => new { reservation.VariantId, reservation.Status })
+            .HasDatabaseName("ix_stock_reservations_variant_status");
 
         builder.HasIndex(reservation => new { reservation.CartId, reservation.Status })
             .HasDatabaseName("ix_stock_reservations_cart_status");

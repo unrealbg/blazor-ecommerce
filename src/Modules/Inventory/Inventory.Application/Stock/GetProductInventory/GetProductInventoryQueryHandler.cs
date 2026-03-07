@@ -11,10 +11,10 @@ public sealed class GetProductInventoryQueryHandler(
         GetProductInventoryQuery request,
         CancellationToken cancellationToken)
     {
-        var stockItem = await stockItemRepository.GetByProductAndSkuAsync(
-            request.ProductId,
-            sku: null,
-            cancellationToken);
+        var stockItems = await stockItemRepository.ListByProductIdsAsync([request.ProductId], cancellationToken);
+        var stockItem = stockItems
+            .OrderByDescending(item => item.UpdatedAtUtc)
+            .FirstOrDefault();
         if (stockItem is null)
         {
             return null;

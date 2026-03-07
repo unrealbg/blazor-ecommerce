@@ -26,7 +26,7 @@ internal sealed class OrderPaymentService(OrdersDbContext dbContext) : IOrderPay
             order.Total.Currency,
             order.Status.ToString(),
             order.Lines
-                .Select(line => new OrderPaymentLineSnapshot(line.ProductId, Sku: null, line.Quantity))
+                .Select(line => new OrderPaymentLineSnapshot(line.ProductId, line.VariantId, line.Sku, line.Quantity))
                 .ToList());
     }
 

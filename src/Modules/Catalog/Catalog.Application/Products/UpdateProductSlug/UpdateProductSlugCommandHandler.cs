@@ -17,7 +17,7 @@ public sealed class UpdateProductSlugCommandHandler(
             return Result<string>.Failure(new Error("catalog.product.not_found", "Product was not found."));
         }
 
-        var targetSlug = await GenerateUniqueSlugAsync(product.Slug, request.Slug, cancellationToken);
+        var targetSlug = await GenerateUniqueSlugAsync(product.Id, product.Slug, request.Slug, cancellationToken);
 
         var updateResult = product.UpdateSlug(targetSlug);
         if (updateResult.IsFailure)
@@ -37,6 +37,7 @@ public sealed class UpdateProductSlugCommandHandler(
     }
 
     private async Task<string> GenerateUniqueSlugAsync(
+        Guid productId,
         string currentSlug,
         string requestedSlug,
         CancellationToken cancellationToken)
@@ -50,7 +51,7 @@ public sealed class UpdateProductSlugCommandHandler(
         }
 
         var suffix = 2;
-        while (await productRepository.SlugExistsAsync(candidate, cancellationToken))
+        while (await productRepository.SlugExistsAsync(candidate, productId, cancellationToken))
         {
             candidate = $"{baseSlug}-{suffix}";
             suffix++;

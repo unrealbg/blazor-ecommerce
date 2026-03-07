@@ -6,6 +6,7 @@ public interface IInventoryStockProvisioner
 {
     Task<Result> EnsureStockItemAsync(
         Guid productId,
+        Guid variantId,
         string? sku,
         int initialOnHandQuantity,
         bool isTracked,

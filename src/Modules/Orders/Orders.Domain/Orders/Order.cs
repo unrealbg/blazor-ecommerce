@@ -134,14 +134,28 @@ public sealed class Order : AggregateRoot<Guid>
                     new Error("orders.line.quantity.invalid", "Order line quantity must be greater than zero."));
             }
 
-            if (string.IsNullOrWhiteSpace(line.Name))
+            if (line.VariantId == Guid.Empty)
             {
                 return Result<Order>.Failure(
-                    new Error("orders.line.name.required", "Order line name is required."));
+                    new Error("orders.line.variant.required", "Order line variant id is required."));
+            }
+
+            if (string.IsNullOrWhiteSpace(line.ProductName))
+            {
+                return Result<Order>.Failure(
+                    new Error("orders.line.name.required", "Order line product name is required."));
             }
 
             subtotalAmount += Money.Round(line.UnitPrice.Amount * line.Quantity);
-            orderLines.Add(OrderLine.Create(line.ProductId, line.Name.Trim(), line.UnitPrice, line.Quantity));
+            orderLines.Add(OrderLine.Create(
+                line.ProductId,
+                line.VariantId,
+                line.Sku,
+                line.ProductName.Trim(),
+                string.IsNullOrWhiteSpace(line.VariantName) ? null : line.VariantName.Trim(),
+                string.IsNullOrWhiteSpace(line.SelectedOptionsJson) ? null : line.SelectedOptionsJson.Trim(),
+                line.UnitPrice,
+                line.Quantity));
         }
 
         var subtotalResult = Money.Create(firstCurrency, subtotalAmount);

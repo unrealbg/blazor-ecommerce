@@ -11,18 +11,25 @@ internal sealed class StockItemRepository(InventoryDbContext dbContext) : IStock
         return dbContext.StockItems.AddAsync(stockItem, cancellationToken).AsTask();
     }
 
-    public Task<StockItem?> GetByProductAndSkuAsync(Guid productId, string? sku, CancellationToken cancellationToken)
+    public Task<StockItem?> GetByVariantIdAsync(Guid variantId, CancellationToken cancellationToken)
     {
-        var normalizedSku = NormalizeSku(sku);
-        var query = dbContext.StockItems.Where(item => item.ProductId == productId);
-        if (normalizedSku is not null)
+        return dbContext.StockItems
+            .OrderByDescending(item => item.UpdatedAtUtc)
+            .FirstOrDefaultAsync(item => item.VariantId == variantId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<StockItem>> ListByVariantIdsAsync(
+        IReadOnlyCollection<Guid> variantIds,
+        CancellationToken cancellationToken)
+    {
+        if (variantIds.Count == 0)
         {
-            query = query.Where(item => item.Sku == normalizedSku);
+            return [];
         }
 
-        return query
-            .OrderByDescending(item => item.UpdatedAtUtc)
-            .FirstOrDefaultAsync(cancellationToken);
+        return await dbContext.StockItems
+            .Where(item => variantIds.Contains(item.VariantId))
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyCollection<StockItem>> ListByProductIdsAsync(
@@ -37,10 +44,5 @@ internal sealed class StockItemRepository(InventoryDbContext dbContext) : IStock
         return await dbContext.StockItems
             .Where(item => productIds.Contains(item.ProductId))
             .ToListAsync(cancellationToken);
-    }
-
-    private static string? NormalizeSku(string? sku)
-    {
-        return string.IsNullOrWhiteSpace(sku) ? null : sku.Trim();
     }
 }

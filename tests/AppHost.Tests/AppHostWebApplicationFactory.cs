@@ -113,7 +113,12 @@ public sealed class AppHostWebApplicationFactory : WebApplicationFactory<Program
             var lines = cart.Lines
                 .Select(line => new CartCheckoutLineSnapshot(
                     line.ProductId,
+                    line.VariantId,
                     line.ProductName,
+                    line.VariantName,
+                    line.Sku,
+                    line.ImageUrl,
+                    line.SelectedOptionsJson,
                     line.UnitPrice.Currency,
                     line.UnitPrice.Amount,
                     line.Quantity))

@@ -21,10 +21,12 @@ public sealed class AdjustStockCommandHandler(
         return unitOfWork.ExecuteWithConcurrencyRetryAsync(
             async innerCancellationToken =>
             {
-                var stockItem = await stockItemRepository.GetByProductAndSkuAsync(
-                    request.ProductId,
-                    sku: null,
+                var stockItems = await stockItemRepository.ListByProductIdsAsync(
+                    [request.ProductId],
                     innerCancellationToken);
+                var stockItem = stockItems
+                    .OrderByDescending(item => item.UpdatedAtUtc)
+                    .FirstOrDefault();
                 if (stockItem is null)
                 {
                     return Result<bool>.Failure(new Error(

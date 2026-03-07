@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 namespace Catalog.Application.Products.OnProductCreated;
 
 public sealed class ProductCreatedDomainEventHandler(
-    IProductRepository productRepository,
+    IProductCatalogReader productCatalogReader,
     IProductSearchIndexer productSearchIndexer,
     IInventoryStockProvisioner inventoryStockProvisioner,
     ILogger<ProductCreatedDomainEventHandler> logger)
@@ -14,7 +14,7 @@ public sealed class ProductCreatedDomainEventHandler(
 {
     public async Task Handle(ProductCreated domainEvent, CancellationToken cancellationToken)
     {
-        var product = await productRepository.GetByIdAsync(domainEvent.ProductId, cancellationToken);
+        var product = await productCatalogReader.GetByIdAsync(domainEvent.ProductId, cancellationToken);
         if (product is null)
         {
             logger.LogWarning(
@@ -30,11 +30,13 @@ public sealed class ProductCreatedDomainEventHandler(
                 product.Slug,
                 product.Name,
                 product.Description,
+                product.DefaultCategoryId,
                 product.CategorySlug,
                 product.CategoryName,
-                product.Brand,
-                product.Price.Amount,
-                product.Price.Currency,
+                product.Brand?.Name,
+                BuildSearchText(product),
+                product.Amount,
+                product.Currency,
                 product.IsActive,
                 product.IsInStock,
                 product.ImageUrl,
@@ -42,9 +44,12 @@ public sealed class ProductCreatedDomainEventHandler(
                 now),
             cancellationToken);
 
+        var defaultVariant = product.Variants.FirstOrDefault(variant => variant.Id == domainEvent.DefaultVariantId)
+                             ?? product.Variants.First();
         var ensureStockResult = await inventoryStockProvisioner.EnsureStockItemAsync(
             product.Id,
-            product.Sku,
+            defaultVariant.Id,
+            defaultVariant.Sku,
             product.IsInStock ? 100 : 0,
             isTracked: true,
             allowBackorder: false,
@@ -62,5 +67,29 @@ public sealed class ProductCreatedDomainEventHandler(
         logger.LogInformation(
             "Search index document upserted after product creation. ProductId: {ProductId}",
             product.Id);
+    }
+
+    private static string BuildSearchText(ProductSnapshot product)
+    {
+        var variantNames = string.Join(' ', product.Variants.Select(variant => variant.Name).Where(name => !string.IsNullOrWhiteSpace(name)));
+        var optionValues = string.Join(
+            ' ',
+            product.Variants
+                .SelectMany(variant => variant.SelectedOptions)
+                .Select(option => $"{option.OptionName} {option.Value}")
+                .Distinct(StringComparer.OrdinalIgnoreCase));
+
+        return string.Join(
+            ' ',
+            new[]
+            {
+                product.Name,
+                product.ShortDescription,
+                product.Description,
+                product.Brand?.Name,
+                product.CategoryName,
+                variantNames,
+                optionValues,
+            }.Where(value => !string.IsNullOrWhiteSpace(value)));
     }
 }

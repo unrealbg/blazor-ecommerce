@@ -11,45 +11,31 @@ internal sealed class StockReservationRepository(InventoryDbContext dbContext) :
         return dbContext.StockReservations.AddAsync(reservation, cancellationToken).AsTask();
     }
 
-    public Task<StockReservation?> GetActiveByCartProductSkuAsync(
+    public Task<StockReservation?> GetActiveByCartVariantIdAsync(
         string cartId,
-        Guid productId,
-        string? sku,
+        Guid variantId,
         CancellationToken cancellationToken)
     {
         var normalizedCartId = NormalizeCartId(cartId);
-        var normalizedSku = NormalizeSku(sku);
         var query = dbContext.StockReservations
             .Where(reservation => reservation.CartId == normalizedCartId &&
-                                  reservation.ProductId == productId &&
+                                  reservation.VariantId == variantId &&
                                   reservation.Status == StockReservationStatus.Active);
-
-        if (normalizedSku is not null)
-        {
-            query = query.Where(reservation => reservation.Sku == normalizedSku);
-        }
 
         return query
             .OrderByDescending(reservation => reservation.CreatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-    public Task<StockReservation?> GetActiveByOrderProductSkuAsync(
+    public Task<StockReservation?> GetActiveByOrderVariantIdAsync(
         Guid orderId,
-        Guid productId,
-        string? sku,
+        Guid variantId,
         CancellationToken cancellationToken)
     {
-        var normalizedSku = NormalizeSku(sku);
         var query = dbContext.StockReservations
             .Where(reservation => reservation.OrderId == orderId &&
-                                  reservation.ProductId == productId &&
+                                  reservation.VariantId == variantId &&
                                   reservation.Status == StockReservationStatus.Active);
-
-        if (normalizedSku is not null)
-        {
-            query = query.Where(reservation => reservation.Sku == normalizedSku);
-        }
 
         return query
             .OrderByDescending(reservation => reservation.CreatedAtUtc)
@@ -137,10 +123,5 @@ internal sealed class StockReservationRepository(InventoryDbContext dbContext) :
     private static string NormalizeCartId(string cartId)
     {
         return cartId.Trim();
-    }
-
-    private static string? NormalizeSku(string? sku)
-    {
-        return string.IsNullOrWhiteSpace(sku) ? null : sku.Trim();
     }
 }

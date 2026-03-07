@@ -18,6 +18,7 @@ internal sealed class InventoryStockProvisioner(
 
     public async Task<Result> EnsureStockItemAsync(
         Guid productId,
+        Guid variantId,
         string? sku,
         int initialOnHandQuantity,
         bool isTracked,
@@ -27,15 +28,15 @@ internal sealed class InventoryStockProvisioner(
         var result = await unitOfWork.ExecuteWithConcurrencyRetryAsync(
             async innerCancellationToken =>
             {
-                var existing = await stockItemRepository.GetByProductAndSkuAsync(
-                    productId,
-                    sku,
+                var existing = await stockItemRepository.GetByVariantIdAsync(
+                    variantId,
                     innerCancellationToken);
 
                 if (existing is null)
                 {
                     var createResult = StockItem.Create(
                         productId,
+                        variantId,
                         sku,
                         Math.Max(0, initialOnHandQuantity),
                         isTracked,

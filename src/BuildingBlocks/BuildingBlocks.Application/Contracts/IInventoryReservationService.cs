@@ -7,6 +7,7 @@ public interface IInventoryReservationService
     Task<Result> SyncCartReservationAsync(
         string cartId,
         Guid productId,
+        Guid variantId,
         string? sku,
         int quantity,
         CancellationToken cancellationToken);

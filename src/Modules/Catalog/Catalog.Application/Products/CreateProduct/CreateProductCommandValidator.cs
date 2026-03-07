@@ -4,13 +4,14 @@ namespace Catalog.Application.Products.CreateProduct;
 
 public sealed class CreateProductCommandValidator : AbstractValidator<CreateProductCommand>
 {
-    private const int NameMaxLength = 200;
-    private const int DescriptionMaxLength = 2000;
-    private const int BrandMaxLength = 120;
+    private const int NameMaxLength = 220;
+    private const int ShortDescriptionMaxLength = 800;
+    private const int DescriptionMaxLength = 8000;
+    private const int BrandMaxLength = 160;
     private const int SkuMaxLength = 64;
     private const int ImageUrlMaxLength = 2000;
-    private const int CategorySlugMaxLength = 120;
-    private const int CategoryNameMaxLength = 120;
+    private const int CategorySlugMaxLength = 220;
+    private const int CategoryNameMaxLength = 200;
 
     public CreateProductCommandValidator()
     {
@@ -18,10 +19,13 @@ public sealed class CreateProductCommandValidator : AbstractValidator<CreateProd
             .NotEmpty()
             .MaximumLength(NameMaxLength);
 
+        RuleFor(command => command.ShortDescription)
+            .MaximumLength(ShortDescriptionMaxLength);
+
         RuleFor(command => command.Description)
             .MaximumLength(DescriptionMaxLength);
 
-        RuleFor(command => command.Brand)
+        RuleFor(command => command.BrandName)
             .MaximumLength(BrandMaxLength);
 
         RuleFor(command => command.Sku)
@@ -51,5 +55,15 @@ public sealed class CreateProductCommandValidator : AbstractValidator<CreateProd
 
         RuleFor(command => command.Amount)
             .GreaterThanOrEqualTo(0m);
+
+        RuleForEach(command => command.Variants)
+            .ChildRules(variant =>
+            {
+                variant.RuleFor(item => item.Sku)
+                    .MaximumLength(SkuMaxLength);
+
+                variant.RuleFor(item => item.PriceAmount)
+                    .GreaterThanOrEqualTo(0m);
+            });
     }
 }

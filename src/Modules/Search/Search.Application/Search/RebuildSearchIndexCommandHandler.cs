@@ -36,9 +36,16 @@ public sealed class RebuildSearchIndexCommandHandler(
             snapshot.Slug,
             snapshot.Name,
             snapshot.Description,
+            snapshot.DefaultCategoryId,
             snapshot.CategorySlug,
             snapshot.CategoryName,
-            snapshot.Brand,
+            snapshot.Brand?.Name,
+            string.Join(
+                ' ',
+                snapshot.Variants
+                    .SelectMany(variant => variant.SelectedOptions)
+                    .Select(option => $"{option.OptionName} {option.Value}")
+                    .Distinct(StringComparer.OrdinalIgnoreCase)),
             snapshot.Amount,
             snapshot.Currency,
             snapshot.IsActive,

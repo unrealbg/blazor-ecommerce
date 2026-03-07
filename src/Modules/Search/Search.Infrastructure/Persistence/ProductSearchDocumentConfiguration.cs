@@ -34,9 +34,12 @@ internal sealed class ProductSearchDocumentConfiguration : IEntityTypeConfigurat
             .HasColumnName("description_text")
             .HasMaxLength(4000);
 
+        builder.Property(document => document.CategoryId)
+            .HasColumnName("category_id");
+
         builder.Property(document => document.CategorySlug)
             .HasColumnName("category_slug")
-            .HasMaxLength(120);
+            .HasMaxLength(220);
 
         builder.Property(document => document.CategoryName)
             .HasColumnName("category_name")
@@ -44,7 +47,11 @@ internal sealed class ProductSearchDocumentConfiguration : IEntityTypeConfigurat
 
         builder.Property(document => document.Brand)
             .HasColumnName("brand")
-            .HasMaxLength(120);
+            .HasMaxLength(160);
+
+        builder.Property(document => document.SearchText)
+            .HasColumnName("search_text")
+            .HasMaxLength(4000);
 
         builder.Property(document => document.PriceAmount)
             .HasColumnName("price_amount")
@@ -85,6 +92,9 @@ internal sealed class ProductSearchDocumentConfiguration : IEntityTypeConfigurat
 
         builder.HasIndex(document => document.CategorySlug)
             .HasDatabaseName("ix_product_search_documents_category_slug");
+
+        builder.HasIndex(document => document.CategoryId)
+            .HasDatabaseName("ix_product_search_documents_category_id");
 
         builder.HasIndex(document => document.Brand)
             .HasDatabaseName("ix_product_search_documents_brand");

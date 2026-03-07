@@ -8,6 +8,7 @@ internal sealed class NullInventoryReservationService : IInventoryReservationSer
     public Task<Result> SyncCartReservationAsync(
         string cartId,
         Guid productId,
+        Guid variantId,
         string? sku,
         int quantity,
         CancellationToken cancellationToken)

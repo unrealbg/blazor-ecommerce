@@ -13,6 +13,7 @@ public sealed class StockItem : AggregateRoot<Guid>
     private StockItem(
         Guid id,
         Guid productId,
+        Guid variantId,
         string? sku,
         int onHandQuantity,
         bool isTracked,
@@ -21,6 +22,7 @@ public sealed class StockItem : AggregateRoot<Guid>
     {
         Id = id;
         ProductId = productId;
+        VariantId = variantId;
         Sku = NormalizeSku(sku);
         OnHandQuantity = onHandQuantity;
         ReservedQuantity = 0;
@@ -32,6 +34,8 @@ public sealed class StockItem : AggregateRoot<Guid>
     }
 
     public Guid ProductId { get; private set; }
+
+    public Guid VariantId { get; private set; }
 
     public string? Sku { get; private set; }
 
@@ -55,6 +59,7 @@ public sealed class StockItem : AggregateRoot<Guid>
 
     public static Result<StockItem> Create(
         Guid productId,
+        Guid variantId,
         string? sku,
         int onHandQuantity,
         bool isTracked,
@@ -67,6 +72,12 @@ public sealed class StockItem : AggregateRoot<Guid>
                 new Error("inventory.stock_item.product_id.required", "Product id is required."));
         }
 
+        if (variantId == Guid.Empty)
+        {
+            return Result<StockItem>.Failure(
+                new Error("inventory.stock_item.variant_id.required", "Variant id is required."));
+        }
+
         if (onHandQuantity < 0)
         {
             return Result<StockItem>.Failure(
@@ -76,6 +87,7 @@ public sealed class StockItem : AggregateRoot<Guid>
         var item = new StockItem(
             Guid.NewGuid(),
             productId,
+            variantId,
             sku,
             onHandQuantity,
             isTracked,

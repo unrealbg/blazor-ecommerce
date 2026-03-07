@@ -53,7 +53,9 @@ public sealed class GetMyOrdersQueryHandler(
                 order.Lines
                     .Select(line => new OrderLineDto(
                         line.ProductId,
-                        line.Name,
+                        string.IsNullOrWhiteSpace(line.VariantName)
+                            ? line.ProductName
+                            : $"{line.ProductName} ({line.VariantName})",
                         line.UnitPrice.Currency,
                         line.UnitPrice.Amount,
                         line.Quantity))

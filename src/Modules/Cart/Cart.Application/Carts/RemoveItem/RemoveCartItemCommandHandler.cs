@@ -21,7 +21,7 @@ public sealed class RemoveCartItemCommandHandler(
             return Result<Guid>.Failure(new Error("cart.not_found", "Cart was not found."));
         }
 
-        var existingLine = cart.Lines.FirstOrDefault(line => line.ProductId == request.ProductId);
+        var existingLine = cart.Lines.FirstOrDefault(line => line.VariantId == request.VariantId);
         if (existingLine is null)
         {
             return Result<Guid>.Failure(new Error("cart.item.not_found", "Cart item was not found."));
@@ -29,8 +29,9 @@ public sealed class RemoveCartItemCommandHandler(
 
         var releaseResult = await inventoryReservationService.SyncCartReservationAsync(
             request.CustomerId,
-            request.ProductId,
-            sku: null,
+            existingLine.ProductId,
+            request.VariantId,
+            existingLine.Sku,
             quantity: 0,
             cancellationToken);
         if (releaseResult.IsFailure)
@@ -38,13 +39,14 @@ public sealed class RemoveCartItemCommandHandler(
             return Result<Guid>.Failure(releaseResult.Error);
         }
 
-        var removeResult = cart.RemoveItem(request.ProductId);
+        var removeResult = cart.RemoveItem(request.VariantId);
         if (removeResult.IsFailure)
         {
             await inventoryReservationService.SyncCartReservationAsync(
                 request.CustomerId,
-                request.ProductId,
-                sku: null,
+                existingLine.ProductId,
+                request.VariantId,
+                existingLine.Sku,
                 existingLine.Quantity,
                 cancellationToken);
             return Result<Guid>.Failure(removeResult.Error);
@@ -58,8 +60,9 @@ public sealed class RemoveCartItemCommandHandler(
         {
             await inventoryReservationService.SyncCartReservationAsync(
                 request.CustomerId,
-                request.ProductId,
-                sku: null,
+                existingLine.ProductId,
+                request.VariantId,
+                existingLine.Sku,
                 existingLine.Quantity,
                 cancellationToken);
             throw;

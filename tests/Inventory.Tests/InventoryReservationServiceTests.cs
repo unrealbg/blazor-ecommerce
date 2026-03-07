@@ -18,12 +18,19 @@ public sealed class InventoryReservationServiceTests
         var stockItem = await SeedTrackedStockItemAsync(context, 5);
         var service = CreateService(context);
 
-        var result = await service.SyncCartReservationAsync("cart-1", stockItem.ProductId, stockItem.Sku, 3, CancellationToken.None);
+        var result = await service.SyncCartReservationAsync(
+            "cart-1",
+            stockItem.ProductId,
+            stockItem.VariantId,
+            stockItem.Sku,
+            3,
+            CancellationToken.None);
 
         Assert.True(result.IsSuccess);
 
         var reservation = await context.StockReservations.SingleAsync();
         Assert.Equal(StockReservationStatus.Active, reservation.Status);
+        Assert.Equal(stockItem.VariantId, reservation.VariantId);
         Assert.Equal(3, reservation.Quantity);
 
         var refreshedStockItem = await context.StockItems.SingleAsync();
@@ -38,8 +45,8 @@ public sealed class InventoryReservationServiceTests
         var stockItem = await SeedTrackedStockItemAsync(context, 10);
         var service = CreateService(context);
 
-        await service.SyncCartReservationAsync("cart-1", stockItem.ProductId, stockItem.Sku, 4, CancellationToken.None);
-        var result = await service.SyncCartReservationAsync("cart-1", stockItem.ProductId, stockItem.Sku, 2, CancellationToken.None);
+        await service.SyncCartReservationAsync("cart-1", stockItem.ProductId, stockItem.VariantId, stockItem.Sku, 4, CancellationToken.None);
+        var result = await service.SyncCartReservationAsync("cart-1", stockItem.ProductId, stockItem.VariantId, stockItem.Sku, 2, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
 
@@ -57,7 +64,13 @@ public sealed class InventoryReservationServiceTests
         var stockItem = await SeedTrackedStockItemAsync(context, 1);
         var service = CreateService(context);
 
-        var result = await service.SyncCartReservationAsync("cart-1", stockItem.ProductId, stockItem.Sku, 2, CancellationToken.None);
+        var result = await service.SyncCartReservationAsync(
+            "cart-1",
+            stockItem.ProductId,
+            stockItem.VariantId,
+            stockItem.Sku,
+            2,
+            CancellationToken.None);
 
         Assert.True(result.IsFailure);
         Assert.Equal("inventory.stock.insufficient", result.Error.Code);
@@ -70,8 +83,8 @@ public sealed class InventoryReservationServiceTests
         var stockItem = await SeedTrackedStockItemAsync(context, 5);
         var service = CreateService(context);
 
-        await service.SyncCartReservationAsync("cart-1", stockItem.ProductId, stockItem.Sku, 2, CancellationToken.None);
-        var result = await service.SyncCartReservationAsync("cart-1", stockItem.ProductId, stockItem.Sku, 0, CancellationToken.None);
+        await service.SyncCartReservationAsync("cart-1", stockItem.ProductId, stockItem.VariantId, stockItem.Sku, 2, CancellationToken.None);
+        var result = await service.SyncCartReservationAsync("cart-1", stockItem.ProductId, stockItem.VariantId, stockItem.Sku, 0, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
 
@@ -89,11 +102,11 @@ public sealed class InventoryReservationServiceTests
         var stockItem = await SeedTrackedStockItemAsync(context, 10);
         var service = CreateService(context);
 
-        await service.SyncCartReservationAsync("cart-1", stockItem.ProductId, stockItem.Sku, 3, CancellationToken.None);
+        await service.SyncCartReservationAsync("cart-1", stockItem.ProductId, stockItem.VariantId, stockItem.Sku, 3, CancellationToken.None);
         var consumeResult = await service.ConsumeCartReservationsAsync(
             "cart-1",
             Guid.NewGuid(),
-            [new InventoryCartLineRequest(stockItem.ProductId, stockItem.Sku, 3)],
+            [new InventoryCartLineRequest(stockItem.ProductId, stockItem.VariantId, stockItem.Sku, 3)],
             CancellationToken.None);
 
         Assert.True(consumeResult.IsSuccess);
@@ -113,7 +126,7 @@ public sealed class InventoryReservationServiceTests
         var stockItem = await SeedTrackedStockItemAsync(context, 10);
         var service = CreateService(context);
 
-        await service.SyncCartReservationAsync("cart-1", stockItem.ProductId, stockItem.Sku, 1, CancellationToken.None);
+        await service.SyncCartReservationAsync("cart-1", stockItem.ProductId, stockItem.VariantId, stockItem.Sku, 1, CancellationToken.None);
 
         var reservation = await context.StockReservations.SingleAsync();
         var expiresAtProperty = typeof(StockReservation).GetProperty(nameof(StockReservation.ExpiresAtUtc));
@@ -124,7 +137,7 @@ public sealed class InventoryReservationServiceTests
         var consumeResult = await service.ConsumeCartReservationsAsync(
             "cart-1",
             Guid.NewGuid(),
-            [new InventoryCartLineRequest(stockItem.ProductId, stockItem.Sku, 1)],
+            [new InventoryCartLineRequest(stockItem.ProductId, stockItem.VariantId, stockItem.Sku, 1)],
             CancellationToken.None);
 
         Assert.True(consumeResult.IsFailure);
@@ -140,7 +153,7 @@ public sealed class InventoryReservationServiceTests
 
         var result = await service.ValidateCartReservationsAsync(
             "cart-1",
-            [new InventoryCartLineRequest(stockItem.ProductId, stockItem.Sku, 1)],
+            [new InventoryCartLineRequest(stockItem.ProductId, stockItem.VariantId, stockItem.Sku, 1)],
             CancellationToken.None);
 
         Assert.True(result.IsSuccess);
@@ -156,8 +169,8 @@ public sealed class InventoryReservationServiceTests
         var secondItem = await SeedTrackedStockItemAsync(context, 4, "SKU-2");
         var service = CreateService(context);
 
-        await service.SyncCartReservationAsync("cart-1", firstItem.ProductId, firstItem.Sku, 2, CancellationToken.None);
-        await service.SyncCartReservationAsync("cart-1", secondItem.ProductId, secondItem.Sku, 1, CancellationToken.None);
+        await service.SyncCartReservationAsync("cart-1", firstItem.ProductId, firstItem.VariantId, firstItem.Sku, 2, CancellationToken.None);
+        await service.SyncCartReservationAsync("cart-1", secondItem.ProductId, secondItem.VariantId, secondItem.Sku, 1, CancellationToken.None);
 
         var releaseResult = await service.ReleaseAllCartReservationsAsync("cart-1", CancellationToken.None);
 
@@ -194,6 +207,7 @@ public sealed class InventoryReservationServiceTests
         string sku = "SKU-1")
     {
         var createResult = StockItem.Create(
+            Guid.NewGuid(),
             Guid.NewGuid(),
             sku,
             onHandQuantity,

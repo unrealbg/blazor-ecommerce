@@ -16,11 +16,15 @@ public sealed class ProductSearchDocument
 
     public string? DescriptionText { get; private set; }
 
+    public Guid? CategoryId { get; private set; }
+
     public string? CategorySlug { get; private set; }
 
     public string? CategoryName { get; private set; }
 
     public string? Brand { get; private set; }
+
+    public string? SearchText { get; private set; }
 
     public decimal PriceAmount { get; private set; }
 
@@ -43,9 +47,11 @@ public sealed class ProductSearchDocument
         string slug,
         string name,
         string? descriptionText,
+        Guid? categoryId,
         string? categorySlug,
         string? categoryName,
         string? brand,
+        string? searchText,
         decimal priceAmount,
         string currency,
         bool isActive,
@@ -61,9 +67,11 @@ public sealed class ProductSearchDocument
             slug,
             name,
             descriptionText,
+            categoryId,
             categorySlug,
             categoryName,
             brand,
+            searchText,
             priceAmount,
             currency,
             isActive,
@@ -80,9 +88,11 @@ public sealed class ProductSearchDocument
         string slug,
         string name,
         string? descriptionText,
+        Guid? categoryId,
         string? categorySlug,
         string? categoryName,
         string? brand,
+        string? searchText,
         decimal priceAmount,
         string currency,
         bool isActive,
@@ -98,9 +108,11 @@ public sealed class ProductSearchDocument
             slug,
             name,
             descriptionText,
+            categoryId,
             categorySlug,
             categoryName,
             brand,
+            searchText,
             priceAmount,
             currency,
             isActive,
@@ -116,9 +128,11 @@ public sealed class ProductSearchDocument
         string slug,
         string name,
         string? descriptionText,
+        Guid? categoryId,
         string? categorySlug,
         string? categoryName,
         string? brand,
+        string? searchText,
         decimal priceAmount,
         string currency,
         bool isActive,
@@ -135,6 +149,7 @@ public sealed class ProductSearchDocument
         this.DescriptionText = string.IsNullOrWhiteSpace(descriptionText)
             ? null
             : descriptionText.Trim();
+        this.CategoryId = categoryId == Guid.Empty ? null : categoryId;
         this.CategorySlug = string.IsNullOrWhiteSpace(categorySlug)
             ? null
             : categorySlug.Trim().ToLowerInvariant();
@@ -144,6 +159,9 @@ public sealed class ProductSearchDocument
         this.Brand = string.IsNullOrWhiteSpace(brand)
             ? null
             : brand.Trim();
+        this.SearchText = string.IsNullOrWhiteSpace(searchText)
+            ? null
+            : searchText.Trim();
         this.PriceAmount = decimal.Round(priceAmount, 2, MidpointRounding.AwayFromZero);
         this.Currency = string.IsNullOrWhiteSpace(currency)
             ? "EUR"

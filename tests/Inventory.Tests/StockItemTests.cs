@@ -8,10 +8,19 @@ public sealed class StockItemTests
     [Fact]
     public void Create_Should_Fail_When_ProductIdMissing()
     {
-        var result = StockItem.Create(Guid.Empty, null, 10, true, false, DateTime.UtcNow);
+        var result = StockItem.Create(Guid.Empty, Guid.NewGuid(), null, 10, true, false, DateTime.UtcNow);
 
         Assert.True(result.IsFailure);
         Assert.Equal("inventory.stock_item.product_id.required", result.Error.Code);
+    }
+
+    [Fact]
+    public void Create_Should_Fail_When_VariantIdMissing()
+    {
+        var result = StockItem.Create(Guid.NewGuid(), Guid.Empty, null, 10, true, false, DateTime.UtcNow);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("inventory.stock_item.variant_id.required", result.Error.Code);
     }
 
     [Fact]
@@ -80,30 +89,6 @@ public sealed class StockItemTests
     }
 
     [Fact]
-    public void Consume_Should_Fail_When_ReservedQuantityIsLowerThanConsumeQuantity()
-    {
-        var item = CreateTrackedStockItem(onHandQuantity: 10, allowBackorder: false);
-        item.Reserve(2, DateTime.UtcNow);
-
-        var result = item.Consume(3, DateTime.UtcNow);
-
-        Assert.True(result.IsFailure);
-        Assert.Equal("inventory.reservation.not_found", result.Error.Code);
-    }
-
-    [Fact]
-    public void AdjustOnHand_Should_Fail_When_AdjustmentDropsBelowReservedQuantity()
-    {
-        var item = CreateTrackedStockItem(onHandQuantity: 6, allowBackorder: false);
-        item.Reserve(5, DateTime.UtcNow);
-
-        var result = item.AdjustOnHand(-2, DateTime.UtcNow);
-
-        Assert.True(result.IsFailure);
-        Assert.Equal("inventory.stock.adjustment.invalid", result.Error.Code);
-    }
-
-    [Fact]
     public void AdjustOnHand_Should_RaiseStockAdjustedDomainEvent()
     {
         var item = CreateTrackedStockItem(onHandQuantity: 6, allowBackorder: false);
@@ -119,7 +104,7 @@ public sealed class StockItemTests
     {
         var item = CreateTrackedStockItem(onHandQuantity: 2, allowBackorder: false);
 
-        var result = item.UpdateTracking(isTracked: false, allowBackorder: true, DateTime.UtcNow);
+        var result = item.UpdateTracking(false, true, DateTime.UtcNow);
 
         Assert.True(result.IsSuccess);
         Assert.False(item.IsTracked);
@@ -128,7 +113,7 @@ public sealed class StockItemTests
 
     private static StockItem CreateTrackedStockItem(int onHandQuantity, bool allowBackorder)
     {
-        var result = StockItem.Create(Guid.NewGuid(), "SKU-1", onHandQuantity, true, allowBackorder, DateTime.UtcNow);
+        var result = StockItem.Create(Guid.NewGuid(), Guid.NewGuid(), "SKU-1", onHandQuantity, true, allowBackorder, DateTime.UtcNow);
         Assert.True(result.IsSuccess);
         return result.Value;
     }

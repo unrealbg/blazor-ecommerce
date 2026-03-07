@@ -4,4 +4,4 @@ namespace Cart.Application.Carts.RemoveItem;
 
 public sealed record RemoveCartItemCommand(
     string CustomerId,
-    Guid ProductId) : ICommand<Guid>;
+    Guid VariantId) : ICommand<Guid>;

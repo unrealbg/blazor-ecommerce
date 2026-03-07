@@ -52,7 +52,7 @@ public sealed class CheckoutCommandHandler(
                     }
 
                     var normalizedLines = cart.Lines
-                        .Select(line => new InventoryCartLineRequest(line.ProductId, null, line.Quantity))
+                        .Select(line => new InventoryCartLineRequest(line.ProductId, line.VariantId, line.Sku, line.Quantity))
                         .ToList();
 
                     var reservationValidation = await inventoryReservationService.ValidateCartReservationsAsync(
@@ -80,7 +80,7 @@ public sealed class CheckoutCommandHandler(
                             return Result<Guid>.Failure(moneyResult.Error);
                         }
 
-                        lineData.Add(new OrderLineData(line.ProductId, line.Name, moneyResult.Value, line.Quantity));
+                        lineData.Add(new OrderLineData(line.ProductId, line.VariantId, line.Sku, line.ProductName, line.VariantName, line.SelectedOptionsJson, moneyResult.Value, line.Quantity));
                     }
 
                     var orderResult = Order.Create(
