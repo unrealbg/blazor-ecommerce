@@ -1,5 +1,7 @@
 @page "/product/{Slug}"
 @rendermode InteractiveServer
+@using Microsoft.Extensions.Options
+@using Storefront.Web.Configuration
 @using Storefront.Web.Services.Api
 @using Storefront.Web.Services.Media
 @using Storefront.Web.Services.Seo
@@ -7,6 +9,7 @@
 @inject IPageMetadataService MetadataService
 @inject IStructuredDataService StructuredDataService
 @inject IMediaUrlService MediaUrlService
+@inject IOptions<StorefrontFeatureFlagsOptions> FeatureFlags
 
 <SeoHead Metadata="metadata" JsonLdScripts="jsonLdScripts" />
 
@@ -164,6 +167,8 @@ else
             </section>
         }
 
+        @if (reviewsEnabled)
+        {
         <section class="admin-panel">
             <h2>Ratings and reviews</h2>
 
@@ -423,6 +428,7 @@ else
                 }
             </div>
         </section>
+        }
     </article>
 }
 
@@ -461,13 +467,17 @@ else
     private ReviewFormModel reviewForm = new();
     private QuestionFormModel questionForm = new();
     private Dictionary<Guid, string> pendingAnswers = [];
+    private bool reviewsEnabled;
 
     protected override async Task OnParametersSetAsync()
     {
         isLoading = true;
+        reviewsEnabled = FeatureFlags.Value.EnableReviews;
 
         product = await StoreApiClient.GetProductBySlugAsync(Slug, CancellationToken.None);
-        currentCustomer = await StoreApiClient.GetCurrentCustomerAsync(CancellationToken.None);
+        currentCustomer = reviewsEnabled
+            ? await StoreApiClient.GetCurrentCustomerAsync(CancellationToken.None)
+            : null;
         if (product is null)
         {
             metadata = new PageMetadata(
@@ -489,8 +499,17 @@ else
 
         InitializeSelectionState(product);
         InitializeForms(product);
-        await LoadReviewStateAsync(product.Id);
-        await LoadQuestionStateAsync(product.Id);
+        if (reviewsEnabled)
+        {
+            await LoadReviewStateAsync(product.Id);
+            await LoadQuestionStateAsync(product.Id);
+        }
+        else
+        {
+            reviewSummary = null;
+            reviewPage = new StoreReviewPage(1, 10, 0, 1, []);
+            questionPage = new StoreQuestionPage(1, 10, 0, 1, []);
+        }
 
         var primaryImage = selectedImageUrl ?? product.ImageUrl ?? "/images/og-default.jpg";
         var openGraphImage = SeoImageMetadata.ResolveOpenGraphImage(MediaUrlService, primaryImage);

@@ -61,6 +61,16 @@ public sealed class AppHostWebApplicationFactory : WebApplicationFactory<Program
                 ["Authentication:Jwt:Audience"] = "apphost-tests",
                 ["Outbox:BatchSize"] = "20",
                 ["Outbox:PollingInterval"] = "00:00:00.2500000",
+                ["RateLimiting:AuthPermits"] = "10000",
+                ["RateLimiting:AuthWindowSeconds"] = "60",
+                ["RateLimiting:ReviewPermits"] = "10000",
+                ["RateLimiting:ReviewWindowSeconds"] = "60",
+                ["RateLimiting:SearchSuggestPermits"] = "10000",
+                ["RateLimiting:SearchSuggestWindowSeconds"] = "60",
+                ["RateLimiting:PaymentPermits"] = "10000",
+                ["RateLimiting:PaymentWindowSeconds"] = "60",
+                ["RateLimiting:WebhookPermits"] = "10000",
+                ["RateLimiting:WebhookWindowSeconds"] = "60",
             };
 
             foreach (var overridePair in this.configurationOverrides)

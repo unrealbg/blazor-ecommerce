@@ -1,4 +1,9 @@
 @inherits LayoutComponentBase
+@inject Storefront.Web.Services.Runtime.StorefrontBuildInfo BuildInfo
+
+@code {
+    private static readonly InteractiveServerRenderMode NonPrerenderedInteractive = new(prerender: false);
+}
 
 <div class="page">
     <header class="site-header">
@@ -8,10 +13,10 @@
                 <a class="nav-link" href="/blog">Blog</a>
                 <a class="nav-link" href="/account/profile">Account</a>
             </div>
-            <SearchBox @rendermode="InteractiveServer" />
+            <SearchBox @rendermode="NonPrerenderedInteractive" />
             <a class="cart-link" href="/cart">
                 Cart
-                <CartCountBadge @rendermode="InteractiveServer" />
+                <CartCountBadge @rendermode="NonPrerenderedInteractive" />
             </a>
         </div>
     </header>
@@ -22,5 +27,6 @@
 
     <footer class="site-footer">
         <p>All prices are in EUR.</p>
+        <p>Build: @BuildInfo.ShortVersionLabel</p>
     </footer>
 </div>

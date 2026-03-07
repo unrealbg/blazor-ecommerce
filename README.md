@@ -121,8 +121,60 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - Customer privacy hooks are exposed through `GET /api/v1/customers/me/export` and `POST /api/v1/customers/me/erase`.
 - Backoffice operational recovery endpoints support replaying failed outbox and webhook work without direct database intervention.
 
+## Performance, Release Engineering & Production Deployment
+
+- Storefront read-heavy projections now use Redis-backed read-through caching for product lists, product detail projections, review summaries, search result pages, and search suggestions.
+- Public SSR routes use explicit cache headers with path-based TTLs. Anonymous `GET` and `HEAD` requests for `/`, `/category/*`, `/product/*`, `/search`, `/blog/*`, `/p/*`, `/robots.txt`, `/sitemap.xml`, and `/rss.xml` are cacheable; auth, cart, checkout, and admin routes are forced to `no-store`.
+- Shared storefront HTML is kept cache-safe by avoiding prerender of customer-sensitive shell widgets such as cart count and search suggestions.
+- CMS content can be disabled with feature flags without crashing public pages. Reviews and Q&A can also be disabled cleanly at runtime.
+- Storefront startup includes bounded warmup for catalog, review summary, category search, sitemap, RSS, and CMS slug reads. Warmup state is exposed through the storefront `/version` endpoint.
+- AppHost and Storefront both expose `/version` with build metadata, source revision, environment, and active feature flags. AppHost backoffice system summary now includes release profile metadata as well.
+- Release profile settings are surfaced through config and compose env vars: `Release:SeedMode`, `Release:MigrationMode`, and `Release:RunSmokeTestsAfterDeploy`.
+
+### Cache and runtime policy
+
+- Cache only anonymous, deterministic read paths. Do not cache cart, checkout, payment mutation, account, or admin workflows.
+- Treat Redis as an optimization layer. If Redis is unavailable, the storefront continues to serve requests and logs cache read/write failures.
+- Current cache keys follow stable prefixes such as `storefront:catalog:index`, `storefront:product:{slug}`, `storefront:search:{hash}`, and `search:suggest:{hash}`.
+- Cache invalidation is currently TTL-driven. If you later add event-driven invalidation, keep it scoped to product, pricing, reviews, redirects, and CMS publish events.
+
+### Release workflow
+
+1. Build and test the solution locally or in CI.
+2. Publish AppHost and Storefront artifacts.
+3. Deploy with explicit build metadata and release mode values.
+4. Run smoke tests against the deployed endpoints.
+5. Observe `/version`, `/health/*`, and backoffice system status before shifting production traffic.
+
+Local helpers:
+
+```powershell
+./scripts/start-local-profile.ps1 -Environment Staging -SeedMode demo
+./scripts/smoke-tests.ps1 -AppHostBaseUrl http://localhost:8080 -StorefrontBaseUrl http://localhost:5100
+```
+
+Load hook:
+
+```bash
+k6 run scripts/load/storefront-critical-paths.k6.js
+```
+
+CI:
+
+- `.github/workflows/ci.yml` restores, builds, tests, publishes both apps, and validates container builds.
+
+### Seed and environment modes
+
+- `Release:SeedMode=none` is the safe default for production.
+- `Release:SeedMode=minimal` is intended for low-noise bootstrap environments.
+- `Release:SeedMode=demo` is for showcase environments only.
+- `Release:SeedMode=test` is for automated verification and should not be used in shared persistent environments.
+- `Release:MigrationMode=apply` should only run where automated schema upgrades are part of the deployment contract.
+- `Release:MigrationMode=validate` is safer for gated or manually promoted production rollouts.
+
 ## Operational Endpoints
 
+- `GET /version`
 - `GET /api/v1/backoffice/system`
 - `POST /api/v1/backoffice/system/outbox/{outboxMessageId}/retry`
 - `POST /api/v1/backoffice/system/payment-webhooks/{webhookMessageId}/reprocess`
@@ -140,6 +192,11 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `Retention:SweepInterval`
 - `Outbox:BatchSize`
 - `Outbox:PollingInterval`
+- `Build:*`
+- `Release:*`
+- `FeatureFlags:*`
+- `Caching:*` (Storefront)
+- `Warmup:*` (Storefront)
 
 ## API Routes (v1)
 

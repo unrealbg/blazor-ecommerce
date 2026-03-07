@@ -61,6 +61,15 @@ builder.Services.AddOptions<AppSecurityOptions>()
 builder.Services.AddOptions<AppReadinessOptions>()
     .BindConfiguration(AppReadinessOptions.SectionName)
     .ValidateOnStart();
+builder.Services.AddOptions<AppBuildOptions>()
+    .BindConfiguration(AppBuildOptions.SectionName)
+    .ValidateOnStart();
+builder.Services.AddOptions<AppReleaseOptions>()
+    .BindConfiguration(AppReleaseOptions.SectionName)
+    .ValidateOnStart();
+builder.Services.AddOptions<AppFeatureFlagsOptions>()
+    .BindConfiguration(AppFeatureFlagsOptions.SectionName)
+    .ValidateOnStart();
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails(options =>
@@ -100,7 +109,7 @@ builder.Services
         options.Cookie.Name = "blazor-ecommerce-auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
-        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing")
             ? CookieSecurePolicy.SameAsRequest
             : CookieSecurePolicy.Always;
         options.SlidingExpiration = true;
@@ -267,6 +276,13 @@ builder.Services.AddOpenTelemetry()
 
 var app = builder.Build();
 var skipInfrastructureInitialization = builder.Configuration.GetValue<bool>("Infrastructure:SkipInitialization");
+var buildOptions = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<AppBuildOptions>>().Value;
+
+app.Logger.LogInformation(
+    "Starting app host {ApplicationName} version {Version} revision {Revision}",
+    buildOptions.ApplicationName,
+    buildOptions.Version,
+    buildOptions.SourceRevisionId ?? "n/a");
 
 app.UseMiddleware<CorrelationIdMiddleware>();
 
@@ -318,6 +334,28 @@ apiV1.MapPricingEndpoints();
 apiV1.MapReviewsEndpoints();
 apiV1.MapShippingEndpoints();
 app.MapDirectusWebhookEndpoint();
+app.MapGet("/version", (
+    IWebHostEnvironment environment,
+    Microsoft.Extensions.Options.IOptions<AppBuildOptions> build,
+    Microsoft.Extensions.Options.IOptions<AppReleaseOptions> release,
+    Microsoft.Extensions.Options.IOptions<AppFeatureFlagsOptions> featureFlags) =>
+{
+    return Results.Ok(new
+    {
+        application = build.Value.ApplicationName,
+        version = build.Value.Version,
+        revision = build.Value.SourceRevisionId,
+        buildTimestampUtc = build.Value.BuildTimestampUtc,
+        environment = environment.EnvironmentName,
+        release = new
+        {
+            release.Value.SeedMode,
+            release.Value.MigrationMode,
+            release.Value.RunSmokeTestsAfterDeploy,
+        },
+        activeFeatureFlags = GetActiveFeatureFlags(featureFlags.Value),
+    });
+});
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
@@ -346,6 +384,27 @@ static string GetPartitionKey(HttpContext httpContext)
     }
 
     return $"ip:{httpContext.Connection.RemoteIpAddress}";
+}
+
+static IReadOnlyCollection<string> GetActiveFeatureFlags(AppFeatureFlagsOptions options)
+{
+    var activeFlags = new List<string>();
+    if (options.EnableOperationalRecoveryActions)
+    {
+        activeFlags.Add(nameof(AppFeatureFlagsOptions.EnableOperationalRecoveryActions));
+    }
+
+    if (options.EnableDemoProviders)
+    {
+        activeFlags.Add(nameof(AppFeatureFlagsOptions.EnableDemoProviders));
+    }
+
+    if (options.EnableReviewModeration)
+    {
+        activeFlags.Add(nameof(AppFeatureFlagsOptions.EnableReviewModeration));
+    }
+
+    return activeFlags;
 }
 
 app.Run();

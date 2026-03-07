@@ -1,6 +1,13 @@
 namespace Backoffice.Application.Backoffice;
 
 public sealed record BackofficeSystemSummaryDto(
+    string EnvironmentName,
+    string ApplicationVersion,
+    string? SourceRevisionId,
+    string? BuildTimestampUtc,
+    string SeedMode,
+    string MigrationMode,
+    IReadOnlyCollection<string> ActiveFeatureFlags,
     bool DatabaseHealthy,
     bool RedisHealthy,
     int PendingOutboxMessages,

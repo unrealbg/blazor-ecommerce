@@ -125,6 +125,19 @@ internal sealed partial class BackofficeQueryService
             .ToArray();
 
         return new BackofficeSystemSummaryDto(
+            EnvironmentName: configuration["ASPNETCORE_ENVIRONMENT"] ?? "Unknown",
+            ApplicationVersion: configuration["Build:Version"] ?? "dev",
+            SourceRevisionId: configuration["Build:SourceRevisionId"],
+            BuildTimestampUtc: configuration["Build:BuildTimestampUtc"],
+            SeedMode: configuration["Release:SeedMode"] ?? "none",
+            MigrationMode: configuration["Release:MigrationMode"] ?? "manual",
+            ActiveFeatureFlags: configuration
+                .GetSection("FeatureFlags")
+                .GetChildren()
+                .Where(section => bool.TryParse(section.Value, out var enabled) && enabled)
+                .Select(section => section.Key)
+                .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+                .ToArray(),
             DatabaseHealthy: databaseHealthy,
             RedisHealthy: await CheckRedisAsync(cancellationToken),
             PendingOutboxMessages: snapshot.PendingOutboxMessages,

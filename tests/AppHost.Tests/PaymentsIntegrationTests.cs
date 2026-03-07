@@ -170,6 +170,22 @@ public sealed class PaymentsIntegrationTests
             },
             "Order did not move to PaymentFailed after failed webhook.");
 
+        await WaitForConditionAsync(
+            async () =>
+            {
+                using var scope = factory.Services.CreateScope();
+                var inventoryDbContext = scope.ServiceProvider.GetRequiredService<InventoryDbContext>();
+                return inventoryDbContext.StockReservations.Any(reservation =>
+                           reservation.OrderId == scenario.OrderId &&
+                           reservation.ProductId == scenario.ProductId &&
+                           reservation.Status == StockReservationStatus.Released) &&
+                       inventoryDbContext.StockItems.Any(item =>
+                           item.ProductId == scenario.ProductId &&
+                           item.OnHandQuantity == 100 &&
+                           item.ReservedQuantity == 0);
+            },
+            "Inventory reservations were not released after failed payment webhook.");
+
         using (var verificationScope = factory.Services.CreateScope())
         {
             var inventoryDbContext = verificationScope.ServiceProvider.GetRequiredService<InventoryDbContext>();
