@@ -1,5 +1,6 @@
 using System.Reflection;
 using BuildingBlocks.Application.Abstractions;
+using BuildingBlocks.Application.Auditing;
 using BuildingBlocks.Application.Behaviors;
 using BuildingBlocks.Application.Contracts;
 using FluentValidation;
@@ -31,6 +32,7 @@ public static class ApplicationServiceCollectionExtensions
         services.TryAddScoped<IVariantPricingService, NullVariantPricingService>();
         services.TryAddScoped<ICartPricingService, NullCartPricingService>();
         services.TryAddScoped<IPricingRedemptionService, NullPricingRedemptionService>();
+        services.TryAddScoped<IAuditTrail, NullAuditTrail>();
 
         return services;
     }

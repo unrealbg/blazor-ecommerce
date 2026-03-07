@@ -4,6 +4,7 @@
     <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
     <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
     <ProjectReference Include="..\Modules\Catalog\Catalog.Api\Catalog.Api.csproj" />
+    <ProjectReference Include="..\Modules\Backoffice\Backoffice.Api\Backoffice.Api.csproj" />
     <ProjectReference Include="..\Modules\Cart\Cart.Api\Cart.Api.csproj" />
     <ProjectReference Include="..\Modules\Orders\Orders.Api\Orders.Api.csproj" />
     <ProjectReference Include="..\Modules\Redirects\Redirects.Api\Redirects.Api.csproj" />
@@ -33,6 +34,7 @@
 
   <ItemGroup>
     <InfrastructureProject Include="..\Modules\Catalog\Catalog.Infrastructure\Catalog.Infrastructure.csproj" />
+    <InfrastructureProject Include="..\Modules\Backoffice\Backoffice.Infrastructure\Backoffice.Infrastructure.csproj" />
     <InfrastructureProject Include="..\Modules\Cart\Cart.Infrastructure\Cart.Infrastructure.csproj" />
     <InfrastructureProject Include="..\Modules\Orders\Orders.Infrastructure\Orders.Infrastructure.csproj" />
     <InfrastructureProject Include="..\Modules\Redirects\Redirects.Infrastructure\Redirects.Infrastructure.csproj" />
@@ -54,6 +56,7 @@
   <Target Name="CopyInfrastructureAssemblies" AfterTargets="Build">
     <ItemGroup>
       <InfrastructureOutputs Include="..\Modules\Catalog\Catalog.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Backoffice\Backoffice.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
       <InfrastructureOutputs Include="..\Modules\Cart\Cart.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
       <InfrastructureOutputs Include="..\Modules\Orders\Orders.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
       <InfrastructureOutputs Include="..\Modules\Redirects\Redirects.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
@@ -75,6 +78,7 @@
   <Target Name="CopyInfrastructureAssembliesForPublish" AfterTargets="Publish">
     <ItemGroup>
       <InfrastructureOutputs Include="..\Modules\Catalog\Catalog.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Backoffice\Backoffice.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
       <InfrastructureOutputs Include="..\Modules\Cart\Cart.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
       <InfrastructureOutputs Include="..\Modules\Orders\Orders.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
       <InfrastructureOutputs Include="..\Modules\Redirects\Redirects.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />

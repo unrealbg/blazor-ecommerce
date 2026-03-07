@@ -33,6 +33,7 @@ internal sealed class IdentityAuthService(
             LockoutEnabled = true,
             SecurityStamp = Guid.NewGuid().ToString("N"),
             CreatedAtUtc = DateTime.UtcNow,
+            IsActive = true,
         };
 
         var createResult = await userManager.CreateAsync(user, request.Password);
@@ -81,6 +82,13 @@ internal sealed class IdentityAuthService(
             return Result<IdentityLoginResult>.Failure(new Error(
                 "auth.login.invalid_credentials",
                 "Invalid email or password."));
+        }
+
+        user.LastLoginAtUtc = DateTime.UtcNow;
+        var updateResult = await userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+        {
+            logger.LogWarning("Unable to update LastLoginAtUtc for user {UserId}.", user.Id);
         }
 
         return Result<IdentityLoginResult>.Success(new IdentityLoginResult(user.Id, user.Email ?? normalizedEmail));

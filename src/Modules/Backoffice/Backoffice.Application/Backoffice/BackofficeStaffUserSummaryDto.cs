@@ -1,0 +1,12 @@
+namespace Backoffice.Application.Backoffice;
+
+public sealed record BackofficeStaffUserSummaryDto(
+    Guid Id,
+    string Email,
+    string? DisplayName,
+    string? Department,
+    bool IsStaff,
+    bool IsActive,
+    DateTime CreatedAtUtc,
+    DateTime? LastLoginAtUtc,
+    IReadOnlyCollection<string> Roles);

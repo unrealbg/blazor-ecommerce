@@ -62,6 +62,12 @@
     <Project Path="src/Modules/Reviews/Reviews.Domain/Reviews.Domain.csproj" />
     <Project Path="src/Modules/Reviews/Reviews.Infrastructure/Reviews.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Backoffice/">
+    <Project Path="src/Modules/Backoffice/Backoffice.Api/Backoffice.Api.csproj" />
+    <Project Path="src/Modules/Backoffice/Backoffice.Application/Backoffice.Application.csproj" />
+    <Project Path="src/Modules/Backoffice/Backoffice.Domain/Backoffice.Domain.csproj" />
+    <Project Path="src/Modules/Backoffice/Backoffice.Infrastructure/Backoffice.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Search/">
     <Project Path="src/Modules/Search/Search.Api/Search.Api.csproj" />
     <Project Path="src/Modules/Search/Search.Application/Search.Application.csproj" />

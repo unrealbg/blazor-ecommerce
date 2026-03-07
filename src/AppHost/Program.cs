@@ -1,3 +1,6 @@
+using AppHost.Authorization;
+using Backoffice.Api;
+using BuildingBlocks.Application.Authorization;
 using BuildingBlocks.Application.Extensions;
 using BuildingBlocks.Infrastructure.Extensions;
 using BuildingBlocks.Infrastructure.Modules;
@@ -10,6 +13,7 @@ using Inventory.Api;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using OpenTelemetry.Trace;
 using Orders.Api;
@@ -37,6 +41,8 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddApplicationCore();
 builder.Services.AddSharedInfrastructure(builder.Configuration);
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, BackofficeAuthorizationPolicyProvider>();
+builder.Services.AddScoped<IAuthorizationHandler, BackofficeAuthorizationHandler>();
 
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
 if (!RedisConnectionHelper.CanConnect(redisConnectionString))
@@ -65,8 +71,7 @@ builder.Services
         {
             if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
             {
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                return Task.CompletedTask;
+                return ApiProblemDetailsWriter.WriteUnauthorizedAsync(context.HttpContext);
             }
 
             context.Response.Redirect(context.RedirectUri);
@@ -76,8 +81,7 @@ builder.Services
         {
             if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
             {
-                context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                return Task.CompletedTask;
+                return ApiProblemDetailsWriter.WriteForbiddenAsync(context.HttpContext);
             }
 
             context.Response.Redirect(context.RedirectUri);
@@ -100,6 +104,7 @@ foreach (var installer in moduleInstallers)
 }
 
 builder.Services.AddCatalogModule();
+builder.Services.AddBackofficeModule();
 builder.Services.AddCartModule();
 builder.Services.AddOrdersModule();
 builder.Services.AddRedirectsModule();
@@ -141,6 +146,7 @@ if (!skipInfrastructureInitialization)
 
 var apiV1 = app.MapGroup("/api/v1");
 apiV1.MapCatalogEndpoints();
+apiV1.MapBackofficeEndpoints();
 apiV1.MapCartEndpoints();
 apiV1.MapOrdersEndpoints();
 apiV1.MapRedirectEndpoints();
