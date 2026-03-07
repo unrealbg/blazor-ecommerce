@@ -1,0 +1,161 @@
+@page "/admin/pricing/price-lists"
+@rendermode InteractiveServer
+@layout Storefront.Web.Components.Layout.AdminLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>Admin Price Lists</PageTitle>
+
+<h1>Price Lists</h1>
+<p>Maintain default and future segmented price lists.</p>
+
+<section class="admin-panel">
+    <h2>@(editingPriceListId is null ? "Create price list" : "Edit price list")</h2>
+    <form class="form-grid" @onsubmit="SaveAsync" @onsubmit:preventDefault="true">
+        <label>
+            Name
+            <input @bind="name" />
+        </label>
+        <label>
+            Code
+            <input @bind="code" disabled="@(editingPriceListId is not null)" />
+        </label>
+        <label>
+            Currency
+            <input @bind="currency" maxlength="3" />
+        </label>
+        <label>
+            Priority
+            <input @bind="priority" type="number" />
+        </label>
+        <label class="checkbox-field">
+            <input @bind="isDefault" type="checkbox" />
+            Default price list
+        </label>
+        <label class="checkbox-field">
+            <input @bind="isActive" type="checkbox" />
+            Active
+        </label>
+        <div class="cart-actions">
+            <button class="btn-primary" type="submit" disabled="@isSaving">Save</button>
+            <button class="btn-secondary" type="button" @onclick="ResetForm">Clear</button>
+        </div>
+    </form>
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <p class="status-message">@message</p>
+    }
+</section>
+
+<section class="admin-panel">
+    <h2>Existing price lists</h2>
+
+    @if (isLoading)
+    {
+        <p>Loading price lists...</p>
+    }
+    else if (priceLists.Count == 0)
+    {
+        <p>No price lists available.</p>
+    }
+    else
+    {
+        <table class="cart-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Code</th>
+                    <th>Currency</th>
+                    <th>Priority</th>
+                    <th>Default</th>
+                    <th>Active</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var priceList in priceLists.OrderBy(item => item.Priority).ThenBy(item => item.Name))
+                {
+                    <tr>
+                        <td>@priceList.Name</td>
+                        <td>@priceList.Code</td>
+                        <td>@priceList.Currency</td>
+                        <td>@priceList.Priority</td>
+                        <td>@priceList.IsDefault</td>
+                        <td>@priceList.IsActive</td>
+                        <td><button class="btn-link" type="button" @onclick="() => BeginEdit(priceList)">Edit</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@code {
+    private IReadOnlyCollection<StorePriceList> priceLists = [];
+    private bool isLoading = true;
+    private bool isSaving;
+    private Guid? editingPriceListId;
+    private string name = string.Empty;
+    private string code = string.Empty;
+    private string currency = "EUR";
+    private int priority = 100;
+    private bool isDefault;
+    private bool isActive = true;
+    private string? message;
+
+    protected override Task OnInitializedAsync()
+    {
+        return LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        priceLists = await StoreApiClient.GetPriceListsAsync(CancellationToken.None);
+        isLoading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        isSaving = true;
+        message = null;
+
+        var request = new StorePriceListRequest(name, code, currency, isDefault, isActive, priority);
+        var success = editingPriceListId is null
+            ? await StoreApiClient.CreatePriceListAsync(request, CancellationToken.None) is not null
+            : await StoreApiClient.UpdatePriceListAsync(editingPriceListId.Value, request, CancellationToken.None);
+
+        isSaving = false;
+        message = success ? "Price list saved." : "Price list save failed.";
+
+        if (success)
+        {
+            await LoadAsync();
+            ResetForm();
+        }
+    }
+
+    private void BeginEdit(StorePriceList priceList)
+    {
+        editingPriceListId = priceList.Id;
+        name = priceList.Name;
+        code = priceList.Code;
+        currency = priceList.Currency;
+        priority = priceList.Priority;
+        isDefault = priceList.IsDefault;
+        isActive = priceList.IsActive;
+        message = null;
+    }
+
+    private void ResetForm()
+    {
+        editingPriceListId = null;
+        name = string.Empty;
+        code = string.Empty;
+        currency = "EUR";
+        priority = 100;
+        isDefault = false;
+        isActive = true;
+    }
+}

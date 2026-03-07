@@ -1,4 +1,5 @@
 @page "/product/{Slug}"
+@rendermode InteractiveServer
 @using Storefront.Web.Services.Api
 @using Storefront.Web.Services.Media
 @using Storefront.Web.Services.Seo
@@ -23,37 +24,137 @@ else if (product is null || !product.IsActive || !string.Equals(product.Currency
 else
 {
     <article class="product-details">
-        <h1>@product.Name</h1>
+        <div class="product-gallery">
+            @if (!string.IsNullOrWhiteSpace(selectedImageUrl))
+            {
+                <ResponsiveImage
+                    Source="@selectedImageUrl"
+                    Alt="@selectedImageAlt"
+                    Preset="MediaImagePreset.ProductHero"
+                    CssClass="product-image"
+                    Priority="true" />
+            }
 
-        @if (!string.IsNullOrWhiteSpace(product.ImageUrl))
+            @if (galleryImages.Count > 1)
+            {
+                <div class="product-gallery-thumbs">
+                    @foreach (var image in galleryImages)
+                    {
+                        <button type="button" class="btn-link" @onclick="() => SelectImage(image.SourceUrl, image.AltText)">
+                            <ResponsiveImage
+                                Source="@image.SourceUrl"
+                                Alt="@(image.AltText ?? product.Name)"
+                                Preset="MediaImagePreset.ProductCard"
+                                CssClass="card-image" />
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="product-copy">
+            <h1>@product.Name</h1>
+
+            @if (product.CategoryBreadcrumbs.Count > 0)
+            {
+                <p class="meta">@string.Join(" / ", product.CategoryBreadcrumbs.Select(item => item.Name))</p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(product.Brand))
+            {
+                <p>Brand: <strong>@product.Brand</strong></p>
+            }
+
+            <p>@(string.IsNullOrWhiteSpace(product.Description) ? "No description provided." : product.Description)</p>
+            <p class="price">
+                @if (selectedCompareAtAmount is > 0m && selectedCompareAtAmount > selectedAmount)
+                {
+                    <span class="price-compare">@FormatPrice(selectedCompareAtAmount.Value, selectedCurrency)</span>
+                }
+                <span>@FormatPrice(selectedAmount, selectedCurrency)</span>
+            </p>
+
+            @if (!string.IsNullOrWhiteSpace(selectedSku))
+            {
+                <p>SKU: @selectedSku</p>
+            }
+
+            @if (optionNames.Count > 0)
+            {
+                <section class="admin-panel">
+                    <h2>Choose options</h2>
+                    @foreach (var optionName in optionNames)
+                    {
+                        <label>
+                            @optionName
+                            <select value="@GetSelectedOptionValue(optionName)" @onchange="args => SelectOption(optionName, args.Value?.ToString())">
+                                @foreach (var value in GetOptionValues(optionName))
+                                {
+                                    <option value="@value">@value</option>
+                                }
+                            </select>
+                        </label>
+                    }
+                </section>
+            }
+
+            <p>Status: @GetStockStatusLabel()</p>
+
+            @if (!string.IsNullOrWhiteSpace(selectionMessage))
+            {
+                <p class="status-message warning">@selectionMessage</p>
+            }
+
+            <AddToCartButton
+                ProductId="product.Id"
+                VariantId="@(selectedVariant?.Id ?? product.DefaultVariantId)"
+                Disabled="@IsAddToCartDisabled()"
+                DisabledMessage="This product is currently out of stock."
+                @rendermode="InteractiveServer" />
+        </div>
+
+        @if (groupedAttributes.Count > 0)
         {
-            <ResponsiveImage
-                Source="@product.ImageUrl"
-                Alt="@product.Name"
-                Preset="MediaImagePreset.ProductHero"
-                CssClass="product-image"
-                Priority="true" />
+            <section class="admin-panel">
+                <h2>Specifications</h2>
+                @foreach (var group in groupedAttributes)
+                {
+                    <h3>@group.Key</h3>
+                    <table class="cart-table">
+                        <tbody>
+                            @foreach (var attribute in group.Value)
+                            {
+                                <tr>
+                                    <th>@(attribute.Name)</th>
+                                    <td>@(attribute.Value)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </section>
         }
 
-        <p>@(string.IsNullOrWhiteSpace(product.Description) ? "No description provided." : product.Description)</p>
-        <p class="price">@FormatPrice(product.Amount, product.Currency)</p>
-
-        @if (!string.IsNullOrWhiteSpace(product.Sku))
+        @if (product.RelatedProducts.Count > 0)
         {
-            <p>SKU: @product.Sku</p>
+            <section class="admin-panel">
+                <h2>Related products</h2>
+                <div class="grid">
+                    @foreach (var related in product.RelatedProducts)
+                    {
+                        <article class="card">
+                            <ResponsiveImage
+                                Source="@related.ImageUrl"
+                                Alt="@related.Name"
+                                Preset="MediaImagePreset.ProductCard"
+                                CssClass="card-image" />
+                            <h3><a href="/product/@related.Slug">@related.Name</a></h3>
+                            <p class="price">@FormatPrice(related.Amount, related.Currency)</p>
+                        </article>
+                    }
+                </div>
+            </section>
         }
-
-        @if (!string.IsNullOrWhiteSpace(product.Brand))
-        {
-            <p>Brand: @product.Brand</p>
-        }
-
-        <p>Status: @GetStockStatusLabel()</p>
-        <AddToCartButton
-            ProductId="product.Id"
-            Disabled="@IsAddToCartDisabled()"
-            DisabledMessage="This product is currently out of stock."
-            @rendermode="InteractiveServer" />
     </article>
 }
 
@@ -65,8 +166,18 @@ else
     private IReadOnlyCollection<string> jsonLdScripts = [];
     private IReadOnlyList<BreadcrumbItem> breadcrumbs = [];
     private StoreProduct? product;
-    private StoreInventoryProductDetails? inventory;
     private bool isLoading = true;
+    private StoreProductVariant? selectedVariant;
+    private string? selectedImageUrl;
+    private string? selectedImageAlt;
+    private string? selectionMessage;
+    private IReadOnlyCollection<StoreProductImage> galleryImages = [];
+    private IReadOnlyDictionary<string, IReadOnlyCollection<string>> optionValueLookup =
+        new Dictionary<string, IReadOnlyCollection<string>>();
+    private IReadOnlyCollection<string> optionNames = [];
+    private IReadOnlyDictionary<string, string> selectedOptions = new Dictionary<string, string>();
+    private IReadOnlyDictionary<string, IReadOnlyCollection<StoreProductAttribute>> groupedAttributes =
+        new Dictionary<string, IReadOnlyCollection<StoreProductAttribute>>();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -92,10 +203,11 @@ else
             return;
         }
 
-        inventory = await StoreApiClient.GetInventoryProductAsync(product.Id, CancellationToken.None);
+        InitializeSelectionState(product);
 
-        var productDetailImage = MediaUrlService.ProductImage(product.ImageUrl ?? "/images/og-default.jpg", 1200);
-        var openGraphImage = SeoImageMetadata.ResolveOpenGraphImage(MediaUrlService, product.ImageUrl);
+        var primaryImage = selectedImageUrl ?? product.ImageUrl ?? "/images/og-default.jpg";
+        var productDetailImage = MediaUrlService.ProductImage(primaryImage, 1200);
+        var openGraphImage = SeoImageMetadata.ResolveOpenGraphImage(MediaUrlService, primaryImage);
 
         metadata = MetadataService.ForProduct(product.Name, product.Description, product.Slug) with
         {
@@ -108,10 +220,10 @@ else
             new ProductSeoModel(
                 product.Name,
                 product.Description,
-                product.Currency,
-                product.Amount,
-                inventory?.StockItem.IsInStock ?? product.IsInStock,
-                product.Sku,
+                selectedCurrency,
+                selectedAmount,
+                selectedVariant?.IsInStock ?? product.IsInStock,
+                selectedSku,
                 product.Brand,
                 productDetailImage),
             metadata.CanonicalUrl);
@@ -125,6 +237,14 @@ else
         isLoading = false;
     }
 
+    private decimal selectedAmount => selectedVariant?.Amount ?? product?.Amount ?? 0m;
+
+    private decimal? selectedCompareAtAmount => selectedVariant?.CompareAtAmount ?? product?.CompareAtAmount;
+
+    private string selectedCurrency => selectedVariant?.Currency ?? product?.Currency ?? "EUR";
+
+    private string? selectedSku => selectedVariant?.Sku ?? product?.Sku;
+
     private static string FormatPrice(decimal amount, string currency)
     {
         return $"{amount:0.00} {currency}";
@@ -132,61 +252,167 @@ else
 
     private string GetStockStatusLabel()
     {
-        if (inventory is null)
+        if (selectedVariant is null)
         {
             return product?.IsInStock == true ? "In stock" : "Out of stock";
         }
 
-        if (!inventory.StockItem.IsTracked)
+        if (!selectedVariant.IsTracked)
         {
             return "In stock";
         }
 
-        if (inventory.StockItem.AllowBackorder && inventory.StockItem.AvailableQuantity <= 0)
+        if (selectedVariant.AllowBackorder && selectedVariant.AvailableQuantity <= 0)
         {
             return "Backorder available";
         }
 
-        return inventory.StockItem.IsInStock ? "In stock" : "Out of stock";
+        return selectedVariant.IsInStock ? "In stock" : "Out of stock";
     }
 
     private bool IsAddToCartDisabled()
     {
-        if (inventory is null)
+        if (selectedVariant is null)
         {
             return product?.IsInStock != true;
         }
 
-        if (!inventory.StockItem.IsTracked)
+        if (!selectedVariant.IsTracked)
         {
             return false;
         }
 
-        return !inventory.StockItem.IsInStock && !inventory.StockItem.AllowBackorder;
+        return !selectedVariant.IsInStock && !selectedVariant.AllowBackorder;
     }
 
     private static IReadOnlyList<BreadcrumbItem> BuildProductBreadcrumbs(StoreProduct currentProduct)
     {
-        var breadcrumbItems = new List<BreadcrumbItem>
-        {
-            new("Home", "/"),
-        };
-
-        if (!string.IsNullOrWhiteSpace(currentProduct.CategorySlug) &&
-            !string.IsNullOrWhiteSpace(currentProduct.CategoryName))
-        {
-            breadcrumbItems.Add(new BreadcrumbItem(
-                currentProduct.CategoryName,
-                $"/category/{currentProduct.CategorySlug}"));
-        }
-
+        var breadcrumbItems = new List<BreadcrumbItem> { new("Home", "/") };
+        breadcrumbItems.AddRange(currentProduct.CategoryBreadcrumbs.Select(item => new BreadcrumbItem(item.Name, $"/category/{item.Slug}")));
         breadcrumbItems.Add(new BreadcrumbItem(currentProduct.Name, $"/product/{currentProduct.Slug}"));
-
         return breadcrumbItems;
     }
 
     private IEnumerable<BreadcrumbItem> ToAbsoluteBreadcrumbs(IEnumerable<BreadcrumbItem> source)
     {
         return source.Select(item => new BreadcrumbItem(item.Name, MetadataService.BuildAbsoluteUrl(item.Url)));
+    }
+
+    private void InitializeSelectionState(StoreProduct currentProduct)
+    {
+        selectedVariant = currentProduct.Variants
+            .OrderByDescending(variant => variant.Id == currentProduct.DefaultVariantId)
+            .ThenBy(variant => variant.Position)
+            .FirstOrDefault(variant => variant.IsActive)
+            ?? currentProduct.Variants.OrderBy(variant => variant.Position).FirstOrDefault();
+
+        selectedOptions = selectedVariant?.SelectedOptions.ToDictionary(option => option.OptionName, option => option.Value)
+            ?? new Dictionary<string, string>();
+
+        optionValueLookup = currentProduct.Variants
+            .SelectMany(variant => variant.SelectedOptions)
+            .GroupBy(option => option.OptionName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyCollection<string>)group
+                    .Select(item => item.Value)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(item => item, StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                StringComparer.OrdinalIgnoreCase);
+
+        optionNames = optionValueLookup.Keys.OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray();
+        groupedAttributes = currentProduct.Attributes
+            .GroupBy(attribute => string.IsNullOrWhiteSpace(attribute.GroupName) ? "General" : attribute.GroupName!, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyCollection<StoreProductAttribute>)group.OrderBy(item => item.Position).ToArray(),
+                StringComparer.OrdinalIgnoreCase);
+
+        UpdateGallery(currentProduct);
+        selectionMessage = null;
+    }
+
+    private void SelectOption(string optionName, string? value)
+    {
+        if (product is null || string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        var nextSelection = new Dictionary<string, string>(selectedOptions, StringComparer.OrdinalIgnoreCase)
+        {
+            [optionName] = value,
+        };
+
+        var match = product.Variants
+            .Where(variant => variant.IsActive)
+            .FirstOrDefault(variant => VariantMatchesSelection(variant, nextSelection));
+
+        if (match is null)
+        {
+            selectionMessage = "This variant combination is not available.";
+            return;
+        }
+
+        selectedOptions = nextSelection;
+        selectedVariant = match;
+        selectionMessage = null;
+        UpdateGallery(product);
+    }
+
+    private string GetSelectedOptionValue(string optionName)
+    {
+        return selectedOptions.TryGetValue(optionName, out var value)
+            ? value
+            : GetOptionValues(optionName).FirstOrDefault() ?? string.Empty;
+    }
+
+    private IReadOnlyCollection<string> GetOptionValues(string optionName)
+    {
+        return optionValueLookup.TryGetValue(optionName, out var values) ? values : [];
+    }
+
+    private void UpdateGallery(StoreProduct currentProduct)
+    {
+        galleryImages = currentProduct.Images
+            .Where(image => image.VariantId is null || image.VariantId == selectedVariant?.Id)
+            .OrderByDescending(image => image.VariantId == selectedVariant?.Id && image.IsPrimary)
+            .ThenByDescending(image => image.IsPrimary)
+            .ThenBy(image => image.Position)
+            .ToArray();
+
+        selectedImageUrl = selectedVariant?.ImageUrl
+            ?? galleryImages.FirstOrDefault()?.SourceUrl
+            ?? currentProduct.ImageUrl;
+        selectedImageAlt = galleryImages.FirstOrDefault(image => image.SourceUrl == selectedImageUrl)?.AltText ?? currentProduct.Name;
+    }
+
+    private void SelectImage(string? sourceUrl, string? altText)
+    {
+        if (string.IsNullOrWhiteSpace(sourceUrl))
+        {
+            return;
+        }
+
+        selectedImageUrl = sourceUrl;
+        selectedImageAlt = altText ?? product?.Name;
+    }
+
+    private static bool VariantMatchesSelection(StoreProductVariant variant, IReadOnlyDictionary<string, string> selection)
+    {
+        foreach (var pair in selection)
+        {
+            var selectedOption = variant.SelectedOptions.FirstOrDefault(option =>
+                string.Equals(option.OptionName, pair.Key, StringComparison.OrdinalIgnoreCase));
+            if (selectedOption is null ||
+                !string.Equals(selectedOption.Value, pair.Value, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

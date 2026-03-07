@@ -31,7 +31,7 @@ public sealed class CheckoutCommandHandlerTests
     {
         var cartAccessor = new StubCartCheckoutAccessor
         {
-            Snapshot = new CartCheckoutSnapshot(Guid.NewGuid(), "customer-1", []),
+            Snapshot = new CartCheckoutSnapshot(Guid.NewGuid(), "customer-1", null, []),
         };
 
         var idempotencyRepository = new StubCheckoutIdempotencyRepository();
@@ -56,6 +56,7 @@ public sealed class CheckoutCommandHandlerTests
             Snapshot = new CartCheckoutSnapshot(
                 cartId,
                 "customer-1",
+                null,
                 [
                     new CartCheckoutLineSnapshot(Guid.NewGuid(), Guid.NewGuid(), "Item A", null, null, null, null, "USD", 10m, 2),
                     new CartCheckoutLineSnapshot(Guid.NewGuid(), Guid.NewGuid(), "Item B", null, null, null, null, "USD", 5.25m, 1),
@@ -87,6 +88,7 @@ public sealed class CheckoutCommandHandlerTests
             Snapshot = new CartCheckoutSnapshot(
                 Guid.NewGuid(),
                 "customer-1",
+                null,
                 [new CartCheckoutLineSnapshot(Guid.NewGuid(), Guid.NewGuid(), "Item A", null, null, null, null, "USD", 10m, 1)]),
         };
 
@@ -193,10 +195,68 @@ public sealed class CheckoutCommandHandlerTests
         return new CheckoutCommandHandler(
             cartAccessor,
             new StubInventoryReservationService(),
+            new StubCartPricingService(cartAccessor.Snapshot),
             idempotencyRepository,
             orderRepository,
             unitOfWork,
             new StubClock());
+    }
+
+    private sealed class StubCartPricingService(CartCheckoutSnapshot? snapshot) : ICartPricingService
+    {
+        public Task<Result<CartPricingResult>> PriceAsync(CartPricingRequest request, CancellationToken cancellationToken)
+        {
+            var lookup = snapshot?.Lines.ToDictionary(line => line.VariantId) ??
+                         new Dictionary<Guid, CartCheckoutLineSnapshot>();
+            var currency = lookup.Values.FirstOrDefault()?.Currency ?? "EUR";
+            var lineResults = request.Lines
+                .Select(line =>
+                {
+                    lookup.TryGetValue(line.VariantId, out var snapshotLine);
+                    var unitAmount = snapshotLine?.UnitAmount ?? 10m;
+                    var lineCurrency = snapshotLine?.Currency ?? currency;
+
+                    return new CartPricingLineResult(
+                        line.ProductId,
+                        line.VariantId,
+                        lineCurrency,
+                        unitAmount,
+                        null,
+                        unitAmount,
+                        unitAmount * line.Quantity,
+                        0m,
+                        []);
+                })
+                .ToArray();
+
+            var subtotal = lineResults.Sum(line => line.LineTotalAmount);
+            return Task.FromResult(Result<CartPricingResult>.Success(new CartPricingResult(
+                currency,
+                subtotal,
+                subtotal,
+                0m,
+                0m,
+                0m,
+                0m,
+                0m,
+                subtotal,
+                null,
+                lineResults,
+                [],
+                [])));
+        }
+
+        public Task<Result<CouponValidationResult>> ValidateCouponAsync(
+            CouponValidationRequest request,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Result<CouponValidationResult>.Success(new CouponValidationResult(
+                request.Code.Trim().ToUpperInvariant(),
+                true,
+                null,
+                null,
+                null)));
+        }
     }
 
     private sealed class StubInventoryReservationService : IInventoryReservationService

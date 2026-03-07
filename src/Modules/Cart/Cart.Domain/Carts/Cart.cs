@@ -21,6 +21,8 @@ public sealed class Cart : AggregateRoot<Guid>
 
     public string CustomerId { get; private set; } = string.Empty;
 
+    public string? AppliedCouponCode { get; private set; }
+
     public long RowVersion { get; private set; }
 
     public IReadOnlyCollection<CartLine> Lines => _lines.AsReadOnly();
@@ -129,9 +131,28 @@ public sealed class Cart : AggregateRoot<Guid>
         return Result.Success();
     }
 
+    public Result ApplyCoupon(string couponCode)
+    {
+        if (string.IsNullOrWhiteSpace(couponCode))
+        {
+            return Result.Failure(new Error("cart.coupon.required", "Coupon code is required."));
+        }
+
+        AppliedCouponCode = couponCode.Trim().ToUpperInvariant();
+        IncrementRowVersion();
+        return Result.Success();
+    }
+
+    public void RemoveCoupon()
+    {
+        AppliedCouponCode = null;
+        IncrementRowVersion();
+    }
+
     public void Clear()
     {
         _lines.Clear();
+        AppliedCouponCode = null;
         IncrementRowVersion();
     }
 

@@ -12,6 +12,7 @@ public sealed class CheckoutWithProfileCommandHandler(
     ICartCheckoutAccessor cartCheckoutAccessor,
     IInventoryReservationService inventoryReservationService,
     IShippingQuoteService shippingQuoteService,
+    ICartPricingService cartPricingService,
     ICheckoutIdempotencyRepository idempotencyRepository,
     ICustomerCheckoutAccessor customerCheckoutAccessor,
     ICustomerSessionCache customerSessionCache,
@@ -113,7 +114,6 @@ public sealed class CheckoutWithProfileCommandHandler(
                         "Some cart reservations are invalid or expired. Please refresh your cart."));
                 }
 
-                var lineData = new List<OrderLineData>(cart.Lines.Count);
                 decimal subtotalAmount = 0m;
                 string? orderCurrency = null;
                 foreach (var line in cart.Lines)
@@ -133,7 +133,6 @@ public sealed class CheckoutWithProfileCommandHandler(
                     }
 
                     subtotalAmount += Money.Round(moneyResult.Value.Amount * line.Quantity);
-                    lineData.Add(new OrderLineData(line.ProductId, line.VariantId, line.Sku, line.ProductName, line.VariantName, line.SelectedOptionsJson, moneyResult.Value, line.Quantity));
                 }
 
                 var quoteResult = await shippingQuoteService.ResolveQuoteAsync(
@@ -148,17 +147,49 @@ public sealed class CheckoutWithProfileCommandHandler(
                 }
 
                 var selectedQuote = quoteResult.Value;
+                var pricingResult = await cartPricingService.PriceAsync(
+                    new CartPricingRequest(
+                        customerId,
+                        request.UserId is not null,
+                        cart.Lines
+                            .Select(line => new CartPricingLineRequest(line.ProductId, line.VariantId, line.Quantity))
+                            .ToList(),
+                        cart.AppliedCouponCode,
+                        new ShippingPriceSelection(
+                            selectedQuote.ShippingMethodCode,
+                            selectedQuote.Currency,
+                            selectedQuote.PriceAmount),
+                        BypassCache: true,
+                        StrictCouponValidation: true),
+                    innerCancellationToken);
+                if (pricingResult.IsFailure)
+                {
+                    return Result<Guid>.Failure(pricingResult.Error);
+                }
+
+                var lineDataResult = OrderLinePricingSnapshotFactory.Create(cart.Lines, pricingResult.Value);
+                if (lineDataResult.IsFailure)
+                {
+                    return Result<Guid>.Failure(lineDataResult.Error);
+                }
+
                 var orderResult = Order.Create(
                     customerId,
                     normalizedCartSessionId,
-                    lineData,
+                    lineDataResult.Value,
                     clock.UtcNow,
                     shippingAddressResult.Value,
                     billingAddressResult.Value,
                     selectedQuote.ShippingMethodCode,
                     selectedQuote.ShippingMethodName,
                     selectedQuote.PriceAmount,
-                    selectedQuote.Currency);
+                    selectedQuote.Currency,
+                    pricingResult.Value.SubtotalBeforeDiscountAmount,
+                    pricingResult.Value.LineDiscountTotalAmount,
+                    pricingResult.Value.CartDiscountTotalAmount,
+                    pricingResult.Value.ShippingDiscountTotalAmount,
+                    SerializeCouponCodes(pricingResult.Value.AppliedCouponCode),
+                    SerializeAppliedPromotions(pricingResult.Value.AppliedDiscounts));
 
                 if (orderResult.IsFailure)
                 {
@@ -194,6 +225,18 @@ public sealed class CheckoutWithProfileCommandHandler(
                 return Result<Guid>.Success(orderResult.Value.Id);
             },
             cancellationToken);
+    }
+
+    private static string? SerializeCouponCodes(string? couponCode)
+    {
+        return string.IsNullOrWhiteSpace(couponCode)
+            ? null
+            : System.Text.Json.JsonSerializer.Serialize(new[] { couponCode.Trim().ToUpperInvariant() });
+    }
+
+    private static string? SerializeAppliedPromotions(IReadOnlyCollection<PricingDiscountApplication> discounts)
+    {
+        return discounts.Count == 0 ? null : System.Text.Json.JsonSerializer.Serialize(discounts);
     }
 
     private static Result<Guid> ResolveExistingRecord(

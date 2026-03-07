@@ -1,7 +1,9 @@
 using BuildingBlocks.Application.Contracts;
 using BuildingBlocks.Domain.Results;
+using Cart.Application.Carts.ApplyCoupon;
 using Cart.Application.Carts.AddItem;
 using Cart.Application.Carts.GetCart;
+using Cart.Application.Carts.RemoveCoupon;
 using Cart.Application.Carts.RemoveItem;
 using Cart.Application.Carts.UpdateItemQuantity;
 using Cart.Application.DependencyInjection;
@@ -89,6 +91,32 @@ public static class CartModuleExtensions
                 : BusinessError(result.Error);
         });
 
+        group.MapPost("/{customerId}/coupon", async (
+            string customerId,
+            ApplyCouponRequest request,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await sender.Send(
+                new ApplyCartCouponCommand(customerId, request.CouponCode),
+                cancellationToken);
+
+            return result.IsSuccess
+                ? Results.Ok(new { id = result.Value })
+                : BusinessError(result.Error);
+        });
+
+        group.MapDelete("/{customerId}/coupon", async (
+            string customerId,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await sender.Send(new RemoveCartCouponCommand(customerId), cancellationToken);
+            return result.IsSuccess
+                ? Results.NoContent()
+                : BusinessError(result.Error);
+        });
+
         return endpoints;
     }
 
@@ -98,8 +126,10 @@ public static class CartModuleExtensions
         {
             "cart.not_found" => StatusCodes.Status404NotFound,
             "cart.item.not_found" => StatusCodes.Status404NotFound,
+            "pricing.coupon.not_found" => StatusCodes.Status404NotFound,
             "inventory.stock.insufficient" => StatusCodes.Status409Conflict,
             "inventory.stock.concurrency_conflict" => StatusCodes.Status409Conflict,
+            _ when error.Code.Contains("usage_limit_reached", StringComparison.Ordinal) => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest,
         };
 
@@ -112,6 +142,8 @@ public static class CartModuleExtensions
                 ["code"] = error.Code,
             });
     }
+
+    public sealed record ApplyCouponRequest(string CouponCode);
 
     public sealed class AddItemRequest
     {

@@ -14,10 +14,11 @@ using Microsoft.AspNetCore.Identity;
 using OpenTelemetry.Trace;
 using Orders.Api;
 using Payments.Api;
+using Pricing.Api;
 using Redirects.Api;
 using Search.Api;
-using Shipping.Api;
 using Serilog;
+using Shipping.Api;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -103,6 +104,7 @@ builder.Services.AddSearchModule();
 builder.Services.AddCustomersModule();
 builder.Services.AddInventoryModule();
 builder.Services.AddPaymentsModule();
+builder.Services.AddPricingModule();
 builder.Services.AddShippingModule();
 
 builder.Services.AddHealthChecks()
@@ -142,6 +144,7 @@ apiV1.MapSearchEndpoints();
 apiV1.MapCustomersEndpoints();
 apiV1.MapInventoryEndpoints();
 apiV1.MapPaymentsEndpoints();
+apiV1.MapPricingEndpoints();
 apiV1.MapShippingEndpoints();
 app.MapDirectusWebhookEndpoint();
 

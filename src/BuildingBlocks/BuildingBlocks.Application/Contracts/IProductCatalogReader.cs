@@ -6,5 +6,9 @@ public interface IProductCatalogReader
 
     Task<ProductSnapshot?> GetByVariantIdAsync(Guid variantId, CancellationToken cancellationToken);
 
+    Task<IReadOnlyDictionary<Guid, ProductSnapshot>> GetByVariantIdsAsync(
+        IReadOnlyCollection<Guid> variantIds,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyCollection<ProductSnapshot>> ListAllAsync(CancellationToken cancellationToken);
 }

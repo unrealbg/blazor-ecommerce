@@ -104,6 +104,7 @@ public sealed class CheckoutWithProfileCommandHandlerTests
             cartAccessor,
             new StubInventoryReservationService(),
             new StubShippingQuoteService(),
+            new StubCartPricingService(cartAccessor.Snapshot),
             idempotencyRepository,
             customerAccessor,
             sessionCache,
@@ -199,6 +200,7 @@ public sealed class CheckoutWithProfileCommandHandlerTests
         return new CartCheckoutSnapshot(
             Guid.NewGuid(),
             sessionId,
+            null,
             [new CartCheckoutLineSnapshot(Guid.NewGuid(), Guid.NewGuid(), "Keyboard", null, null, null, null, "EUR", 99m, 1)]);
     }
 
@@ -211,6 +213,63 @@ public sealed class CheckoutWithProfileCommandHandlerTests
         CheckoutWithProfileCommandHandler Handler,
         StubOrderRepository OrderRepository,
         StubCustomerSessionCache SessionCache);
+
+    private sealed class StubCartPricingService(CartCheckoutSnapshot? snapshot) : ICartPricingService
+    {
+        public Task<Result<CartPricingResult>> PriceAsync(CartPricingRequest request, CancellationToken cancellationToken)
+        {
+            var lookup = snapshot?.Lines.ToDictionary(line => line.VariantId) ??
+                         new Dictionary<Guid, CartCheckoutLineSnapshot>();
+            var currency = lookup.Values.FirstOrDefault()?.Currency ?? "EUR";
+            var lineResults = request.Lines
+                .Select(line =>
+                {
+                    lookup.TryGetValue(line.VariantId, out var snapshotLine);
+                    var unitAmount = snapshotLine?.UnitAmount ?? 99m;
+                    var lineCurrency = snapshotLine?.Currency ?? currency;
+
+                    return new CartPricingLineResult(
+                        line.ProductId,
+                        line.VariantId,
+                        lineCurrency,
+                        unitAmount,
+                        null,
+                        unitAmount,
+                        unitAmount * line.Quantity,
+                        0m,
+                        []);
+                })
+                .ToArray();
+
+            var subtotal = lineResults.Sum(line => line.LineTotalAmount);
+            return Task.FromResult(Result<CartPricingResult>.Success(new CartPricingResult(
+                currency,
+                subtotal,
+                subtotal,
+                0m,
+                0m,
+                0m,
+                0m,
+                0m,
+                subtotal,
+                null,
+                lineResults,
+                [],
+                [])));
+        }
+
+        public Task<Result<CouponValidationResult>> ValidateCouponAsync(
+            CouponValidationRequest request,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Result<CouponValidationResult>.Success(new CouponValidationResult(
+                request.Code.Trim().ToUpperInvariant(),
+                true,
+                null,
+                null,
+                null)));
+        }
+    }
 
     private sealed class StubCartCheckoutAccessor : ICartCheckoutAccessor
     {

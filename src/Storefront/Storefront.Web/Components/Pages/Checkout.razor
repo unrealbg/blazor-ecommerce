@@ -10,141 +10,162 @@
 
 <h1>Checkout</h1>
 
-<EditForm Model="model" OnValidSubmit="SubmitAsync">
-    <div class="form-grid">
-        <label>
-            Email
-            <InputText @bind-Value="model.Email" />
-        </label>
-        <label>
-            Shipping first name
-            <InputText @bind-Value="model.ShippingFirstName" />
-        </label>
-        <label>
-            Shipping last name
-            <InputText @bind-Value="model.ShippingLastName" />
-        </label>
-        <label>
-            Shipping street
-            <InputText @bind-Value="model.ShippingStreet" />
-        </label>
-        <label>
-            Shipping city
-            <InputText @bind-Value="model.ShippingCity" />
-        </label>
-        <label>
-            Shipping postal code
-            <InputText @bind-Value="model.ShippingPostalCode" />
-        </label>
-        <label>
-            Shipping country
-            <InputText @bind-Value="model.ShippingCountry" />
-        </label>
-        <label>
-            Shipping phone
-            <InputText @bind-Value="model.ShippingPhone" />
-        </label>
-        <label>
-            Billing first name
-            <InputText @bind-Value="model.BillingFirstName" />
-        </label>
-        <label>
-            Billing last name
-            <InputText @bind-Value="model.BillingLastName" />
-        </label>
-        <label>
-            Billing street
-            <InputText @bind-Value="model.BillingStreet" />
-        </label>
-        <label>
-            Billing city
-            <InputText @bind-Value="model.BillingCity" />
-        </label>
-        <label>
-            Billing postal code
-            <InputText @bind-Value="model.BillingPostalCode" />
-        </label>
-        <label>
-            Billing country
-            <InputText @bind-Value="model.BillingCountry" />
-        </label>
-        <label>
-            Billing phone
-            <InputText @bind-Value="model.BillingPhone" />
-        </label>
-    </div>
+@if (cart is null || cart.Lines.Count == 0)
+{
+    <p>Your cart is empty.</p>
+    <p><a class="btn-link" href="/cart">Return to cart</a></p>
+}
+else
+{
+    <EditForm Model="model" OnValidSubmit="SubmitAsync">
+        <div class="form-grid">
+            <label>
+                Email
+                <InputText @bind-Value="model.Email" />
+            </label>
+            <label>
+                Shipping first name
+                <InputText @bind-Value="model.ShippingFirstName" />
+            </label>
+            <label>
+                Shipping last name
+                <InputText @bind-Value="model.ShippingLastName" />
+            </label>
+            <label>
+                Shipping street
+                <InputText @bind-Value="model.ShippingStreet" />
+            </label>
+            <label>
+                Shipping city
+                <InputText @bind-Value="model.ShippingCity" />
+            </label>
+            <label>
+                Shipping postal code
+                <InputText @bind-Value="model.ShippingPostalCode" />
+            </label>
+            <label>
+                Shipping country
+                <InputText @bind-Value="model.ShippingCountry" />
+            </label>
+            <label>
+                Shipping phone
+                <InputText @bind-Value="model.ShippingPhone" />
+            </label>
+            <label>
+                Billing first name
+                <InputText @bind-Value="model.BillingFirstName" />
+            </label>
+            <label>
+                Billing last name
+                <InputText @bind-Value="model.BillingLastName" />
+            </label>
+            <label>
+                Billing street
+                <InputText @bind-Value="model.BillingStreet" />
+            </label>
+            <label>
+                Billing city
+                <InputText @bind-Value="model.BillingCity" />
+            </label>
+            <label>
+                Billing postal code
+                <InputText @bind-Value="model.BillingPostalCode" />
+            </label>
+            <label>
+                Billing country
+                <InputText @bind-Value="model.BillingCountry" />
+            </label>
+            <label>
+                Billing phone
+                <InputText @bind-Value="model.BillingPhone" />
+            </label>
+        </div>
 
-    <section class="admin-panel">
-        <h2>Shipping Method</h2>
+        <section class="admin-panel">
+            <h2>Shipping Method</h2>
 
-        @if (isLoadingQuotes)
-        {
-            <p>Loading shipping options...</p>
-        }
-        else if (shippingQuotes.Count == 0)
-        {
-            <p>No shipping methods available for destination country.</p>
-        }
-        else
-        {
-            <div class="checkout-shipping-methods">
-                @foreach (var quote in shippingQuotes)
-                {
-                    <label class="checkout-shipping-option">
-                        <input
-                            type="radio"
-                            name="shipping-method"
-                            value="@quote.Code"
-                            checked="@(model.ShippingMethodCode == quote.Code)"
-                            @onchange="(_)=> SelectShippingMethod(quote.Code)" />
-                        <span>
-                            <strong>@quote.Name</strong>
-                            @if (!string.IsNullOrWhiteSpace(quote.Description))
-                            {
-                                <span> - @quote.Description</span>
-                            }
+            @if (isLoadingQuotes)
+            {
+                <p>Loading shipping options...</p>
+            }
+            else if (shippingQuotes.Count == 0)
+            {
+                <p>No shipping methods available for destination country.</p>
+            }
+            else
+            {
+                <div class="checkout-shipping-methods">
+                    @foreach (var quote in shippingQuotes)
+                    {
+                        <label class="checkout-shipping-option">
+                            <input
+                                type="radio"
+                                name="shipping-method"
+                                value="@quote.Code"
+                                checked="@(model.ShippingMethodCode == quote.Code)"
+                                @onchange="(_)=> SelectShippingMethod(quote.Code)" />
                             <span>
-                                @if (quote.IsFreeShipping)
+                                <strong>@quote.Name</strong>
+                                @if (!string.IsNullOrWhiteSpace(quote.Description))
                                 {
-                                    <strong>Free</strong>
+                                    <span> - @quote.Description</span>
                                 }
-                                else
-                                {
-                                    <strong>@FormatPrice(quote.PriceAmount, quote.Currency)</strong>
-                                }
-                            </span>
-                            @if (quote.EstimatedMinDays is not null || quote.EstimatedMaxDays is not null)
-                            {
                                 <span>
-                                    (ETA:
-                                    @if (quote.EstimatedMinDays == quote.EstimatedMaxDays)
+                                    @if (quote.IsFreeShipping)
                                     {
-                                        @($"{quote.EstimatedMinDays} days")
+                                        <strong>Free</strong>
                                     }
                                     else
                                     {
-                                        @($"{quote.EstimatedMinDays}-{quote.EstimatedMaxDays} days")
-                                    })
+                                        <strong>@FormatPrice(quote.PriceAmount, quote.Currency)</strong>
+                                    }
                                 </span>
-                            }
-                        </span>
-                    </label>
-                }
-            </div>
-        }
+                                @if (quote.EstimatedMinDays is not null || quote.EstimatedMaxDays is not null)
+                                {
+                                    <span>
+                                        (ETA:
+                                        @if (quote.EstimatedMinDays == quote.EstimatedMaxDays)
+                                        {
+                                            @($"{quote.EstimatedMinDays} days")
+                                        }
+                                        else
+                                        {
+                                            @($"{quote.EstimatedMinDays}-{quote.EstimatedMaxDays} days")
+                                        })
+                                    </span>
+                                }
+                            </span>
+                        </label>
+                    }
+                </div>
+            }
 
-        <button class="btn-link" type="button" @onclick="RefreshQuotesAsync" disabled="@isLoadingQuotes">Refresh shipping methods</button>
-    </section>
+            <button class="btn-link" type="button" @onclick="RefreshQuotesAsync" disabled="@isLoadingQuotes">Refresh shipping methods</button>
+        </section>
 
-    <section class="admin-panel">
-        <h2>Order Summary</h2>
-        <p>Subtotal: <strong>@FormatPrice(subtotalAmount, currency)</strong></p>
-        <p>Shipping: <strong>@FormatShipping()</strong></p>
-        <p>Total: <strong>@FormatPrice(subtotalAmount + selectedShippingAmount, currency)</strong></p>
-    </section>
+        <section class="admin-panel">
+            <h2>Order Summary</h2>
+            <p>Subtotal before discounts: <strong>@FormatPrice(cart.SubtotalBeforeDiscountAmount, currency)</strong></p>
+            @if (cart.LineDiscountTotalAmount > 0m)
+            {
+                <p>Line discounts: <strong>-@FormatPrice(cart.LineDiscountTotalAmount, currency)</strong></p>
+            }
+            @if (cart.CartDiscountTotalAmount > 0m)
+            {
+                <p>Cart discounts: <strong>-@FormatPrice(cart.CartDiscountTotalAmount, currency)</strong></p>
+            }
+            @if (!string.IsNullOrWhiteSpace(cart.AppliedCouponCode))
+            {
+                <p>Coupon: <strong>@cart.AppliedCouponCode</strong></p>
+            }
+            <p>Cart subtotal: <strong>@FormatPrice(subtotalAmount, currency)</strong></p>
+            <p>Shipping: <strong>@FormatShipping()</strong></p>
+            <p>Total: <strong>@FormatPrice(subtotalAmount + selectedShippingAmount, currency)</strong></p>
+        </section>
 
-    <button class="btn-primary" type="submit" disabled="@isSubmitting">Place order</button>
-</EditForm>
+        <button class="btn-primary" type="submit" disabled="@isSubmitting">Place order</button>
+    </EditForm>
+}
 
 @if (!string.IsNullOrWhiteSpace(message))
 {
@@ -163,6 +184,7 @@
     private bool isLoadingQuotes;
     private string? message;
     private Guid? orderId;
+    private StoreCart? cart;
     private List<StoreShippingQuoteMethod> shippingQuotes = [];
     private decimal subtotalAmount;
     private decimal selectedShippingAmount;
@@ -171,9 +193,9 @@
     protected override async Task OnInitializedAsync()
     {
         var customerId = CustomerContext.GetCustomerId();
-        var cart = await StoreApiClient.GetCartAsync(customerId, CancellationToken.None);
-        subtotalAmount = cart?.Lines.Sum(line => line.Amount * line.Quantity) ?? 0m;
-        currency = cart?.Lines.FirstOrDefault()?.Currency ?? "EUR";
+        cart = await StoreApiClient.GetCartAsync(customerId, CancellationToken.None);
+        subtotalAmount = cart?.GrandTotalAmount ?? 0m;
+        currency = cart?.Currency ?? "EUR";
 
         var profile = await StoreApiClient.GetCurrentCustomerAsync(CancellationToken.None);
         if (profile is null)
@@ -261,6 +283,7 @@
 
     private async Task LoadShippingQuotesAsync()
     {
+        subtotalAmount = cart?.GrandTotalAmount ?? subtotalAmount;
         isLoadingQuotes = true;
         shippingQuotes = [..await StoreApiClient.GetShippingQuotesAsync(
             model.ShippingCountry,

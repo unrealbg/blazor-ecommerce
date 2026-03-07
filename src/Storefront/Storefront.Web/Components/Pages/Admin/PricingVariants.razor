@@ -1,0 +1,245 @@
+@page "/admin/pricing/variants"
+@rendermode InteractiveServer
+@layout Storefront.Web.Components.Layout.AdminLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>Admin Variant Pricing</PageTitle>
+
+<h1>Variant Pricing</h1>
+<p>Lookup and override effective pricing for a specific sellable variant.</p>
+
+<section class="admin-panel">
+    <form class="form-grid" @onsubmit="LoadExistingAsync" @onsubmit:preventDefault="true">
+        <label>
+            Variant id
+            <input @bind="variantIdText" placeholder="00000000-0000-0000-0000-000000000000" />
+        </label>
+        <button class="btn-secondary" type="submit" disabled="@isLoadingExisting">Load existing</button>
+    </form>
+</section>
+
+<section class="admin-panel">
+    <h2>@(variantPriceId is null ? "Create variant price" : "Edit variant price")</h2>
+    <form class="form-grid" @onsubmit="SaveAsync" @onsubmit:preventDefault="true">
+        <label>
+            Price list
+            <select @bind="priceListIdText">
+                @foreach (var priceList in priceLists.OrderBy(item => item.Priority).ThenBy(item => item.Name))
+                {
+                    <option value="@priceList.Id">@priceList.Name (@priceList.Code)</option>
+                }
+            </select>
+        </label>
+        <label>
+            Base price
+            <input @bind="basePriceText" type="number" step="0.01" min="0" />
+        </label>
+        <label>
+            Compare-at price
+            <input @bind="compareAtPriceText" type="number" step="0.01" min="0" />
+        </label>
+        <label>
+            Currency
+            <input @bind="currency" maxlength="3" />
+        </label>
+        <label>
+            Valid from
+            <input value="@validFromText" @onchange="OnValidFromChanged" type="datetime-local" />
+        </label>
+        <label>
+            Valid to
+            <input value="@validToText" @onchange="OnValidToChanged" type="datetime-local" />
+        </label>
+        <label class="checkbox-field">
+            <input @bind="isActive" type="checkbox" />
+            Active
+        </label>
+        <div class="cart-actions">
+            <button class="btn-primary" type="submit" disabled="@isSaving">Save</button>
+            <button class="btn-secondary" type="button" @onclick="ResetForm">Clear</button>
+        </div>
+    </form>
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <p class="status-message">@message</p>
+    }
+</section>
+
+@if (loadedVariantPrice is not null)
+{
+    <section class="admin-panel">
+        <h2>Loaded price</h2>
+        <table class="cart-table">
+            <tbody>
+                <tr><th>Variant</th><td>@loadedVariantPrice.VariantId</td></tr>
+                <tr><th>Base</th><td>@FormatMoney(loadedVariantPrice.BasePriceAmount, loadedVariantPrice.Currency)</td></tr>
+                <tr><th>Compare-at</th><td>@(loadedVariantPrice.CompareAtPriceAmount is null ? "-" : FormatMoney(loadedVariantPrice.CompareAtPriceAmount.Value, loadedVariantPrice.Currency))</td></tr>
+                <tr><th>Window</th><td>@FormatWindow(loadedVariantPrice.ValidFromUtc, loadedVariantPrice.ValidToUtc)</td></tr>
+            </tbody>
+        </table>
+    </section>
+}
+
+@code {
+    private IReadOnlyCollection<StorePriceList> priceLists = [];
+    private StoreVariantPrice? loadedVariantPrice;
+    private Guid? variantPriceId;
+    private bool isSaving;
+    private bool isLoadingExisting;
+    private string? message;
+    private string variantIdText = string.Empty;
+    private string? priceListIdText;
+    private string basePriceText = "0.00";
+    private string compareAtPriceText = string.Empty;
+    private string currency = "EUR";
+    private string validFromText = string.Empty;
+    private string validToText = string.Empty;
+    private bool isActive = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        priceLists = await StoreApiClient.GetPriceListsAsync(CancellationToken.None);
+        priceListIdText = priceLists.FirstOrDefault()?.Id.ToString("D");
+    }
+
+    private async Task LoadExistingAsync()
+    {
+        message = null;
+        loadedVariantPrice = null;
+
+        if (!Guid.TryParse(variantIdText, out var variantId))
+        {
+            message = "Enter a valid variant id.";
+            return;
+        }
+
+        isLoadingExisting = true;
+        loadedVariantPrice = await StoreApiClient.GetVariantPriceAsync(variantId, CancellationToken.None);
+        isLoadingExisting = false;
+
+        if (loadedVariantPrice is null)
+        {
+            variantPriceId = null;
+            message = "No existing variant price found. Saving will create a new record.";
+            return;
+        }
+
+        variantPriceId = loadedVariantPrice.Id;
+        priceListIdText = loadedVariantPrice.PriceListId.ToString("D");
+        basePriceText = loadedVariantPrice.BasePriceAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+        compareAtPriceText = loadedVariantPrice.CompareAtPriceAmount?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
+        currency = loadedVariantPrice.Currency;
+        validFromText = ToDateInputValue(loadedVariantPrice.ValidFromUtc);
+        validToText = ToDateInputValue(loadedVariantPrice.ValidToUtc);
+        isActive = loadedVariantPrice.IsActive;
+        message = "Variant price loaded.";
+    }
+
+    private async Task SaveAsync()
+    {
+        message = null;
+
+        if (!Guid.TryParse(variantIdText, out var variantId))
+        {
+            message = "Enter a valid variant id.";
+            return;
+        }
+
+        if (!Guid.TryParse(priceListIdText, out var priceListId))
+        {
+            message = "Select a valid price list.";
+            return;
+        }
+
+        if (!decimal.TryParse(basePriceText, out var basePrice))
+        {
+            message = "Enter a valid base price.";
+            return;
+        }
+
+        var compareAtPrice = TryParseDecimal(compareAtPriceText);
+        var request = new StoreVariantPriceRequest(
+            priceListId,
+            variantId,
+            basePrice,
+            compareAtPrice,
+            currency,
+            isActive,
+            ParseDate(validFromText),
+            ParseDate(validToText));
+
+        isSaving = true;
+        var createdId = variantPriceId is null
+            ? await StoreApiClient.CreateVariantPriceAsync(request, CancellationToken.None)
+            : null;
+        var success = variantPriceId is null
+            ? createdId is not null
+            : await StoreApiClient.UpdateVariantPriceAsync(variantPriceId.Value, request, CancellationToken.None);
+        isSaving = false;
+
+        if (createdId is not null)
+        {
+            variantPriceId = createdId.Value;
+        }
+
+        message = success ? "Variant price saved." : "Variant price save failed.";
+        if (success)
+        {
+            await LoadExistingAsync();
+        }
+    }
+
+    private void ResetForm()
+    {
+        variantPriceId = null;
+        loadedVariantPrice = null;
+        variantIdText = string.Empty;
+        priceListIdText = priceLists.FirstOrDefault()?.Id.ToString("D");
+        basePriceText = "0.00";
+        compareAtPriceText = string.Empty;
+        currency = "EUR";
+        validFromText = string.Empty;
+        validToText = string.Empty;
+        isActive = true;
+        message = null;
+    }
+
+    private void OnValidFromChanged(ChangeEventArgs args)
+    {
+        validFromText = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private void OnValidToChanged(ChangeEventArgs args)
+    {
+        validToText = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private static decimal? TryParseDecimal(string value)
+    {
+        return decimal.TryParse(value, out var parsed) ? parsed : null;
+    }
+
+    private static DateTime? ParseDate(string value)
+    {
+        return DateTime.TryParse(value, out var parsed) ? parsed : null;
+    }
+
+    private static string ToDateInputValue(DateTime? value)
+    {
+        return value?.ToLocalTime().ToString("yyyy-MM-ddTHH:mm") ?? string.Empty;
+    }
+
+    private static string FormatMoney(decimal amount, string currencyCode)
+    {
+        return $"{amount:0.00} {currencyCode.ToUpperInvariant()}";
+    }
+
+    private static string FormatWindow(DateTime? start, DateTime? end)
+    {
+        var startText = start?.ToString("u") ?? "immediate";
+        var endText = end?.ToString("u") ?? "open-ended";
+        return $"{startText} -> {endText}";
+    }
+}

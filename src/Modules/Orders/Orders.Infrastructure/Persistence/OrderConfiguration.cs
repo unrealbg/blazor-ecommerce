@@ -74,6 +74,19 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
                 .IsRequired();
         });
 
+        builder.OwnsOne(order => order.SubtotalBeforeDiscount, subtotalBuilder =>
+        {
+            subtotalBuilder.Property(total => total.Currency)
+                .HasColumnName("subtotal_before_discount_currency")
+                .HasMaxLength(3)
+                .IsRequired();
+
+            subtotalBuilder.Property(total => total.Amount)
+                .HasColumnName("subtotal_before_discount_amount")
+                .HasPrecision(18, 2)
+                .IsRequired();
+        });
+
         builder.OwnsOne(order => order.Total, totalBuilder =>
         {
             totalBuilder.Property(total => total.Currency)
@@ -83,6 +96,45 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 
             totalBuilder.Property(total => total.Amount)
                 .HasColumnName("total_amount")
+                .HasPrecision(18, 2)
+                .IsRequired();
+        });
+
+        builder.OwnsOne(order => order.LineDiscountTotal, totalBuilder =>
+        {
+            totalBuilder.Property(total => total.Currency)
+                .HasColumnName("line_discount_total_currency")
+                .HasMaxLength(3)
+                .IsRequired();
+
+            totalBuilder.Property(total => total.Amount)
+                .HasColumnName("line_discount_total_amount")
+                .HasPrecision(18, 2)
+                .IsRequired();
+        });
+
+        builder.OwnsOne(order => order.CartDiscountTotal, totalBuilder =>
+        {
+            totalBuilder.Property(total => total.Currency)
+                .HasColumnName("cart_discount_total_currency")
+                .HasMaxLength(3)
+                .IsRequired();
+
+            totalBuilder.Property(total => total.Amount)
+                .HasColumnName("cart_discount_total_amount")
+                .HasPrecision(18, 2)
+                .IsRequired();
+        });
+
+        builder.OwnsOne(order => order.ShippingDiscountTotal, totalBuilder =>
+        {
+            totalBuilder.Property(total => total.Currency)
+                .HasColumnName("shipping_discount_total_currency")
+                .HasMaxLength(3)
+                .IsRequired();
+
+            totalBuilder.Property(total => total.Amount)
+                .HasColumnName("shipping_discount_total_amount")
                 .HasPrecision(18, 2)
                 .IsRequired();
         });
@@ -99,6 +151,14 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
                 .HasPrecision(18, 2)
                 .IsRequired();
         });
+
+        builder.Property(order => order.AppliedCouponsJson)
+            .HasColumnName("applied_coupons_json")
+            .HasMaxLength(4000);
+
+        builder.Property(order => order.AppliedPromotionsJson)
+            .HasColumnName("applied_promotions_json")
+            .HasMaxLength(4000);
 
         builder.OwnsOne(order => order.ShippingAddress, shippingBuilder =>
         {
@@ -210,6 +270,14 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 
             linesBuilder.OwnsOne(line => line.UnitPrice, moneyBuilder =>
             {
+                moneyBuilder.WithOwner().HasForeignKey("OrderLineUnitPriceOrderId", "OrderLineUnitPriceVariantId");
+
+                moneyBuilder.Property<Guid>("OrderLineUnitPriceOrderId")
+                    .HasColumnName("order_id");
+
+                moneyBuilder.Property<Guid>("OrderLineUnitPriceVariantId")
+                    .HasColumnName("variant_id");
+
                 moneyBuilder.Property(money => money.Currency)
                     .HasColumnName("unit_currency")
                     .HasMaxLength(3)
@@ -219,7 +287,27 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
                     .HasColumnName("unit_amount")
                     .HasPrecision(18, 2)
                     .IsRequired();
+
+                moneyBuilder.HasKey("OrderLineUnitPriceOrderId", "OrderLineUnitPriceVariantId");
             });
+
+            linesBuilder.Property(line => line.BaseUnitAmount)
+                .HasColumnName("base_unit_amount")
+                .HasPrecision(18, 2)
+                .IsRequired();
+
+            linesBuilder.Property(line => line.CompareAtPriceAmount)
+                .HasColumnName("compare_at_price_amount")
+                .HasPrecision(18, 2);
+
+            linesBuilder.Property(line => line.DiscountTotalAmount)
+                .HasColumnName("discount_total_amount")
+                .HasPrecision(18, 2)
+                .IsRequired();
+
+            linesBuilder.Property(line => line.AppliedDiscountsJson)
+                .HasColumnName("applied_discounts_json")
+                .HasMaxLength(4000);
 
             linesBuilder.HasKey("order_id", "VariantId");
         });

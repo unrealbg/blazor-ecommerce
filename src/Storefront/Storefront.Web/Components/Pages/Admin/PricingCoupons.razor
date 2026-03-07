@@ -1,0 +1,236 @@
+@page "/admin/pricing/coupons"
+@rendermode InteractiveServer
+@layout Storefront.Web.Components.Layout.AdminLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>Admin Coupons</PageTitle>
+
+<h1>Coupons</h1>
+<p>Manage code-based promotions and redemption limits.</p>
+
+<section class="admin-panel">
+    <h2>@(editingCouponId is null ? "Create coupon" : "Edit coupon")</h2>
+    <form class="form-grid" @onsubmit="SaveAsync" @onsubmit:preventDefault="true">
+        <label>
+            Code
+            <input @bind="code" disabled="@(editingCouponId is not null)" />
+        </label>
+        <label>
+            Promotion
+            <select @bind="promotionIdText" disabled="@(editingCouponId is not null)">
+                @foreach (var promotion in promotions.OrderBy(item => item.Name))
+                {
+                    <option value="@promotion.Id">@promotion.Name</option>
+                }
+            </select>
+        </label>
+        <label>
+            Description
+            <input @bind="description" />
+        </label>
+        <label>
+            Start at
+            <input value="@startAtText" @onchange="OnStartAtChanged" type="datetime-local" />
+        </label>
+        <label>
+            End at
+            <input value="@endAtText" @onchange="OnEndAtChanged" type="datetime-local" />
+        </label>
+        <label>
+            Total usage limit
+            <input @bind="usageLimitTotalText" type="number" min="0" />
+        </label>
+        <label>
+            Per-customer limit
+            <input @bind="usageLimitPerCustomerText" type="number" min="0" />
+        </label>
+        <div class="cart-actions">
+            <button class="btn-primary" type="submit" disabled="@isSaving">Save</button>
+            <button class="btn-secondary" type="button" @onclick="ResetForm">Clear</button>
+        </div>
+    </form>
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <p class="status-message">@message</p>
+    }
+</section>
+
+<section class="admin-panel">
+    <h2>Existing coupons</h2>
+
+    @if (isLoading)
+    {
+        <p>Loading coupons...</p>
+    }
+    else if (coupons.Count == 0)
+    {
+        <p>No coupons configured.</p>
+    }
+    else
+    {
+        <table class="cart-table">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Promotion</th>
+                    <th>Status</th>
+                    <th>Usage</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var coupon in coupons.OrderBy(item => item.Code))
+                {
+                    <tr>
+                        <td>@coupon.Code</td>
+                        <td>@ResolvePromotionName(coupon.PromotionId)</td>
+                        <td>@CouponStatusLabel(coupon.Status)</td>
+                        <td>@coupon.TimesUsedTotal</td>
+                        <td>
+                            <button class="btn-link" type="button" @onclick="() => BeginEdit(coupon)">Edit</button>
+                            <button class="btn-link" type="button" @onclick="() => DisableAsync(coupon.Id)">Disable</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@code {
+    private IReadOnlyCollection<StoreCoupon> coupons = [];
+    private IReadOnlyCollection<StorePromotion> promotions = [];
+    private bool isLoading = true;
+    private bool isSaving;
+    private Guid? editingCouponId;
+    private string code = string.Empty;
+    private string description = string.Empty;
+    private string? promotionIdText;
+    private string startAtText = string.Empty;
+    private string endAtText = string.Empty;
+    private string usageLimitTotalText = string.Empty;
+    private string usageLimitPerCustomerText = string.Empty;
+    private string? message;
+
+    protected override Task OnInitializedAsync()
+    {
+        return LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        promotions = await StoreApiClient.GetPromotionsAsync(CancellationToken.None);
+        coupons = await StoreApiClient.GetCouponsAsync(CancellationToken.None);
+        promotionIdText ??= promotions.FirstOrDefault()?.Id.ToString("D");
+        isLoading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        message = null;
+        if (!Guid.TryParse(promotionIdText, out var promotionId))
+        {
+            message = "Select a promotion.";
+            return;
+        }
+
+        var request = new StoreCouponRequest(
+            code,
+            string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
+            promotionId,
+            ParseDate(startAtText),
+            ParseDate(endAtText),
+            TryParseInt(usageLimitTotalText),
+            TryParseInt(usageLimitPerCustomerText));
+
+        isSaving = true;
+        var success = editingCouponId is null
+            ? await StoreApiClient.CreateCouponAsync(request, CancellationToken.None) is not null
+            : await StoreApiClient.UpdateCouponAsync(editingCouponId.Value, request, CancellationToken.None);
+        isSaving = false;
+
+        message = success ? "Coupon saved." : "Coupon save failed.";
+        if (success)
+        {
+            await LoadAsync();
+            ResetForm();
+        }
+    }
+
+    private async Task DisableAsync(Guid couponId)
+    {
+        message = await StoreApiClient.DisableCouponAsync(couponId, CancellationToken.None)
+            ? "Coupon disabled."
+            : "Coupon disable failed.";
+        await LoadAsync();
+    }
+
+    private void BeginEdit(StoreCoupon coupon)
+    {
+        editingCouponId = coupon.Id;
+        code = coupon.Code;
+        description = coupon.Description ?? string.Empty;
+        promotionIdText = coupon.PromotionId.ToString("D");
+        startAtText = ToDateInputValue(coupon.StartAtUtc);
+        endAtText = ToDateInputValue(coupon.EndAtUtc);
+        usageLimitTotalText = coupon.UsageLimitTotal?.ToString() ?? string.Empty;
+        usageLimitPerCustomerText = coupon.UsageLimitPerCustomer?.ToString() ?? string.Empty;
+        message = null;
+    }
+
+    private void ResetForm()
+    {
+        editingCouponId = null;
+        code = string.Empty;
+        description = string.Empty;
+        promotionIdText = promotions.FirstOrDefault()?.Id.ToString("D");
+        startAtText = string.Empty;
+        endAtText = string.Empty;
+        usageLimitTotalText = string.Empty;
+        usageLimitPerCustomerText = string.Empty;
+    }
+
+    private void OnStartAtChanged(ChangeEventArgs args)
+    {
+        startAtText = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private void OnEndAtChanged(ChangeEventArgs args)
+    {
+        endAtText = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private string ResolvePromotionName(Guid promotionId)
+    {
+        return promotions.FirstOrDefault(item => item.Id == promotionId)?.Name ?? promotionId.ToString("D");
+    }
+
+    private static int? TryParseInt(string value)
+    {
+        return int.TryParse(value, out var parsed) ? parsed : null;
+    }
+
+    private static DateTime? ParseDate(string value)
+    {
+        return DateTime.TryParse(value, out var parsed) ? parsed : null;
+    }
+
+    private static string ToDateInputValue(DateTime? value)
+    {
+        return value?.ToLocalTime().ToString("yyyy-MM-ddTHH:mm") ?? string.Empty;
+    }
+
+    private static string CouponStatusLabel(int value)
+    {
+        return value switch
+        {
+            0 => "Active",
+            1 => "Disabled",
+            2 => "Archived",
+            _ => "Unknown",
+        };
+    }
+}

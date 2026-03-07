@@ -23,8 +23,12 @@ public static class ApplicationServiceCollectionExtensions
         services.TryAddScoped<IInventoryReservationService, NullInventoryReservationService>();
         services.TryAddScoped<IInventoryStockProvisioner, NullInventoryStockProvisioner>();
         services.TryAddScoped<IOrderPaymentService, NullOrderPaymentService>();
+        services.TryAddScoped<IOrderPricingReader, NullOrderPricingReader>();
         services.TryAddScoped<IShippingQuoteService, NullShippingQuoteService>();
         services.TryAddScoped<IOrderFulfillmentService, NullOrderFulfillmentService>();
+        services.TryAddScoped<IVariantPricingService, NullVariantPricingService>();
+        services.TryAddScoped<ICartPricingService, NullCartPricingService>();
+        services.TryAddScoped<IPricingRedemptionService, NullPricingRedemptionService>();
 
         return services;
     }

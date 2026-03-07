@@ -1,0 +1,416 @@
+@page "/admin/pricing/promotions"
+@rendermode InteractiveServer
+@layout Storefront.Web.Components.Layout.AdminLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>Admin Promotions</PageTitle>
+
+<h1>Promotions</h1>
+<p>Manage automatic discounts, campaign windows, stacking rules, and shipping offers.</p>
+
+<section class="admin-panel">
+    <h2>@(editingPromotionId is null ? "Create promotion" : "Edit promotion")</h2>
+    <form class="form-grid" @onsubmit="SaveAsync" @onsubmit:preventDefault="true">
+        <label>
+            Name
+            <input @bind="name" />
+        </label>
+        <label>
+            Internal code
+            <input @bind="code" />
+        </label>
+        <label>
+            Type
+            <select @bind="type">
+                <option value="0">PercentageOff</option>
+                <option value="1">FixedAmountOff</option>
+                <option value="2">FixedPrice</option>
+                <option value="3">BuyXGetY</option>
+                <option value="4">FreeShipping</option>
+            </select>
+        </label>
+        <label>
+            Priority
+            <input @bind="priority" type="number" />
+        </label>
+        <label>
+            Description
+            <input @bind="description" />
+        </label>
+        <label class="checkbox-field">
+            <input @bind="isExclusive" type="checkbox" />
+            Exclusive
+        </label>
+        <label class="checkbox-field">
+            <input @bind="allowWithCoupons" type="checkbox" />
+            Allow with coupons
+        </label>
+        <label>
+            Start at
+            <input value="@startAtText" @onchange="OnStartAtChanged" type="datetime-local" />
+        </label>
+        <label>
+            End at
+            <input value="@endAtText" @onchange="OnEndAtChanged" type="datetime-local" />
+        </label>
+        <label>
+            Total usage limit
+            <input @bind="usageLimitTotalText" type="number" min="0" />
+        </label>
+        <label>
+            Per-customer limit
+            <input @bind="usageLimitPerCustomerText" type="number" min="0" />
+        </label>
+
+        <label>
+            Scope type
+            <select @bind="scopeType">
+                <option value="0">Cart</option>
+                <option value="1">Category</option>
+                <option value="2">Product</option>
+                <option value="3">Variant</option>
+                <option value="4">Brand</option>
+                <option value="5">Shipping</option>
+            </select>
+        </label>
+        <label>
+            Scope target id
+            <input @bind="scopeTargetIdText" placeholder="Optional Guid" />
+        </label>
+
+        <label>
+            Condition type
+            <select @bind="conditionType">
+                <option value="">None</option>
+                <option value="0">MinSubtotal</option>
+                <option value="1">MinQuantity</option>
+                <option value="2">CustomerLoggedIn</option>
+                <option value="3">CategoryInCart</option>
+                <option value="4">VariantInCart</option>
+                <option value="5">CouponRequired</option>
+            </select>
+        </label>
+        <label>
+            Condition operator
+            <select @bind="conditionOperator">
+                <option value="0">Gte</option>
+                <option value="1">Eq</option>
+                <option value="2">Contains</option>
+            </select>
+        </label>
+        <label>
+            Condition value
+            <input @bind="conditionValue" />
+        </label>
+
+        <label>
+            Benefit type
+            <select @bind="benefitType">
+                <option value="0">PercentageOff</option>
+                <option value="1">FixedAmountOff</option>
+                <option value="2">FixedPrice</option>
+                <option value="3">FreeShipping</option>
+            </select>
+        </label>
+        <label>
+            Benefit amount
+            <input @bind="benefitValueAmountText" type="number" step="0.01" min="0" />
+        </label>
+        <label>
+            Benefit percent
+            <input @bind="benefitValuePercentText" type="number" step="0.01" min="0" />
+        </label>
+        <label>
+            Max discount
+            <input @bind="maxDiscountAmountText" type="number" step="0.01" min="0" />
+        </label>
+        <label class="checkbox-field">
+            <input @bind="applyPerUnit" type="checkbox" />
+            Apply per unit
+        </label>
+
+        <div class="cart-actions">
+            <button class="btn-primary" type="submit" disabled="@isSaving">Save</button>
+            <button class="btn-secondary" type="button" @onclick="ResetForm">Clear</button>
+        </div>
+    </form>
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <p class="status-message">@message</p>
+    }
+</section>
+
+<section class="admin-panel">
+    <h2>Existing promotions</h2>
+
+    @if (isLoading)
+    {
+        <p>Loading promotions...</p>
+    }
+    else if (promotions.Count == 0)
+    {
+        <p>No promotions configured.</p>
+    }
+    else
+    {
+        <table class="cart-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Type</th>
+                    <th>Priority</th>
+                    <th>Usage</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var promotion in promotions.OrderBy(item => item.Priority).ThenBy(item => item.Name))
+                {
+                    <tr>
+                        <td>@promotion.Name</td>
+                        <td>@PromotionStatusLabel(promotion.Status)</td>
+                        <td>@PromotionTypeLabel(promotion.Type)</td>
+                        <td>@promotion.Priority</td>
+                        <td>@promotion.TimesUsedTotal</td>
+                        <td>
+                            <button class="btn-link" type="button" @onclick="() => BeginEdit(promotion)">Edit</button>
+                            <button class="btn-link" type="button" @onclick="() => ActivateAsync(promotion.Id)">Activate</button>
+                            <button class="btn-link" type="button" @onclick="() => ArchiveAsync(promotion.Id)">Archive</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</section>
+
+@code {
+    private IReadOnlyCollection<StorePromotion> promotions = [];
+    private bool isLoading = true;
+    private bool isSaving;
+    private Guid? editingPromotionId;
+    private string name = string.Empty;
+    private string code = string.Empty;
+    private int type;
+    private string description = string.Empty;
+    private int priority = 100;
+    private bool isExclusive;
+    private bool allowWithCoupons = true;
+    private string startAtText = string.Empty;
+    private string endAtText = string.Empty;
+    private string usageLimitTotalText = string.Empty;
+    private string usageLimitPerCustomerText = string.Empty;
+    private int scopeType;
+    private string scopeTargetIdText = string.Empty;
+    private string conditionType = string.Empty;
+    private int conditionOperator;
+    private string conditionValue = string.Empty;
+    private int benefitType;
+    private string benefitValueAmountText = string.Empty;
+    private string benefitValuePercentText = string.Empty;
+    private string maxDiscountAmountText = string.Empty;
+    private bool applyPerUnit;
+    private string? message;
+
+    protected override Task OnInitializedAsync()
+    {
+        return LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        promotions = await StoreApiClient.GetPromotionsAsync(CancellationToken.None);
+        isLoading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        message = null;
+
+        var scopes = new[]
+        {
+            new StorePromotionScope(scopeType, ParseGuid(scopeTargetIdText)),
+        };
+
+        var conditions = string.IsNullOrWhiteSpace(conditionType)
+            ? Array.Empty<StorePromotionCondition>()
+            : [new StorePromotionCondition(int.Parse(conditionType), conditionOperator, conditionValue)];
+
+        var benefits = new[]
+        {
+            new StorePromotionBenefit(
+                benefitType,
+                TryParseDecimal(benefitValueAmountText),
+                TryParseDecimal(benefitValuePercentText),
+                TryParseDecimal(maxDiscountAmountText),
+                applyPerUnit),
+        };
+
+        var request = new StorePromotionRequest(
+            name,
+            string.IsNullOrWhiteSpace(code) ? null : code.Trim(),
+            type,
+            string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
+            priority,
+            isExclusive,
+            allowWithCoupons,
+            ParseDate(startAtText),
+            ParseDate(endAtText),
+            TryParseInt(usageLimitTotalText),
+            TryParseInt(usageLimitPerCustomerText),
+            scopes,
+            conditions,
+            benefits);
+
+        isSaving = true;
+        var success = editingPromotionId is null
+            ? await StoreApiClient.CreatePromotionAsync(request, CancellationToken.None) is not null
+            : await StoreApiClient.UpdatePromotionAsync(editingPromotionId.Value, request, CancellationToken.None);
+        isSaving = false;
+
+        message = success ? "Promotion saved." : "Promotion save failed.";
+        if (success)
+        {
+            await LoadAsync();
+            ResetForm();
+        }
+    }
+
+    private async Task ActivateAsync(Guid promotionId)
+    {
+        message = await StoreApiClient.ActivatePromotionAsync(promotionId, CancellationToken.None)
+            ? "Promotion activated."
+            : "Promotion activation failed.";
+        await LoadAsync();
+    }
+
+    private async Task ArchiveAsync(Guid promotionId)
+    {
+        message = await StoreApiClient.ArchivePromotionAsync(promotionId, CancellationToken.None)
+            ? "Promotion archived."
+            : "Promotion archive failed.";
+        await LoadAsync();
+    }
+
+    private void BeginEdit(StorePromotion promotion)
+    {
+        editingPromotionId = promotion.Id;
+        name = promotion.Name;
+        code = promotion.Code ?? string.Empty;
+        type = promotion.Type;
+        description = promotion.Description ?? string.Empty;
+        priority = promotion.Priority;
+        isExclusive = promotion.IsExclusive;
+        allowWithCoupons = promotion.AllowWithCoupons;
+        startAtText = ToDateInputValue(promotion.StartAtUtc);
+        endAtText = ToDateInputValue(promotion.EndAtUtc);
+        usageLimitTotalText = promotion.UsageLimitTotal?.ToString() ?? string.Empty;
+        usageLimitPerCustomerText = promotion.UsageLimitPerCustomer?.ToString() ?? string.Empty;
+
+        var scope = promotion.Scopes.FirstOrDefault();
+        scopeType = scope?.ScopeType ?? 0;
+        scopeTargetIdText = scope?.TargetId?.ToString("D") ?? string.Empty;
+
+        var condition = promotion.Conditions.FirstOrDefault();
+        conditionType = condition is null ? string.Empty : condition.ConditionType.ToString();
+        conditionOperator = condition?.Operator ?? 0;
+        conditionValue = condition?.Value ?? string.Empty;
+
+        var benefit = promotion.Benefits.FirstOrDefault();
+        benefitType = benefit?.BenefitType ?? 0;
+        benefitValueAmountText = benefit?.ValueAmount?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
+        benefitValuePercentText = benefit?.ValuePercent?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
+        maxDiscountAmountText = benefit?.MaxDiscountAmount?.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty;
+        applyPerUnit = benefit?.ApplyPerUnit ?? false;
+        message = null;
+    }
+
+    private void ResetForm()
+    {
+        editingPromotionId = null;
+        name = string.Empty;
+        code = string.Empty;
+        type = 0;
+        description = string.Empty;
+        priority = 100;
+        isExclusive = false;
+        allowWithCoupons = true;
+        startAtText = string.Empty;
+        endAtText = string.Empty;
+        usageLimitTotalText = string.Empty;
+        usageLimitPerCustomerText = string.Empty;
+        scopeType = 0;
+        scopeTargetIdText = string.Empty;
+        conditionType = string.Empty;
+        conditionOperator = 0;
+        conditionValue = string.Empty;
+        benefitType = 0;
+        benefitValueAmountText = string.Empty;
+        benefitValuePercentText = string.Empty;
+        maxDiscountAmountText = string.Empty;
+        applyPerUnit = false;
+    }
+
+    private void OnStartAtChanged(ChangeEventArgs args)
+    {
+        startAtText = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private void OnEndAtChanged(ChangeEventArgs args)
+    {
+        endAtText = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private static Guid? ParseGuid(string value)
+    {
+        return Guid.TryParse(value, out var parsed) ? parsed : null;
+    }
+
+    private static decimal? TryParseDecimal(string value)
+    {
+        return decimal.TryParse(value, out var parsed) ? parsed : null;
+    }
+
+    private static int? TryParseInt(string value)
+    {
+        return int.TryParse(value, out var parsed) ? parsed : null;
+    }
+
+    private static DateTime? ParseDate(string value)
+    {
+        return DateTime.TryParse(value, out var parsed) ? parsed : null;
+    }
+
+    private static string ToDateInputValue(DateTime? value)
+    {
+        return value?.ToLocalTime().ToString("yyyy-MM-ddTHH:mm") ?? string.Empty;
+    }
+
+    private static string PromotionTypeLabel(int value)
+    {
+        return value switch
+        {
+            0 => "PercentageOff",
+            1 => "FixedAmountOff",
+            2 => "FixedPrice",
+            3 => "BuyXGetY",
+            4 => "FreeShipping",
+            _ => "Unknown",
+        };
+    }
+
+    private static string PromotionStatusLabel(int value)
+    {
+        return value switch
+        {
+            0 => "Draft",
+            1 => "Active",
+            2 => "Archived",
+            _ => "Unknown",
+        };
+    }
+}
