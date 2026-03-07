@@ -47,6 +47,49 @@ internal sealed class ProductCatalogReader(
             : await GetByIdAsync(product.Id, cancellationToken);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, ProductSnapshot>> GetByVariantIdsAsync(
+        IReadOnlyCollection<Guid> variantIds,
+        CancellationToken cancellationToken)
+    {
+        if (variantIds.Count == 0)
+        {
+            return new Dictionary<Guid, ProductSnapshot>();
+        }
+
+        var products = await QueryProducts()
+            .Where(item => item.Variants.Any(variant => variantIds.Contains(variant.Id)))
+            .ToListAsync(cancellationToken);
+
+        var brands = await LoadBrandsAsync(products, cancellationToken);
+        var categories = await LoadCategoriesAsync(products, cancellationToken);
+        var relatedProducts = products.ToDictionary(product => product.Id);
+        var productAvailability = await inventoryAvailabilityReader.GetByProductIdsAsync(
+            products.Select(product => product.Id).ToArray(),
+            cancellationToken);
+        var variantAvailability = await inventoryAvailabilityReader.GetByVariantIdsAsync(
+            products.SelectMany(product => product.Variants).Select(variant => variant.Id).ToArray(),
+            cancellationToken);
+
+        var snapshots = products
+            .Select(product =>
+            {
+                productAvailability.TryGetValue(product.Id, out var aggregateAvailability);
+                return MapProduct(
+                    product,
+                    brands,
+                    categories,
+                    relatedProducts,
+                    aggregateAvailability,
+                    variantAvailability);
+            })
+            .ToList();
+
+        return snapshots
+            .SelectMany(snapshot => snapshot.Variants.Select(variant => new { variant.Id, Snapshot = snapshot }))
+            .Where(item => variantIds.Contains(item.Id))
+            .ToDictionary(item => item.Id, item => item.Snapshot);
+    }
+
     public async Task<IReadOnlyCollection<ProductSnapshot>> ListAllAsync(CancellationToken cancellationToken)
     {
         var products = await QueryProducts()

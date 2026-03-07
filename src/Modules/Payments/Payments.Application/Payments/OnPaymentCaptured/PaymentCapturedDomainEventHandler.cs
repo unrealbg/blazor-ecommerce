@@ -7,7 +7,9 @@ namespace Payments.Application.Payments.OnPaymentCaptured;
 
 public sealed class PaymentCapturedDomainEventHandler(
     IOrderPaymentService orderPaymentService,
+    IOrderPricingReader orderPricingReader,
     IInventoryReservationService inventoryReservationService,
+    IPricingRedemptionService pricingRedemptionService,
     ILogger<PaymentCapturedDomainEventHandler> logger)
     : IDomainEventHandler<PaymentCaptured>
 {
@@ -36,6 +38,25 @@ public sealed class PaymentCapturedDomainEventHandler(
                 markOrderResult.Error.Code,
                 markOrderResult.Error.Message);
             return;
+        }
+
+        var pricingSnapshot = await orderPricingReader.GetByIdAsync(domainEvent.OrderId, cancellationToken);
+        if (pricingSnapshot is not null && pricingSnapshot.AppliedDiscounts.Count > 0)
+        {
+            var redemptionResult = await pricingRedemptionService.RegisterOrderRedemptionsAsync(
+                pricingSnapshot.OrderId,
+                pricingSnapshot.CustomerId,
+                pricingSnapshot.AppliedDiscounts,
+                cancellationToken);
+
+            if (redemptionResult.IsFailure)
+            {
+                logger.LogError(
+                    "Failed recording pricing redemptions for order {OrderId}. Code: {Code}, Message: {Message}",
+                    domainEvent.OrderId,
+                    redemptionResult.Error.Code,
+                    redemptionResult.Error.Message);
+            }
         }
 
         var consumeResult = await inventoryReservationService.ConsumeOrderReservationsAsync(

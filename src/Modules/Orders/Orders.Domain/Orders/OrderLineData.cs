@@ -10,4 +10,8 @@ public sealed record OrderLineData(
     string? VariantName,
     string? SelectedOptionsJson,
     Money UnitPrice,
-    int Quantity);
+    int Quantity,
+    decimal? BaseUnitAmount = null,
+    decimal? CompareAtPriceAmount = null,
+    decimal DiscountTotalAmount = 0m,
+    string? AppliedDiscountsJson = null);

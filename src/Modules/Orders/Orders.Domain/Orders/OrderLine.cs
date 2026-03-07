@@ -15,7 +15,11 @@ public sealed class OrderLine
         string productName,
         string? variantName,
         string? selectedOptionsJson,
+        decimal baseUnitAmount,
         Money unitPrice,
+        decimal? compareAtPriceAmount,
+        decimal discountTotalAmount,
+        string? appliedDiscountsJson,
         int quantity)
     {
         ProductId = productId;
@@ -24,7 +28,11 @@ public sealed class OrderLine
         ProductName = productName;
         VariantName = variantName;
         SelectedOptionsJson = selectedOptionsJson;
+        BaseUnitAmount = baseUnitAmount;
         UnitPrice = unitPrice;
+        CompareAtPriceAmount = compareAtPriceAmount;
+        DiscountTotalAmount = discountTotalAmount;
+        AppliedDiscountsJson = appliedDiscountsJson;
         Quantity = quantity;
     }
 
@@ -40,7 +48,15 @@ public sealed class OrderLine
 
     public string? SelectedOptionsJson { get; private set; }
 
+    public decimal BaseUnitAmount { get; private set; }
+
     public Money UnitPrice { get; private set; } = null!;
+
+    public decimal? CompareAtPriceAmount { get; private set; }
+
+    public decimal DiscountTotalAmount { get; private set; }
+
+    public string? AppliedDiscountsJson { get; private set; }
 
     public int Quantity { get; private set; }
 
@@ -51,7 +67,11 @@ public sealed class OrderLine
         string productName,
         string? variantName,
         string? selectedOptionsJson,
+        decimal baseUnitAmount,
         Money unitPrice,
+        decimal? compareAtPriceAmount,
+        decimal discountTotalAmount,
+        string? appliedDiscountsJson,
         int quantity)
     {
         return new OrderLine(
@@ -61,7 +81,11 @@ public sealed class OrderLine
             productName,
             variantName,
             selectedOptionsJson,
+            baseUnitAmount,
             unitPrice,
+            compareAtPriceAmount,
+            discountTotalAmount,
+            appliedDiscountsJson,
             quantity);
     }
 }

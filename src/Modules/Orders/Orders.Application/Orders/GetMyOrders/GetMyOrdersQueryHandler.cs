@@ -25,12 +25,18 @@ public sealed class GetMyOrdersQueryHandler(
                 order.Id,
                 order.CustomerId,
                 order.Total.Currency,
+                order.SubtotalBeforeDiscount.Amount,
                 order.Subtotal.Amount,
+                order.LineDiscountTotal.Amount,
+                order.CartDiscountTotal.Amount,
                 order.ShippingPrice.Amount,
+                order.ShippingDiscountTotal.Amount,
                 order.ShippingPrice.Currency,
                 order.ShippingMethodCode,
                 order.ShippingMethodName,
                 order.Total.Amount,
+                order.AppliedCouponsJson,
+                order.AppliedPromotionsJson,
                 order.Status.ToString(),
                 order.FulfillmentStatus.ToString(),
                 order.PlacedAtUtc,
@@ -53,11 +59,19 @@ public sealed class GetMyOrdersQueryHandler(
                 order.Lines
                     .Select(line => new OrderLineDto(
                         line.ProductId,
+                        line.VariantId,
+                        line.Sku,
                         string.IsNullOrWhiteSpace(line.VariantName)
                             ? line.ProductName
                             : $"{line.ProductName} ({line.VariantName})",
+                        line.VariantName,
+                        line.SelectedOptionsJson,
                         line.UnitPrice.Currency,
+                        line.BaseUnitAmount,
                         line.UnitPrice.Amount,
+                        line.CompareAtPriceAmount,
+                        line.DiscountTotalAmount,
+                        line.AppliedDiscountsJson,
                         line.Quantity))
                     .ToArray()))
             .ToArray();

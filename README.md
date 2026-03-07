@@ -7,6 +7,7 @@ Production-oriented modular monolith starter with strict module boundaries and c
 - Catalog
 - Cart
 - Orders
+- Pricing
 - Payments
 - Inventory
 - Shipping
@@ -47,6 +48,7 @@ Production-oriented modular monolith starter with strict module boundaries and c
   - `orders`
   - `inventory`
   - `shipping`
+  - `pricing`
   - `payments`
   - `customers`
   - `identity`
@@ -149,6 +151,25 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `POST /api/v1/payments/intents/{id}/refund` (authorized)
 - `GET /api/v1/payments/intents?page=&pageSize=&provider=&status=` (authorized)
 - `POST /api/v1/payments/webhooks/{provider}`
+- `GET /api/v1/pricing/variants/{variantId}`
+- `POST /api/v1/pricing/cart/price`
+- `POST /api/v1/pricing/coupons/validate`
+- `GET /api/v1/pricing/price-lists` (authorized)
+- `POST /api/v1/pricing/price-lists` (authorized)
+- `PUT /api/v1/pricing/price-lists/{id}` (authorized)
+- `POST /api/v1/pricing/variant-prices` (authorized)
+- `GET /api/v1/pricing/variant-prices/by-variant/{variantId}` (authorized)
+- `PUT /api/v1/pricing/variant-prices/{id}` (authorized)
+- `GET /api/v1/pricing/promotions` (authorized)
+- `GET /api/v1/pricing/promotions/{id}` (authorized)
+- `POST /api/v1/pricing/promotions` (authorized)
+- `PUT /api/v1/pricing/promotions/{id}` (authorized)
+- `POST /api/v1/pricing/promotions/{id}/activate` (authorized)
+- `POST /api/v1/pricing/promotions/{id}/archive` (authorized)
+- `GET /api/v1/pricing/coupons` (authorized)
+- `POST /api/v1/pricing/coupons` (authorized)
+- `PUT /api/v1/pricing/coupons/{id}` (authorized)
+- `POST /api/v1/pricing/coupons/{id}/disable` (authorized)
 - `POST /api/v1/shipping/quotes`
 - `GET /api/v1/shipping/methods`
 - `GET /api/v1/shipping/methods/{id}`
@@ -201,6 +222,11 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `GET /admin/shipments/{shipmentId}` (admin shipment details)
 - `GET /admin/payments` (admin payments list)
 - `GET /admin/payments/{paymentIntentId}` (admin payment details + refund action)
+- `GET /admin/pricing` (admin pricing overview)
+- `GET /admin/pricing/price-lists` (admin price lists)
+- `GET /admin/pricing/variants` (admin variant prices)
+- `GET /admin/pricing/promotions` (admin promotions)
+- `GET /admin/pricing/coupons` (admin coupons)
 - `GET /media/image?src=...&w=...&h=...&fit=max|cover|contain&format=auto|webp|avif|jpeg|png`
 - `GET /robots.txt`
 - `GET /sitemap.xml`
@@ -647,6 +673,223 @@ curl -X POST http://localhost:8080/api/v1/orders/checkout \
   -H "Idempotency-Key: checkout-customer-123-001" \
   -d '{"cartSessionId":"customer-123","email":"guest@example.com","shippingMethodCode":"standard","shippingAddress":{"firstName":"John","lastName":"Doe","street":"Main St 1","city":"Sofia","postalCode":"1000","country":"BG","phone":"+359888000111"},"billingAddress":{"firstName":"John","lastName":"Doe","street":"Main St 1","city":"Sofia","postalCode":"1000","country":"BG","phone":"+359888000111"}}'
 ```
+
+## Pricing & Promotions
+
+- New bounded context:
+  - `src/Modules/Pricing/Pricing.Domain`
+  - `src/Modules/Pricing/Pricing.Application`
+  - `src/Modules/Pricing/Pricing.Infrastructure`
+  - `src/Modules/Pricing/Pricing.Api`
+- Schema: `pricing`
+- Core persistence:
+  - `price_lists`
+  - `variant_prices`
+  - `promotions`
+  - `promotion_scopes`
+  - `promotion_conditions`
+  - `promotion_benefits`
+  - `coupons`
+  - `promotion_redemptions`
+
+### Architecture
+
+- Pricing is resolved through `IPricingEngine`-style services:
+  - `IVariantPricingService`
+  - `ICartPricingService`
+  - `IPricingManagementService`
+  - `IPricingRedemptionService`
+- Catalog remains the source of product/variant identity.
+- Pricing owns commercial policy only:
+  - base prices
+  - compare-at prices
+  - automatic promotions
+  - coupon-linked promotions
+  - shipping discounts
+- Orders never recalculate historical prices. Checkout snapshots the resolved pricing into the order aggregate.
+
+### Price List Model
+
+- MVP runs with one active default EUR price list, seeded automatically by infrastructure initialization.
+- The model already supports additional price lists (`default`, `vip`, `wholesale`) with:
+  - `Code`
+  - `Priority`
+  - `IsDefault`
+  - `IsActive`
+- Variant prices are time-bound and can be scheduled with `ValidFromUtc` / `ValidToUtc`.
+
+### Base vs Compare-At Price
+
+- `VariantPrice.BasePriceAmount` is the current sell price source for a variant in a price list.
+- `VariantPrice.CompareAtPriceAmount` is optional and is used for strike-through/original-price presentation.
+- `CompareAtPriceAmount` cannot be lower than the base price.
+- Storefront product cards, product detail pages, cart, and checkout use the resolved effective price plus compare-at display when present.
+
+### Promotion Model
+
+- `Promotion` defines campaign identity, validity, exclusivity, and usage limits.
+- `PromotionScope` targets one or more of:
+  - `Cart`
+  - `Category`
+  - `Product`
+  - `Variant`
+  - `Brand`
+  - `Shipping`
+- `PromotionCondition` supports:
+  - `MinSubtotal`
+  - `MinQuantity`
+  - `CustomerLoggedIn`
+  - `CategoryInCart`
+  - `VariantInCart`
+  - `CouponRequired`
+- `PromotionBenefit` supports:
+  - `PercentageOff`
+  - `FixedAmountOff`
+  - `FixedPrice`
+  - `FreeShipping`
+
+### Coupon Model
+
+- Coupons are first-class aggregates linked one-to-one to a promotion.
+- Codes are normalized to uppercase and validated through:
+  - activity/status
+  - time window
+  - total usage limit
+  - per-customer usage limit
+  - promotion eligibility
+- Cart API:
+  - `POST /api/v1/cart/{customerId}/coupon`
+  - `DELETE /api/v1/cart/{customerId}/coupon`
+
+### Stacking Policy
+
+- One best line-level promotion per line.
+- One best cart-level promotion.
+- One best shipping promotion.
+- Exclusive promotions block other non-compatible promotions.
+- Coupon promotions participate only when:
+  - coupon is valid
+  - linked promotion is eligible
+  - stacking rules allow it
+- This keeps pricing deterministic and predictable under load.
+
+### Validity Windows
+
+- Price, promotion, and coupon windows are evaluated in UTC through the shared `IClock`.
+- Null `StartAtUtc` means immediate activation.
+- Null `EndAtUtc` means open-ended validity.
+- Draft/Disabled/Archived entities never apply, even if the time window matches.
+
+### Usage Counting Policy
+
+- Promotion and coupon usage is recorded in `promotion_redemptions`.
+- Usage is burned only after successful payment capture, not on cart apply or checkout creation.
+- Payment idempotency and webhook replay protection prevent double redemption counting for the same order.
+
+### Checkout Snapshot Behavior
+
+- Cart is repriced at checkout with `BypassCache=true`.
+- Order snapshot persists:
+  - per-line base/final unit amounts
+  - compare-at amount
+  - line discount snapshot JSON
+  - order-level subtotal/discount/shipping/grand total
+  - applied coupon list
+  - applied promotion list
+- Cart-level discounts are allocated onto order line final unit prices for immutable historical display, while order totals still retain dedicated cart/shipping discount buckets.
+
+### Shipping Discounts
+
+- Shipping promotions are resolved independently from line/cart promotions.
+- Free shipping and shipping amount discounts affect only shipping totals.
+- `ShippingDiscountTotalAmount` is snapshotted on the order and included in the final payable total.
+
+### Search Integration
+
+- Search read model keeps stable base/default pricing fields for sort/filter.
+- Storefront search/category pages decorate product cards with current effective pricing through the pricing read service at request time.
+- This avoids hard-baking campaign math into the search index while keeping storefront price display current.
+
+### Caching
+
+- Variant effective pricing is cached with a short TTL (`Pricing:VariantCacheSeconds`).
+- Cart pricing responses are cached by normalized cart fingerprint (`Pricing:CartCacheSeconds`).
+- Cache is Redis-backed when available and degrades gracefully to no-op behavior when cache access fails.
+- Checkout always re-evaluates pricing fresh and does not trust cached cart totals.
+
+### Admin UI
+
+- `/admin/pricing`
+- `/admin/pricing/price-lists`
+- `/admin/pricing/variants`
+- `/admin/pricing/promotions`
+- `/admin/pricing/coupons`
+
+The admin UI supports:
+
+- creating/updating price lists
+- creating/updating variant prices
+- creating/updating/activating/archiving promotions
+- creating/updating/disabling coupons
+
+### Local Dev Examples
+
+```bash
+# Set explicit base and compare-at price for a variant
+curl -X POST http://localhost:8080/api/v1/pricing/variant-prices \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"priceListId":"PUT_DEFAULT_PRICE_LIST_ID","variantId":"PUT_VARIANT_ID","basePriceAmount":89.99,"compareAtPriceAmount":119.99,"currency":"EUR","isActive":true,"validFromUtc":null,"validToUtc":null}'
+```
+
+```bash
+# Create a 10% category promotion
+curl -X POST http://localhost:8080/api/v1/pricing/promotions \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"name":"10% Keyboards","code":"KEYBOARDS10","type":0,"description":"10% off keyboards","priority":50,"isExclusive":false,"allowWithCoupons":true,"startAtUtc":null,"endAtUtc":null,"usageLimitTotal":null,"usageLimitPerCustomer":null,"scopes":[{"scopeType":1,"targetId":"PUT_CATEGORY_ID"}],"conditions":[],"benefits":[{"benefitType":0,"valueAmount":null,"valuePercent":10.0,"maxDiscountAmount":null,"applyPerUnit":false}]}'
+```
+
+```bash
+# Create a free shipping coupon
+curl -X POST http://localhost:8080/api/v1/pricing/promotions \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"name":"Free shipping promo","code":"FREESHIPPROMO","type":4,"description":"Free shipping when coupon applies","priority":20,"isExclusive":false,"allowWithCoupons":true,"startAtUtc":null,"endAtUtc":null,"usageLimitTotal":null,"usageLimitPerCustomer":null,"scopes":[{"scopeType":5,"targetId":null}],"conditions":[],"benefits":[{"benefitType":3,"valueAmount":null,"valuePercent":null,"maxDiscountAmount":null,"applyPerUnit":false}]}'
+```
+
+```bash
+# Attach coupon to the shipping promotion
+curl -X POST http://localhost:8080/api/v1/pricing/coupons \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"code":"FREESHIP","description":"Free shipping coupon","promotionId":"PUT_PROMOTION_ID","startAtUtc":null,"endAtUtc":null,"usageLimitTotal":null,"usageLimitPerCustomer":null}'
+```
+
+```bash
+# Apply coupon to cart
+curl -X POST http://localhost:8080/api/v1/cart/customer-123/coupon \
+  -H "Content-Type: application/json" \
+  -d '{"couponCode":"FREESHIP"}'
+```
+
+```bash
+# Preview cart pricing directly
+curl -X POST http://localhost:8080/api/v1/pricing/cart/price \
+  -H "Content-Type: application/json" \
+  -d '{"customerId":"customer-123","isAuthenticated":false,"lines":[{"productId":"PUT_PRODUCT_ID","variantId":"PUT_VARIANT_ID","quantity":1}],"couponCode":"FREESHIP","shipping":{"shippingMethodCode":"standard","currency":"EUR","priceAmount":5.99},"bypassCache":true}'
+```
+
+### Future Path
+
+- customer-group / VIP price lists
+- wholesale pricing
+- multi-currency providers
+- tier pricing and quantity breaks
+- bundle and Buy X Get Y promotions
+- scheduled flash sale tooling
+- promotion preview/simulation tools
+- marketplace commission overlays
 
 ## Inventory & Reservations
 
@@ -1135,6 +1378,16 @@ dotnet ef migrations add <MigrationName> \
   --project src/Modules/Payments/Payments.Infrastructure/Payments.Infrastructure.csproj \
   --startup-project src/Modules/Payments/Payments.Infrastructure/Payments.Infrastructure.csproj \
   --context Payments.Infrastructure.Persistence.PaymentsDbContext \
+  --output-dir Persistence/Migrations
+```
+
+### Pricing
+
+```bash
+dotnet ef migrations add <MigrationName> \
+  --project src/Modules/Pricing/Pricing.Infrastructure/Pricing.Infrastructure.csproj \
+  --startup-project src/Modules/Pricing/Pricing.Infrastructure/Pricing.Infrastructure.csproj \
+  --context Pricing.Infrastructure.Persistence.PricingDbContext \
   --output-dir Persistence/Migrations
 ```
 

@@ -9,5 +9,9 @@ public sealed record CartLineDto(
     string? SelectedOptionsJson,
     string? ImageUrl,
     string Currency,
-    decimal UnitAmount,
+    decimal BaseUnitAmount,
+    decimal? CompareAtUnitAmount,
+    decimal FinalUnitAmount,
+    decimal LineTotalAmount,
+    decimal DiscountTotalAmount,
     int Quantity);

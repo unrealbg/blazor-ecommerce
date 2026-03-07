@@ -65,9 +65,24 @@ public sealed class StoreApiClient(
         int quantity,
         CancellationToken cancellationToken)
     {
+        return await AddItemToCartAsync(
+            customerId,
+            productId,
+            Guid.Empty,
+            quantity,
+            cancellationToken);
+    }
+
+    public async Task<bool> AddItemToCartAsync(
+        string customerId,
+        Guid productId,
+        Guid variantId,
+        int quantity,
+        CancellationToken cancellationToken)
+    {
         var response = await httpClient.PostAsJsonAsync(
             $"/api/v1/cart/{customerId}/items",
-            new AddCartItemRequest(productId, quantity),
+            new AddCartItemRequest(productId, variantId, quantity),
             cancellationToken);
 
         return response.IsSuccessStatusCode;
@@ -93,6 +108,27 @@ public sealed class StoreApiClient(
         CancellationToken cancellationToken)
     {
         var response = await httpClient.DeleteAsync($"/api/v1/cart/{customerId}/items/{productId}", cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> ApplyCouponAsync(
+        string customerId,
+        string couponCode,
+        CancellationToken cancellationToken)
+    {
+        var response = await httpClient.PostAsJsonAsync(
+            $"/api/v1/cart/{customerId}/coupon",
+            new ApplyCouponRequest(couponCode),
+            cancellationToken);
+
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> RemoveCouponAsync(
+        string customerId,
+        CancellationToken cancellationToken)
+    {
+        var response = await httpClient.DeleteAsync($"/api/v1/cart/{customerId}/coupon", cancellationToken);
         return response.IsSuccessStatusCode;
     }
 
@@ -828,6 +864,255 @@ public sealed class StoreApiClient(
         return response.IsSuccessStatusCode;
     }
 
+    public async Task<IReadOnlyCollection<StorePriceList>> GetPriceListsAsync(CancellationToken cancellationToken)
+    {
+        var response = await GetAuthorizedOrDefaultAsync<IReadOnlyCollection<StorePriceList>>(
+            "/api/v1/pricing/price-lists",
+            cancellationToken);
+        return response ?? [];
+    }
+
+    public async Task<Guid?> CreatePriceListAsync(StorePriceListRequest request, CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/pricing/price-lists")
+        {
+            Content = JsonContent.Create(new CreatePriceListRequest(
+                request.Name,
+                request.Code,
+                request.Currency,
+                request.IsDefault,
+                request.IsActive,
+                request.Priority)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<CreatePricingEntityResponse>(cancellationToken);
+        return payload?.Id;
+    }
+
+    public async Task<bool> UpdatePriceListAsync(
+        Guid priceListId,
+        StorePriceListRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/pricing/price-lists/{priceListId:D}")
+        {
+            Content = JsonContent.Create(new UpdatePriceListRequest(
+                request.Name,
+                request.Currency,
+                request.IsDefault,
+                request.IsActive,
+                request.Priority)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public Task<StoreVariantPrice?> GetVariantPriceAsync(Guid variantId, CancellationToken cancellationToken)
+    {
+        return GetAuthorizedOrDefaultAsync<StoreVariantPrice>(
+            $"/api/v1/pricing/variant-prices/by-variant/{variantId:D}",
+            cancellationToken);
+    }
+
+    public async Task<Guid?> CreateVariantPriceAsync(
+        StoreVariantPriceRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/pricing/variant-prices")
+        {
+            Content = JsonContent.Create(new CreateVariantPriceRequest(
+                request.PriceListId,
+                request.VariantId,
+                request.BasePriceAmount,
+                request.CompareAtPriceAmount,
+                request.Currency,
+                request.IsActive,
+                request.ValidFromUtc,
+                request.ValidToUtc)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<CreatePricingEntityResponse>(cancellationToken);
+        return payload?.Id;
+    }
+
+    public async Task<bool> UpdateVariantPriceAsync(
+        Guid variantPriceId,
+        StoreVariantPriceRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/pricing/variant-prices/{variantPriceId:D}")
+        {
+            Content = JsonContent.Create(new UpdateVariantPriceRequest(
+                request.BasePriceAmount,
+                request.CompareAtPriceAmount,
+                request.Currency,
+                request.IsActive,
+                request.ValidFromUtc,
+                request.ValidToUtc)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<IReadOnlyCollection<StorePromotion>> GetPromotionsAsync(CancellationToken cancellationToken)
+    {
+        var response = await GetAuthorizedOrDefaultAsync<IReadOnlyCollection<StorePromotion>>(
+            "/api/v1/pricing/promotions",
+            cancellationToken);
+        return response ?? [];
+    }
+
+    public Task<StorePromotion?> GetPromotionAsync(Guid promotionId, CancellationToken cancellationToken)
+    {
+        return GetAuthorizedOrDefaultAsync<StorePromotion>(
+            $"/api/v1/pricing/promotions/{promotionId:D}",
+            cancellationToken);
+    }
+
+    public async Task<Guid?> CreatePromotionAsync(StorePromotionRequest request, CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/pricing/promotions")
+        {
+            Content = JsonContent.Create(new CreatePromotionRequest(
+                request.Name,
+                request.Code,
+                request.Type,
+                request.Description,
+                request.Priority,
+                request.IsExclusive,
+                request.AllowWithCoupons,
+                request.StartAtUtc,
+                request.EndAtUtc,
+                request.UsageLimitTotal,
+                request.UsageLimitPerCustomer,
+                request.Scopes,
+                request.Conditions,
+                request.Benefits)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<CreatePricingEntityResponse>(cancellationToken);
+        return payload?.Id;
+    }
+
+    public async Task<bool> UpdatePromotionAsync(
+        Guid promotionId,
+        StorePromotionRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/pricing/promotions/{promotionId:D}")
+        {
+            Content = JsonContent.Create(new UpdatePromotionRequest(
+                request.Name,
+                request.Code,
+                request.Description,
+                request.Priority,
+                request.IsExclusive,
+                request.AllowWithCoupons,
+                request.StartAtUtc,
+                request.EndAtUtc,
+                request.UsageLimitTotal,
+                request.UsageLimitPerCustomer,
+                request.Scopes,
+                request.Conditions,
+                request.Benefits)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> ActivatePromotionAsync(Guid promotionId, CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/pricing/promotions/{promotionId:D}/activate");
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> ArchivePromotionAsync(Guid promotionId, CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/pricing/promotions/{promotionId:D}/archive");
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<IReadOnlyCollection<StoreCoupon>> GetCouponsAsync(CancellationToken cancellationToken)
+    {
+        var response = await GetAuthorizedOrDefaultAsync<IReadOnlyCollection<StoreCoupon>>(
+            "/api/v1/pricing/coupons",
+            cancellationToken);
+        return response ?? [];
+    }
+
+    public async Task<Guid?> CreateCouponAsync(StoreCouponRequest request, CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/pricing/coupons")
+        {
+            Content = JsonContent.Create(new CreateCouponRequest(
+                request.Code,
+                request.Description,
+                request.PromotionId,
+                request.StartAtUtc,
+                request.EndAtUtc,
+                request.UsageLimitTotal,
+                request.UsageLimitPerCustomer)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<CreatePricingEntityResponse>(cancellationToken);
+        return payload?.Id;
+    }
+
+    public async Task<bool> UpdateCouponAsync(
+        Guid couponId,
+        StoreCouponRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/pricing/coupons/{couponId:D}")
+        {
+            Content = JsonContent.Create(new UpdateCouponRequest(
+                request.Description,
+                request.StartAtUtc,
+                request.EndAtUtc,
+                request.UsageLimitTotal,
+                request.UsageLimitPerCustomer)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> DisableCouponAsync(Guid couponId, CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/pricing/coupons/{couponId:D}/disable");
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
     private static string BuildSearchUri(StoreSearchProductsRequest request)
     {
         var queryParameters = new List<KeyValuePair<string, string?>>();
@@ -928,7 +1213,9 @@ public sealed class StoreApiClient(
         return response;
     }
 
-    private sealed record AddCartItemRequest(Guid ProductId, int Quantity);
+    private sealed record AddCartItemRequest(Guid ProductId, Guid VariantId, int Quantity);
+
+    private sealed record ApplyCouponRequest(string CouponCode);
 
     private sealed record UpdateCartItemQuantityRequest(int Quantity);
 
@@ -952,6 +1239,8 @@ public sealed class StoreApiClient(
     private sealed record CreateRedirectRuleRequest(string FromPath, string ToPath, int StatusCode);
 
     private sealed record CreateRedirectRuleResponse(Guid Id);
+
+    private sealed record CreatePricingEntityResponse(Guid Id);
 
     private sealed record CreatePaymentIntentRequest(Guid OrderId, string? Provider, string? CustomerEmail);
 
@@ -1029,4 +1318,84 @@ public sealed class StoreApiClient(
     private sealed record CreateShipmentRequest(Guid OrderId, string? ShippingMethodCode);
 
     private sealed record CancelShipmentRequest(string? Reason);
+
+    private sealed record CreatePriceListRequest(
+        string Name,
+        string Code,
+        string Currency,
+        bool IsDefault,
+        bool IsActive,
+        int Priority);
+
+    private sealed record UpdatePriceListRequest(
+        string Name,
+        string Currency,
+        bool IsDefault,
+        bool IsActive,
+        int Priority);
+
+    private sealed record CreateVariantPriceRequest(
+        Guid PriceListId,
+        Guid VariantId,
+        decimal BasePriceAmount,
+        decimal? CompareAtPriceAmount,
+        string Currency,
+        bool IsActive,
+        DateTime? ValidFromUtc,
+        DateTime? ValidToUtc);
+
+    private sealed record UpdateVariantPriceRequest(
+        decimal BasePriceAmount,
+        decimal? CompareAtPriceAmount,
+        string Currency,
+        bool IsActive,
+        DateTime? ValidFromUtc,
+        DateTime? ValidToUtc);
+
+    private sealed record CreatePromotionRequest(
+        string Name,
+        string? Code,
+        int Type,
+        string? Description,
+        int Priority,
+        bool IsExclusive,
+        bool AllowWithCoupons,
+        DateTime? StartAtUtc,
+        DateTime? EndAtUtc,
+        int? UsageLimitTotal,
+        int? UsageLimitPerCustomer,
+        IReadOnlyCollection<StorePromotionScope> Scopes,
+        IReadOnlyCollection<StorePromotionCondition> Conditions,
+        IReadOnlyCollection<StorePromotionBenefit> Benefits);
+
+    private sealed record UpdatePromotionRequest(
+        string Name,
+        string? Code,
+        string? Description,
+        int Priority,
+        bool IsExclusive,
+        bool AllowWithCoupons,
+        DateTime? StartAtUtc,
+        DateTime? EndAtUtc,
+        int? UsageLimitTotal,
+        int? UsageLimitPerCustomer,
+        IReadOnlyCollection<StorePromotionScope> Scopes,
+        IReadOnlyCollection<StorePromotionCondition> Conditions,
+        IReadOnlyCollection<StorePromotionBenefit> Benefits);
+
+    private sealed record CreateCouponRequest(
+        string Code,
+        string? Description,
+        Guid PromotionId,
+        DateTime? StartAtUtc,
+        DateTime? EndAtUtc,
+        int? UsageLimitTotal,
+        int? UsageLimitPerCustomer);
+
+    private sealed record UpdateCouponRequest(
+        string? Description,
+        DateTime? StartAtUtc,
+        DateTime? EndAtUtc,
+        int? UsageLimitTotal,
+        int? UsageLimitPerCustomer);
 }

@@ -7,7 +7,8 @@ namespace Cart.Application.Carts.GetCart;
 public sealed class GetCartQueryHandler(
     ICartRepository cartRepository,
     ICustomerSessionCache customerSessionCache,
-    IInventoryReservationService inventoryReservationService)
+    IInventoryReservationService inventoryReservationService,
+    ICartPricingService cartPricingService)
     : IQueryHandler<GetCartQuery, CartDto?>
 {
     public async Task<CartDto?> Handle(GetCartQuery request, CancellationToken cancellationToken)
@@ -35,22 +36,85 @@ public sealed class GetCartQueryHandler(
             messages.Add("Some items in your cart were updated due to stock availability.");
         }
 
+        var pricingResult = await cartPricingService.PriceAsync(
+            new CartPricingRequest(
+                cart.CustomerId,
+                IsAuthenticated: false,
+                cart.Lines.Select(line => new CartPricingLineRequest(line.ProductId, line.VariantId, line.Quantity)).ToList(),
+                cart.AppliedCouponCode,
+                Shipping: null),
+            cancellationToken);
+
+        if (pricingResult.IsFailure)
+        {
+            messages.Add(pricingResult.Error.Message);
+
+            return new CartDto(
+                cart.Id,
+                cart.CustomerId,
+                cart.AppliedCouponCode,
+                cart.Lines.First().UnitPrice.Currency,
+                cart.Lines.Sum(line => line.UnitPrice.Amount * line.Quantity),
+                cart.Lines.Sum(line => line.UnitPrice.Amount * line.Quantity),
+                0m,
+                0m,
+                cart.Lines.Sum(line => line.UnitPrice.Amount * line.Quantity),
+                cart.Lines
+                    .Select(line => new CartLineDto(
+                        line.ProductId,
+                        line.VariantId,
+                        line.Sku,
+                        line.ProductName,
+                        line.VariantName,
+                        line.SelectedOptionsJson,
+                        line.ImageUrl,
+                        line.UnitPrice.Currency,
+                        line.UnitPrice.Amount,
+                        null,
+                        line.UnitPrice.Amount,
+                        line.UnitPrice.Amount * line.Quantity,
+                        0m,
+                        line.Quantity))
+                    .ToList(),
+                [],
+                messages);
+        }
+
+        messages.AddRange(pricingResult.Value.Messages);
+        var linesByVariantId = cart.Lines.ToDictionary(line => line.VariantId);
+
         return new CartDto(
             cart.Id,
             cart.CustomerId,
-            cart.Lines
-                .Select(line => new CartLineDto(
-                    line.ProductId,
-                    line.VariantId,
-                    line.Sku,
-                    line.ProductName,
-                    line.VariantName,
-                    line.SelectedOptionsJson,
-                    line.ImageUrl,
-                    line.UnitPrice.Currency,
-                    line.UnitPrice.Amount,
-                    line.Quantity))
+            pricingResult.Value.AppliedCouponCode,
+            pricingResult.Value.Currency,
+            pricingResult.Value.SubtotalBeforeDiscountAmount,
+            pricingResult.Value.SubtotalAmount,
+            pricingResult.Value.LineDiscountTotalAmount,
+            pricingResult.Value.CartDiscountTotalAmount,
+            pricingResult.Value.GrandTotalAmount,
+            pricingResult.Value.Lines
+                .Select(line =>
+                {
+                    var cartLine = linesByVariantId[line.VariantId];
+                    return new CartLineDto(
+                        cartLine.ProductId,
+                        cartLine.VariantId,
+                        cartLine.Sku,
+                        cartLine.ProductName,
+                        cartLine.VariantName,
+                        cartLine.SelectedOptionsJson,
+                        cartLine.ImageUrl,
+                        line.Currency,
+                        line.BaseUnitPriceAmount,
+                        line.CompareAtUnitPriceAmount,
+                        line.FinalUnitPriceAmount,
+                        line.LineTotalAmount,
+                        line.DiscountTotalAmount,
+                        cartLine.Quantity);
+                })
                 .ToList(),
+            pricingResult.Value.AppliedDiscounts,
             messages);
     }
 }

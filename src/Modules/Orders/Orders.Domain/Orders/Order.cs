@@ -22,9 +22,15 @@ public sealed class Order : AggregateRoot<Guid>
         OrderAddressSnapshot billingAddress,
         string shippingMethodCode,
         string shippingMethodName,
+        Money subtotalBeforeDiscount,
         Money shippingPrice,
+        Money lineDiscountTotal,
+        Money cartDiscountTotal,
+        Money shippingDiscountTotal,
         Money subtotal,
         Money total,
+        string? appliedCouponsJson,
+        string? appliedPromotionsJson,
         DateTime placedAtUtc)
     {
         Id = id;
@@ -35,9 +41,15 @@ public sealed class Order : AggregateRoot<Guid>
         BillingAddress = billingAddress;
         ShippingMethodCode = shippingMethodCode;
         ShippingMethodName = shippingMethodName;
+        SubtotalBeforeDiscount = subtotalBeforeDiscount;
         ShippingPrice = shippingPrice;
+        LineDiscountTotal = lineDiscountTotal;
+        CartDiscountTotal = cartDiscountTotal;
+        ShippingDiscountTotal = shippingDiscountTotal;
         Subtotal = subtotal;
         Total = total;
+        AppliedCouponsJson = appliedCouponsJson;
+        AppliedPromotionsJson = appliedPromotionsJson;
         PlacedAtUtc = placedAtUtc;
         Status = OrderStatus.PendingPayment;
         FulfillmentStatus = OrderFulfillmentStatus.Unfulfilled;
@@ -58,11 +70,23 @@ public sealed class Order : AggregateRoot<Guid>
 
     public string ShippingMethodName { get; private set; } = string.Empty;
 
+    public Money SubtotalBeforeDiscount { get; private set; } = null!;
+
     public Money ShippingPrice { get; private set; } = null!;
+
+    public Money LineDiscountTotal { get; private set; } = null!;
+
+    public Money CartDiscountTotal { get; private set; } = null!;
+
+    public Money ShippingDiscountTotal { get; private set; } = null!;
 
     public Money Subtotal { get; private set; } = null!;
 
     public Money Total { get; private set; } = null!;
+
+    public string? AppliedCouponsJson { get; private set; }
+
+    public string? AppliedPromotionsJson { get; private set; }
 
     public DateTime PlacedAtUtc { get; private set; }
 
@@ -90,7 +114,13 @@ public sealed class Order : AggregateRoot<Guid>
         string? shippingMethodCode = null,
         string? shippingMethodName = null,
         decimal shippingPriceAmount = 0m,
-        string? shippingCurrency = null)
+        string? shippingCurrency = null,
+        decimal? subtotalBeforeDiscountAmount = null,
+        decimal lineDiscountTotalAmount = 0m,
+        decimal cartDiscountTotalAmount = 0m,
+        decimal shippingDiscountTotalAmount = 0m,
+        string? appliedCouponsJson = null,
+        string? appliedPromotionsJson = null)
     {
         if (string.IsNullOrWhiteSpace(customerId))
         {
@@ -117,7 +147,8 @@ public sealed class Order : AggregateRoot<Guid>
         }
 
         var firstCurrency = lineData.First().UnitPrice.Currency;
-        var subtotalAmount = 0m;
+        var finalLineSubtotalAmount = 0m;
+        var baseSubtotalAmount = 0m;
         var orderLines = new List<OrderLine>(lineData.Count);
 
         foreach (var line in lineData)
@@ -146,7 +177,21 @@ public sealed class Order : AggregateRoot<Guid>
                     new Error("orders.line.name.required", "Order line product name is required."));
             }
 
-            subtotalAmount += Money.Round(line.UnitPrice.Amount * line.Quantity);
+            var baseUnitAmount = line.BaseUnitAmount ?? line.UnitPrice.Amount;
+            if (baseUnitAmount < 0m)
+            {
+                return Result<Order>.Failure(
+                    new Error("orders.line.base_price.invalid", "Order line base unit amount cannot be negative."));
+            }
+
+            if (line.DiscountTotalAmount < 0m)
+            {
+                return Result<Order>.Failure(
+                    new Error("orders.line.discount.invalid", "Order line discount cannot be negative."));
+            }
+
+            baseSubtotalAmount += Money.Round(baseUnitAmount * line.Quantity);
+            finalLineSubtotalAmount += Money.Round(line.UnitPrice.Amount * line.Quantity);
             orderLines.Add(OrderLine.Create(
                 line.ProductId,
                 line.VariantId,
@@ -154,8 +199,39 @@ public sealed class Order : AggregateRoot<Guid>
                 line.ProductName.Trim(),
                 string.IsNullOrWhiteSpace(line.VariantName) ? null : line.VariantName.Trim(),
                 string.IsNullOrWhiteSpace(line.SelectedOptionsJson) ? null : line.SelectedOptionsJson.Trim(),
+                baseUnitAmount,
                 line.UnitPrice,
+                line.CompareAtPriceAmount,
+                line.DiscountTotalAmount,
+                string.IsNullOrWhiteSpace(line.AppliedDiscountsJson) ? null : line.AppliedDiscountsJson.Trim(),
                 line.Quantity));
+        }
+
+        var resolvedSubtotalBeforeDiscount = subtotalBeforeDiscountAmount ?? baseSubtotalAmount;
+        var subtotalBeforeDiscountResult = Money.Create(firstCurrency, resolvedSubtotalBeforeDiscount);
+        if (subtotalBeforeDiscountResult.IsFailure)
+        {
+            return Result<Order>.Failure(subtotalBeforeDiscountResult.Error);
+        }
+
+        var lineDiscountTotalResult = Money.Create(firstCurrency, lineDiscountTotalAmount);
+        if (lineDiscountTotalResult.IsFailure)
+        {
+            return Result<Order>.Failure(lineDiscountTotalResult.Error);
+        }
+
+        var cartDiscountTotalResult = Money.Create(firstCurrency, cartDiscountTotalAmount);
+        if (cartDiscountTotalResult.IsFailure)
+        {
+            return Result<Order>.Failure(cartDiscountTotalResult.Error);
+        }
+
+        var subtotalAmount = Money.Round(finalLineSubtotalAmount);
+        if (subtotalAmount < 0m)
+        {
+            return Result<Order>.Failure(new Error(
+                "orders.subtotal.invalid",
+                "Order subtotal cannot be negative."));
         }
 
         var subtotalResult = Money.Create(firstCurrency, subtotalAmount);
@@ -181,7 +257,27 @@ public sealed class Order : AggregateRoot<Guid>
             return Result<Order>.Failure(shippingPriceResult.Error);
         }
 
-        var totalAmount = Money.Round(subtotalAmount + shippingPriceAmount);
+        var shippingDiscountTotalResult = Money.Create(firstCurrency, shippingDiscountTotalAmount);
+        if (shippingDiscountTotalResult.IsFailure)
+        {
+            return Result<Order>.Failure(shippingDiscountTotalResult.Error);
+        }
+
+        var finalShippingAmount = Money.Round(shippingPriceAmount - shippingDiscountTotalAmount);
+        if (finalShippingAmount < 0m)
+        {
+            return Result<Order>.Failure(new Error(
+                "orders.shipping.total.invalid",
+                "Final shipping amount cannot be negative."));
+        }
+
+        var finalShippingPriceResult = Money.Create(resolvedShippingCurrency, finalShippingAmount);
+        if (finalShippingPriceResult.IsFailure)
+        {
+            return Result<Order>.Failure(finalShippingPriceResult.Error);
+        }
+
+        var totalAmount = Money.Round(subtotalAmount + finalShippingAmount);
         var totalResult = Money.Create(firstCurrency, totalAmount);
         if (totalResult.IsFailure)
         {
@@ -197,9 +293,15 @@ public sealed class Order : AggregateRoot<Guid>
             billingAddress ?? OrderAddressSnapshot.Empty(),
             string.IsNullOrWhiteSpace(shippingMethodCode) ? "standard" : shippingMethodCode.Trim().ToLowerInvariant(),
             string.IsNullOrWhiteSpace(shippingMethodName) ? "Standard Delivery" : shippingMethodName.Trim(),
-            shippingPriceResult.Value,
+            subtotalBeforeDiscountResult.Value,
+            finalShippingPriceResult.Value,
+            lineDiscountTotalResult.Value,
+            cartDiscountTotalResult.Value,
+            shippingDiscountTotalResult.Value,
             subtotalResult.Value,
             totalResult.Value,
+            string.IsNullOrWhiteSpace(appliedCouponsJson) ? null : appliedCouponsJson.Trim(),
+            string.IsNullOrWhiteSpace(appliedPromotionsJson) ? null : appliedPromotionsJson.Trim(),
             placedAtUtc));
     }
 

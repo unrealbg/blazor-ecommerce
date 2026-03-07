@@ -182,6 +182,23 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
         ];
 
         private static readonly List<StoreShipment> Shipments = [];
+        private static readonly List<StorePriceList> PriceLists =
+        [
+            new(
+                Guid.Parse("c013cb43-20bb-4189-b0eb-75d948f1ab0a"),
+                "Default EUR",
+                "default",
+                "EUR",
+                true,
+                true,
+                100,
+                DateTime.UtcNow.AddDays(-30),
+                DateTime.UtcNow.AddDays(-1)),
+        ];
+
+        private static readonly List<StoreVariantPrice> VariantPrices = [];
+        private static readonly List<StorePromotion> Promotions = [];
+        private static readonly List<StoreCoupon> Coupons = [];
 
         private static StoreCustomerProfile? currentCustomer;
 
@@ -194,9 +211,34 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
             return Task.FromResult(true);
         }
 
+        public Task<bool> AddItemToCartAsync(
+            string customerId,
+            Guid productId,
+            Guid variantId,
+            int quantity,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(true);
+        }
+
         public Task<Guid?> CheckoutAsync(string customerId, string idempotencyKey, CancellationToken cancellationToken)
         {
             return Task.FromResult<Guid?>(Guid.Parse("7e840d4c-4994-4993-b344-e8219be85656"));
+        }
+
+        public Task<bool> ApplyCouponAsync(
+            string customerId,
+            string couponCode,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> RemoveCouponAsync(
+            string customerId,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(true);
         }
 
         public Task<Guid?> CheckoutAsync(
@@ -900,6 +942,250 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
             return UpdateShipmentStatusAsync(shipmentId, "Cancelled", reason ?? "Shipment cancelled");
         }
 
+        public Task<IReadOnlyCollection<StorePriceList>> GetPriceListsAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult<IReadOnlyCollection<StorePriceList>>(PriceLists.ToArray());
+        }
+
+        public Task<Guid?> CreatePriceListAsync(StorePriceListRequest request, CancellationToken cancellationToken)
+        {
+            var priceList = new StorePriceList(
+                Guid.NewGuid(),
+                request.Name,
+                request.Code,
+                request.Currency,
+                request.IsDefault,
+                request.IsActive,
+                request.Priority,
+                DateTime.UtcNow,
+                DateTime.UtcNow);
+
+            PriceLists.Add(priceList);
+            return Task.FromResult<Guid?>(priceList.Id);
+        }
+
+        public Task<bool> UpdatePriceListAsync(
+            Guid priceListId,
+            StorePriceListRequest request,
+            CancellationToken cancellationToken)
+        {
+            var index = PriceLists.FindIndex(item => item.Id == priceListId);
+            if (index < 0)
+            {
+                return Task.FromResult(false);
+            }
+
+            PriceLists[index] = PriceLists[index] with
+            {
+                Name = request.Name,
+                Currency = request.Currency,
+                IsDefault = request.IsDefault,
+                IsActive = request.IsActive,
+                Priority = request.Priority,
+                UpdatedAtUtc = DateTime.UtcNow,
+            };
+
+            return Task.FromResult(true);
+        }
+
+        public Task<StoreVariantPrice?> GetVariantPriceAsync(Guid variantId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<StoreVariantPrice?>(VariantPrices.SingleOrDefault(item => item.VariantId == variantId));
+        }
+
+        public Task<Guid?> CreateVariantPriceAsync(StoreVariantPriceRequest request, CancellationToken cancellationToken)
+        {
+            var variantPrice = new StoreVariantPrice(
+                Guid.NewGuid(),
+                request.PriceListId,
+                request.VariantId,
+                request.BasePriceAmount,
+                request.CompareAtPriceAmount,
+                request.Currency,
+                request.IsActive,
+                request.ValidFromUtc,
+                request.ValidToUtc,
+                DateTime.UtcNow,
+                DateTime.UtcNow);
+
+            VariantPrices.RemoveAll(item => item.VariantId == request.VariantId && item.PriceListId == request.PriceListId);
+            VariantPrices.Add(variantPrice);
+            return Task.FromResult<Guid?>(variantPrice.Id);
+        }
+
+        public Task<bool> UpdateVariantPriceAsync(
+            Guid variantPriceId,
+            StoreVariantPriceRequest request,
+            CancellationToken cancellationToken)
+        {
+            var index = VariantPrices.FindIndex(item => item.Id == variantPriceId);
+            if (index < 0)
+            {
+                return Task.FromResult(false);
+            }
+
+            VariantPrices[index] = VariantPrices[index] with
+            {
+                PriceListId = request.PriceListId,
+                VariantId = request.VariantId,
+                BasePriceAmount = request.BasePriceAmount,
+                CompareAtPriceAmount = request.CompareAtPriceAmount,
+                Currency = request.Currency,
+                IsActive = request.IsActive,
+                ValidFromUtc = request.ValidFromUtc,
+                ValidToUtc = request.ValidToUtc,
+                UpdatedAtUtc = DateTime.UtcNow,
+            };
+
+            return Task.FromResult(true);
+        }
+
+        public Task<IReadOnlyCollection<StorePromotion>> GetPromotionsAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult<IReadOnlyCollection<StorePromotion>>(Promotions.ToArray());
+        }
+
+        public Task<StorePromotion?> GetPromotionAsync(Guid promotionId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<StorePromotion?>(Promotions.SingleOrDefault(item => item.Id == promotionId));
+        }
+
+        public Task<Guid?> CreatePromotionAsync(StorePromotionRequest request, CancellationToken cancellationToken)
+        {
+            var promotion = new StorePromotion(
+                Guid.NewGuid(),
+                request.Name,
+                request.Code,
+                request.Type,
+                0,
+                request.Description,
+                request.Priority,
+                request.IsExclusive,
+                request.AllowWithCoupons,
+                request.StartAtUtc,
+                request.EndAtUtc,
+                request.UsageLimitTotal,
+                request.UsageLimitPerCustomer,
+                0,
+                request.Scopes,
+                request.Conditions,
+                request.Benefits,
+                DateTime.UtcNow,
+                DateTime.UtcNow);
+
+            Promotions.Add(promotion);
+            return Task.FromResult<Guid?>(promotion.Id);
+        }
+
+        public Task<bool> UpdatePromotionAsync(
+            Guid promotionId,
+            StorePromotionRequest request,
+            CancellationToken cancellationToken)
+        {
+            var index = Promotions.FindIndex(item => item.Id == promotionId);
+            if (index < 0)
+            {
+                return Task.FromResult(false);
+            }
+
+            Promotions[index] = Promotions[index] with
+            {
+                Name = request.Name,
+                Code = request.Code,
+                Type = request.Type,
+                Description = request.Description,
+                Priority = request.Priority,
+                IsExclusive = request.IsExclusive,
+                AllowWithCoupons = request.AllowWithCoupons,
+                StartAtUtc = request.StartAtUtc,
+                EndAtUtc = request.EndAtUtc,
+                UsageLimitTotal = request.UsageLimitTotal,
+                UsageLimitPerCustomer = request.UsageLimitPerCustomer,
+                Scopes = request.Scopes,
+                Conditions = request.Conditions,
+                Benefits = request.Benefits,
+                UpdatedAtUtc = DateTime.UtcNow,
+            };
+
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> ActivatePromotionAsync(Guid promotionId, CancellationToken cancellationToken)
+        {
+            return UpdatePromotionStatusAsync(promotionId, 1);
+        }
+
+        public Task<bool> ArchivePromotionAsync(Guid promotionId, CancellationToken cancellationToken)
+        {
+            return UpdatePromotionStatusAsync(promotionId, 2);
+        }
+
+        public Task<IReadOnlyCollection<StoreCoupon>> GetCouponsAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult<IReadOnlyCollection<StoreCoupon>>(Coupons.ToArray());
+        }
+
+        public Task<Guid?> CreateCouponAsync(StoreCouponRequest request, CancellationToken cancellationToken)
+        {
+            var coupon = new StoreCoupon(
+                Guid.NewGuid(),
+                request.Code,
+                request.Description,
+                request.PromotionId,
+                0,
+                request.StartAtUtc,
+                request.EndAtUtc,
+                request.UsageLimitTotal,
+                request.UsageLimitPerCustomer,
+                0,
+                DateTime.UtcNow,
+                DateTime.UtcNow);
+
+            Coupons.Add(coupon);
+            return Task.FromResult<Guid?>(coupon.Id);
+        }
+
+        public Task<bool> UpdateCouponAsync(
+            Guid couponId,
+            StoreCouponRequest request,
+            CancellationToken cancellationToken)
+        {
+            var index = Coupons.FindIndex(item => item.Id == couponId);
+            if (index < 0)
+            {
+                return Task.FromResult(false);
+            }
+
+            Coupons[index] = Coupons[index] with
+            {
+                Description = request.Description,
+                StartAtUtc = request.StartAtUtc,
+                EndAtUtc = request.EndAtUtc,
+                UsageLimitTotal = request.UsageLimitTotal,
+                UsageLimitPerCustomer = request.UsageLimitPerCustomer,
+                UpdatedAtUtc = DateTime.UtcNow,
+            };
+
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> DisableCouponAsync(Guid couponId, CancellationToken cancellationToken)
+        {
+            var index = Coupons.FindIndex(item => item.Id == couponId);
+            if (index < 0)
+            {
+                return Task.FromResult(false);
+            }
+
+            Coupons[index] = Coupons[index] with
+            {
+                Status = 1,
+                UpdatedAtUtc = DateTime.UtcNow,
+            };
+
+            return Task.FromResult(true);
+        }
+
         public Task<StoreCart?> GetCartAsync(string customerId, CancellationToken cancellationToken)
         {
             return Task.FromResult<StoreCart?>(new StoreCart(Guid.NewGuid(), customerId, [], []));
@@ -1073,6 +1359,23 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
                 Status = status,
                 UpdatedAtUtc = DateTime.UtcNow,
                 Events = events,
+            };
+
+            return Task.FromResult(true);
+        }
+
+        private static Task<bool> UpdatePromotionStatusAsync(Guid promotionId, int status)
+        {
+            var index = Promotions.FindIndex(promotion => promotion.Id == promotionId);
+            if (index < 0)
+            {
+                return Task.FromResult(false);
+            }
+
+            Promotions[index] = Promotions[index] with
+            {
+                Status = status,
+                UpdatedAtUtc = DateTime.UtcNow,
             };
 
             return Task.FromResult(true);

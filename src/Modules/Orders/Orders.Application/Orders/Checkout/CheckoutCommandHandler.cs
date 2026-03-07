@@ -11,6 +11,7 @@ namespace Orders.Application.Orders.Checkout;
 public sealed class CheckoutCommandHandler(
     ICartCheckoutAccessor cartCheckoutAccessor,
     IInventoryReservationService inventoryReservationService,
+    ICartPricingService cartPricingService,
     ICheckoutIdempotencyRepository idempotencyRepository,
     IOrderRepository orderRepository,
     IOrdersUnitOfWork unitOfWork,
@@ -71,23 +72,40 @@ public sealed class CheckoutCommandHandler(
                             "Some cart reservations are invalid or expired. Please refresh your cart."));
                     }
 
-                    var lineData = new List<OrderLineData>(cart.Lines.Count);
-                    foreach (var line in cart.Lines)
+                    var pricingResult = await cartPricingService.PriceAsync(
+                        new CartPricingRequest(
+                            request.CustomerId,
+                            IsAuthenticated: false,
+                            cart.Lines
+                                .Select(line => new CartPricingLineRequest(line.ProductId, line.VariantId, line.Quantity))
+                                .ToList(),
+                            cart.AppliedCouponCode,
+                            Shipping: null,
+                            BypassCache: true,
+                            StrictCouponValidation: true),
+                        innerCancellationToken);
+                    if (pricingResult.IsFailure)
                     {
-                        var moneyResult = Money.Create(line.Currency, line.UnitAmount);
-                        if (moneyResult.IsFailure)
-                        {
-                            return Result<Guid>.Failure(moneyResult.Error);
-                        }
+                        return Result<Guid>.Failure(pricingResult.Error);
+                    }
 
-                        lineData.Add(new OrderLineData(line.ProductId, line.VariantId, line.Sku, line.ProductName, line.VariantName, line.SelectedOptionsJson, moneyResult.Value, line.Quantity));
+                    var lineDataResult = OrderLinePricingSnapshotFactory.Create(cart.Lines, pricingResult.Value);
+                    if (lineDataResult.IsFailure)
+                    {
+                        return Result<Guid>.Failure(lineDataResult.Error);
                     }
 
                     var orderResult = Order.Create(
                         cart.CustomerId,
                         cart.CustomerId,
-                        lineData,
-                        clock.UtcNow);
+                        lineDataResult.Value,
+                        clock.UtcNow,
+                        subtotalBeforeDiscountAmount: pricingResult.Value.SubtotalBeforeDiscountAmount,
+                        lineDiscountTotalAmount: pricingResult.Value.LineDiscountTotalAmount,
+                        cartDiscountTotalAmount: pricingResult.Value.CartDiscountTotalAmount,
+                        shippingDiscountTotalAmount: pricingResult.Value.ShippingDiscountTotalAmount,
+                        appliedCouponsJson: SerializeCouponCodes(pricingResult.Value.AppliedCouponCode),
+                        appliedPromotionsJson: SerializeAppliedPromotions(pricingResult.Value.AppliedDiscounts));
                     if (orderResult.IsFailure)
                     {
                         return Result<Guid>.Failure(orderResult.Error);
@@ -142,5 +160,17 @@ public sealed class CheckoutCommandHandler(
         }
 
         return Result<Guid>.Success(existingRecord.OrderId);
+    }
+
+    private static string? SerializeCouponCodes(string? couponCode)
+    {
+        return string.IsNullOrWhiteSpace(couponCode)
+            ? null
+            : System.Text.Json.JsonSerializer.Serialize(new[] { couponCode.Trim().ToUpperInvariant() });
+    }
+
+    private static string? SerializeAppliedPromotions(IReadOnlyCollection<PricingDiscountApplication> discounts)
+    {
+        return discounts.Count == 0 ? null : System.Text.Json.JsonSerializer.Serialize(discounts);
     }
 }

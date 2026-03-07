@@ -1,0 +1,61 @@
+@page "/admin/pricing"
+@rendermode InteractiveServer
+@layout Storefront.Web.Components.Layout.AdminLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>Admin Pricing</PageTitle>
+
+<h1>Pricing</h1>
+<p>Manage price lists, variant pricing, promotions, and coupons.</p>
+
+@if (isLoading)
+{
+    <p>Loading pricing overview...</p>
+}
+else
+{
+    <section class="admin-panel">
+        <div class="form-grid">
+            <div>
+                <h2>Price lists</h2>
+                <p>@priceListCount configured</p>
+                <p><a class="btn-link" href="/admin/pricing/price-lists">Manage price lists</a></p>
+            </div>
+            <div>
+                <h2>Variant pricing</h2>
+                <p>Lookup or override effective SKU pricing.</p>
+                <p><a class="btn-link" href="/admin/pricing/variants">Manage variant prices</a></p>
+            </div>
+            <div>
+                <h2>Promotions</h2>
+                <p>@promotionCount campaigns available</p>
+                <p><a class="btn-link" href="/admin/pricing/promotions">Manage promotions</a></p>
+            </div>
+            <div>
+                <h2>Coupons</h2>
+                <p>@couponCount coupon codes available</p>
+                <p><a class="btn-link" href="/admin/pricing/coupons">Manage coupons</a></p>
+            </div>
+        </div>
+    </section>
+}
+
+@code {
+    private bool isLoading = true;
+    private int priceListCount;
+    private int promotionCount;
+    private int couponCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var priceLists = await StoreApiClient.GetPriceListsAsync(CancellationToken.None);
+        var promotions = await StoreApiClient.GetPromotionsAsync(CancellationToken.None);
+        var coupons = await StoreApiClient.GetCouponsAsync(CancellationToken.None);
+
+        priceListCount = priceLists.Count;
+        promotionCount = promotions.Count;
+        couponCount = coupons.Count;
+        isLoading = false;
+    }
+}

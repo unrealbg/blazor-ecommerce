@@ -13,6 +13,7 @@ internal sealed class CartCheckoutAccessor(OrdersDbContext dbContext) : ICartChe
                            SELECT
                                c."Id" AS cart_id,
                                c."CustomerId" AS customer_id,
+                               c.applied_coupon_code,
                                l.product_id,
                                l.variant_id,
                                l.sku,
@@ -55,12 +56,16 @@ internal sealed class CartCheckoutAccessor(OrdersDbContext dbContext) : ICartChe
 
             Guid? cartId = null;
             string? normalizedCustomerId = null;
+            string? appliedCouponCode = null;
             var lines = new List<CartCheckoutLineSnapshot>();
 
             while (await reader.ReadAsync(cancellationToken))
             {
                 cartId ??= reader.GetGuid(reader.GetOrdinal("cart_id"));
                 normalizedCustomerId ??= reader.GetString(reader.GetOrdinal("customer_id"));
+                appliedCouponCode ??= reader.IsDBNull(reader.GetOrdinal("applied_coupon_code"))
+                    ? null
+                    : reader.GetString(reader.GetOrdinal("applied_coupon_code"));
 
                 if (reader.IsDBNull(reader.GetOrdinal("product_id")))
                 {
@@ -85,7 +90,7 @@ internal sealed class CartCheckoutAccessor(OrdersDbContext dbContext) : ICartChe
                 return null;
             }
 
-            return new CartCheckoutSnapshot(cartId.Value, normalizedCustomerId, lines);
+            return new CartCheckoutSnapshot(cartId.Value, normalizedCustomerId, appliedCouponCode, lines);
         }
         finally
         {

@@ -19,6 +19,28 @@ else if (cart is null || cart.Lines.Count == 0)
 }
 else
 {
+    <section class="admin-panel">
+        <h2>Coupon</h2>
+        <div class="form-grid">
+            <label>
+                Coupon code
+                <input @bind="couponCode" placeholder="SAVE10" />
+            </label>
+            <div class="cart-actions">
+                <button type="button" class="btn-primary" @onclick="ApplyCouponAsync">Apply coupon</button>
+                @if (!string.IsNullOrWhiteSpace(cart.AppliedCouponCode))
+                {
+                    <button type="button" class="btn-link danger" @onclick="RemoveCouponAsync">Remove coupon</button>
+                }
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(cart.AppliedCouponCode))
+        {
+            <p class="status-message">Applied coupon: <strong>@cart.AppliedCouponCode</strong></p>
+        }
+    </section>
+
     @if (cart.Messages.Count > 0)
     {
         foreach (var cartMessage in cart.Messages)
@@ -41,26 +63,71 @@ else
             @foreach (var line in cart.Lines)
             {
                 <tr>
-                    <td>@line.ProductName</td>
-                    <td>@FormatPrice(line.Amount, line.Currency)</td>
+                    <td>
+                        <strong>@line.ProductName</strong>
+                        @if (!string.IsNullOrWhiteSpace(line.VariantName))
+                        {
+                            <div>@line.VariantName</div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(line.SelectedOptionsJson))
+                        {
+                            <div class="meta">@line.SelectedOptionsJson</div>
+                        }
+                    </td>
+                    <td>
+                        @if (line.CompareAtUnitAmount is > 0m && line.CompareAtUnitAmount > line.FinalUnitAmount)
+                        {
+                            <div class="price-compare">@FormatPrice(line.CompareAtUnitAmount.Value, line.Currency)</div>
+                        }
+                        <div>@FormatPrice(line.FinalUnitAmount, line.Currency)</div>
+                    </td>
                     <td>
                         <input
                             type="number"
                             min="1"
-                            value="@GetQuantityValue(line.ProductId)"
-                            @onchange="args => UpdateLocalQuantity(line.ProductId, args.Value?.ToString())" />
+                            value="@GetQuantityValue(line.VariantId)"
+                            @onchange="args => UpdateLocalQuantity(line.VariantId, args.Value?.ToString())" />
                     </td>
-                    <td>@FormatPrice(line.Amount * line.Quantity, line.Currency)</td>
+                    <td>
+                        @FormatPrice(line.LineTotalAmount, line.Currency)
+                        @if (line.DiscountTotalAmount > 0m)
+                        {
+                            <div class="meta">Saved @FormatPrice(line.DiscountTotalAmount, line.Currency)</div>
+                        }
+                    </td>
                     <td class="cart-actions">
-                        <button type="button" class="btn-link" @onclick="() => UpdateQuantityAsync(line.ProductId)">Update</button>
-                        <button type="button" class="btn-link danger" @onclick="() => RemoveItemAsync(line.ProductId)">Remove</button>
+                        <button type="button" class="btn-link" @onclick="() => UpdateQuantityAsync(line.VariantId)">Update</button>
+                        <button type="button" class="btn-link danger" @onclick="() => RemoveItemAsync(line.VariantId)">Remove</button>
                     </td>
                 </tr>
             }
         </tbody>
     </table>
 
-    <p class="cart-total">Total: @FormatPrice(totalAmount, "EUR")</p>
+    <section class="admin-panel">
+        <h2>Summary</h2>
+        <p>Subtotal before discounts: <strong>@FormatPrice(cart.SubtotalBeforeDiscountAmount, cart.Currency)</strong></p>
+        @if (cart.LineDiscountTotalAmount > 0m)
+        {
+            <p>Line discounts: <strong>-@FormatPrice(cart.LineDiscountTotalAmount, cart.Currency)</strong></p>
+        }
+        @if (cart.CartDiscountTotalAmount > 0m)
+        {
+            <p>Cart discounts: <strong>-@FormatPrice(cart.CartDiscountTotalAmount, cart.Currency)</strong></p>
+        }
+        <p class="cart-total">Total: @FormatPrice(totalAmount, cart.Currency)</p>
+
+        @if (cart.AppliedDiscounts.Count > 0)
+        {
+            <ul>
+                @foreach (var discount in cart.AppliedDiscounts)
+                {
+                    <li>@discount.Description: -@FormatPrice(discount.Amount, discount.Currency)</li>
+                }
+            </ul>
+        }
+    </section>
+
     <a class="btn-primary" href="/checkout">Proceed to checkout</a>
 }
 
@@ -76,6 +143,7 @@ else
     private decimal totalAmount;
     private string customerId = string.Empty;
     private Dictionary<Guid, int> quantities = [];
+    private string couponCode = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -83,9 +151,9 @@ else
         await ReloadCartAsync();
     }
 
-    private async Task UpdateQuantityAsync(Guid productId)
+    private async Task UpdateQuantityAsync(Guid variantId)
     {
-        if (!quantities.TryGetValue(productId, out var quantity) || quantity <= 0)
+        if (!quantities.TryGetValue(variantId, out var quantity) || quantity <= 0)
         {
             message = "Quantity must be greater than zero.";
             return;
@@ -93,7 +161,7 @@ else
 
         var updated = await StoreApiClient.UpdateCartItemQuantityAsync(
             customerId,
-            productId,
+            variantId,
             quantity,
             CancellationToken.None);
 
@@ -101,10 +169,30 @@ else
         await ReloadCartAsync();
     }
 
-    private async Task RemoveItemAsync(Guid productId)
+    private async Task RemoveItemAsync(Guid variantId)
     {
-        var removed = await StoreApiClient.RemoveCartItemAsync(customerId, productId, CancellationToken.None);
+        var removed = await StoreApiClient.RemoveCartItemAsync(customerId, variantId, CancellationToken.None);
         message = removed ? "Item removed." : "Could not remove item.";
+        await ReloadCartAsync();
+    }
+
+    private async Task ApplyCouponAsync()
+    {
+        if (string.IsNullOrWhiteSpace(couponCode))
+        {
+            message = "Enter a coupon code.";
+            return;
+        }
+
+        var applied = await StoreApiClient.ApplyCouponAsync(customerId, couponCode, CancellationToken.None);
+        message = applied ? "Coupon applied." : "Coupon could not be applied.";
+        await ReloadCartAsync();
+    }
+
+    private async Task RemoveCouponAsync()
+    {
+        var removed = await StoreApiClient.RemoveCouponAsync(customerId, CancellationToken.None);
+        message = removed ? "Coupon removed." : "Coupon could not be removed.";
         await ReloadCartAsync();
     }
 
@@ -112,25 +200,26 @@ else
     {
         isLoading = true;
         cart = await StoreApiClient.GetCartAsync(customerId, CancellationToken.None);
-        quantities = cart?.Lines.ToDictionary(line => line.ProductId, line => line.Quantity) ?? [];
-        totalAmount = cart?.Lines.Sum(line => line.Amount * line.Quantity) ?? 0m;
+        quantities = cart?.Lines.ToDictionary(line => line.VariantId, line => line.Quantity) ?? [];
+        totalAmount = cart?.GrandTotalAmount ?? 0m;
+        couponCode = cart?.AppliedCouponCode ?? couponCode;
         CartState.SetItemCount(cart?.Lines.Sum(line => line.Quantity) ?? 0);
         isLoading = false;
     }
 
-    private void UpdateLocalQuantity(Guid productId, string? rawValue)
+    private void UpdateLocalQuantity(Guid variantId, string? rawValue)
     {
         if (!int.TryParse(rawValue, out var quantity))
         {
             return;
         }
 
-        quantities[productId] = quantity;
+        quantities[variantId] = quantity;
     }
 
-    private int GetQuantityValue(Guid productId)
+    private int GetQuantityValue(Guid variantId)
     {
-        return quantities.TryGetValue(productId, out var quantity) ? quantity : 1;
+        return quantities.TryGetValue(variantId, out var quantity) ? quantity : 1;
     }
 
     private static string FormatPrice(decimal amount, string currency)

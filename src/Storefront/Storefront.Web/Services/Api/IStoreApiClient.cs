@@ -23,6 +23,13 @@ public interface IStoreApiClient
         int quantity,
         CancellationToken cancellationToken);
 
+    Task<bool> AddItemToCartAsync(
+        string customerId,
+        Guid productId,
+        Guid variantId,
+        int quantity,
+        CancellationToken cancellationToken);
+
     Task<bool> UpdateCartItemQuantityAsync(
         string customerId,
         Guid productId,
@@ -32,6 +39,15 @@ public interface IStoreApiClient
     Task<bool> RemoveCartItemAsync(
         string customerId,
         Guid productId,
+        CancellationToken cancellationToken);
+
+    Task<bool> ApplyCouponAsync(
+        string customerId,
+        string couponCode,
+        CancellationToken cancellationToken);
+
+    Task<bool> RemoveCouponAsync(
+        string customerId,
         CancellationToken cancellationToken);
 
     Task<Guid?> CheckoutAsync(string customerId, string idempotencyKey, CancellationToken cancellationToken);
@@ -231,4 +247,48 @@ public interface IStoreApiClient
         Guid shipmentId,
         string? reason,
         CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<StorePriceList>> GetPriceListsAsync(CancellationToken cancellationToken);
+
+    Task<Guid?> CreatePriceListAsync(StorePriceListRequest request, CancellationToken cancellationToken);
+
+    Task<bool> UpdatePriceListAsync(
+        Guid priceListId,
+        StorePriceListRequest request,
+        CancellationToken cancellationToken);
+
+    Task<StoreVariantPrice?> GetVariantPriceAsync(Guid variantId, CancellationToken cancellationToken);
+
+    Task<Guid?> CreateVariantPriceAsync(StoreVariantPriceRequest request, CancellationToken cancellationToken);
+
+    Task<bool> UpdateVariantPriceAsync(
+        Guid variantPriceId,
+        StoreVariantPriceRequest request,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<StorePromotion>> GetPromotionsAsync(CancellationToken cancellationToken);
+
+    Task<StorePromotion?> GetPromotionAsync(Guid promotionId, CancellationToken cancellationToken);
+
+    Task<Guid?> CreatePromotionAsync(StorePromotionRequest request, CancellationToken cancellationToken);
+
+    Task<bool> UpdatePromotionAsync(
+        Guid promotionId,
+        StorePromotionRequest request,
+        CancellationToken cancellationToken);
+
+    Task<bool> ActivatePromotionAsync(Guid promotionId, CancellationToken cancellationToken);
+
+    Task<bool> ArchivePromotionAsync(Guid promotionId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<StoreCoupon>> GetCouponsAsync(CancellationToken cancellationToken);
+
+    Task<Guid?> CreateCouponAsync(StoreCouponRequest request, CancellationToken cancellationToken);
+
+    Task<bool> UpdateCouponAsync(
+        Guid couponId,
+        StoreCouponRequest request,
+        CancellationToken cancellationToken);
+
+    Task<bool> DisableCouponAsync(Guid couponId, CancellationToken cancellationToken);
 }

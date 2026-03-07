@@ -16,6 +16,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orders.Infrastructure.Persistence;
 using Payments.Infrastructure.Persistence;
+using Pricing.Infrastructure.Persistence;
 using Redirects.Infrastructure.Persistence;
 using Search.Infrastructure.Persistence;
 using Shipping.Infrastructure.Persistence;
@@ -79,6 +80,7 @@ public sealed class AppHostWebApplicationFactory : WebApplicationFactory<Program
             this.ReplaceDbContext<IdentityAppDbContext>(services);
             this.ReplaceDbContext<InventoryDbContext>(services);
             this.ReplaceDbContext<PaymentsDbContext>(services);
+            this.ReplaceDbContext<PricingDbContext>(services);
             this.ReplaceDbContext<ShippingDbContext>(services);
             services.RemoveAll<ICartCheckoutAccessor>();
             services.AddScoped<ICartCheckoutAccessor, TestCartCheckoutAccessor>();
@@ -124,7 +126,7 @@ public sealed class AppHostWebApplicationFactory : WebApplicationFactory<Program
                     line.Quantity))
                 .ToList();
 
-            return new CartCheckoutSnapshot(cart.Id, cart.CustomerId, lines);
+            return new CartCheckoutSnapshot(cart.Id, cart.CustomerId, cart.AppliedCouponCode, lines);
         }
 
         public async Task ClearCartAsync(Guid cartId, CancellationToken cancellationToken)
