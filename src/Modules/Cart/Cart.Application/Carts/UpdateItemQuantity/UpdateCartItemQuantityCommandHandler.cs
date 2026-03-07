@@ -21,7 +21,7 @@ public sealed class UpdateCartItemQuantityCommandHandler(
             return Result<Guid>.Failure(new Error("cart.not_found", "Cart was not found."));
         }
 
-        var existingLine = cart.Lines.FirstOrDefault(line => line.ProductId == request.ProductId);
+        var existingLine = cart.Lines.FirstOrDefault(line => line.VariantId == request.VariantId);
         if (existingLine is null)
         {
             return Result<Guid>.Failure(new Error("cart.item.not_found", "Cart item was not found."));
@@ -30,8 +30,9 @@ public sealed class UpdateCartItemQuantityCommandHandler(
         var existingQuantity = existingLine.Quantity;
         var reservationResult = await inventoryReservationService.SyncCartReservationAsync(
             request.CustomerId,
-            request.ProductId,
-            sku: null,
+            existingLine.ProductId,
+            request.VariantId,
+            existingLine.Sku,
             request.Quantity,
             cancellationToken);
         if (reservationResult.IsFailure)
@@ -39,13 +40,14 @@ public sealed class UpdateCartItemQuantityCommandHandler(
             return Result<Guid>.Failure(reservationResult.Error);
         }
 
-        var updateResult = cart.UpdateItemQuantity(request.ProductId, request.Quantity);
+        var updateResult = cart.UpdateItemQuantity(request.VariantId, request.Quantity);
         if (updateResult.IsFailure)
         {
             await inventoryReservationService.SyncCartReservationAsync(
                 request.CustomerId,
-                request.ProductId,
-                sku: null,
+                existingLine.ProductId,
+                request.VariantId,
+                existingLine.Sku,
                 existingQuantity,
                 cancellationToken);
             return Result<Guid>.Failure(updateResult.Error);
@@ -59,8 +61,9 @@ public sealed class UpdateCartItemQuantityCommandHandler(
         {
             await inventoryReservationService.SyncCartReservationAsync(
                 request.CustomerId,
-                request.ProductId,
-                sku: null,
+                existingLine.ProductId,
+                request.VariantId,
+                existingLine.Sku,
                 existingQuantity,
                 cancellationToken);
             throw;

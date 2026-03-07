@@ -6,16 +6,14 @@ public interface IStockReservationRepository
 {
     Task AddAsync(StockReservation reservation, CancellationToken cancellationToken);
 
-    Task<StockReservation?> GetActiveByCartProductSkuAsync(
+    Task<StockReservation?> GetActiveByCartVariantIdAsync(
         string cartId,
-        Guid productId,
-        string? sku,
+        Guid variantId,
         CancellationToken cancellationToken);
 
-    Task<StockReservation?> GetActiveByOrderProductSkuAsync(
+    Task<StockReservation?> GetActiveByOrderVariantIdAsync(
         Guid orderId,
-        Guid productId,
-        string? sku,
+        Guid variantId,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<StockReservation>> ListActiveByCartIdAsync(

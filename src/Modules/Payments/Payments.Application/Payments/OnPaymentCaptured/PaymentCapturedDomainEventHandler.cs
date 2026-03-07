@@ -41,7 +41,7 @@ public sealed class PaymentCapturedDomainEventHandler(
         var consumeResult = await inventoryReservationService.ConsumeOrderReservationsAsync(
             domainEvent.OrderId,
             orderSnapshot.Lines
-                .Select(line => new InventoryCartLineRequest(line.ProductId, line.Sku, line.Quantity))
+                .Select(line => new InventoryCartLineRequest(line.ProductId, line.VariantId, line.Sku, line.Quantity))
                 .ToList(),
             cancellationToken);
 

@@ -57,9 +57,8 @@ internal sealed class ReservationExpirationWorker(
 
                 foreach (var reservation in expiredReservations)
                 {
-                    var stockItem = await stockItemRepository.GetByProductAndSkuAsync(
-                        reservation.ProductId,
-                        reservation.Sku,
+                    var stockItem = await stockItemRepository.GetByVariantIdAsync(
+                        reservation.VariantId,
                         innerCancellationToken);
 
                     if (stockItem is not null && stockItem.IsTracked)

@@ -10,10 +10,10 @@ internal sealed class InventoryAvailabilityReader(IStockItemRepository stockItem
         Guid productId,
         CancellationToken cancellationToken)
     {
-        var stockItem = await stockItemRepository.GetByProductAndSkuAsync(
-            productId,
-            sku: null,
-            cancellationToken);
+        var stockItems = await stockItemRepository.ListByProductIdsAsync([productId], cancellationToken);
+        var stockItem = stockItems
+            .OrderByDescending(item => item.UpdatedAtUtc)
+            .FirstOrDefault();
         if (stockItem is null)
         {
             return null;
@@ -34,10 +34,28 @@ internal sealed class InventoryAvailabilityReader(IStockItemRepository stockItem
             .ToDictionary(item => item.ProductId, Map);
     }
 
+    public async Task<InventoryAvailabilitySnapshot?> GetByVariantIdAsync(
+        Guid variantId,
+        CancellationToken cancellationToken)
+    {
+        var stockItem = await stockItemRepository.GetByVariantIdAsync(variantId, cancellationToken);
+        return stockItem is null ? null : Map(stockItem);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, InventoryAvailabilitySnapshot>> GetByVariantIdsAsync(
+        IReadOnlyCollection<Guid> variantIds,
+        CancellationToken cancellationToken)
+    {
+        var stockItems = await stockItemRepository.ListByVariantIdsAsync(variantIds, cancellationToken);
+
+        return stockItems.ToDictionary(item => item.VariantId, Map);
+    }
+
     private static InventoryAvailabilitySnapshot Map(Inventory.Domain.Stock.StockItem stockItem)
     {
         return new InventoryAvailabilitySnapshot(
             stockItem.ProductId,
+            stockItem.VariantId,
             stockItem.Sku,
             stockItem.IsTracked,
             stockItem.AllowBackorder,

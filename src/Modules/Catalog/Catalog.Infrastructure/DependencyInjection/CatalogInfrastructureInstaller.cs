@@ -1,5 +1,7 @@
 using BuildingBlocks.Application.Contracts;
 using BuildingBlocks.Infrastructure.Modules;
+using Catalog.Application.Brands;
+using Catalog.Application.Categories;
 using Catalog.Application.Products;
 using Catalog.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +23,8 @@ public sealed class CatalogInfrastructureInstaller : IModuleInfrastructureInstal
             options.UseNpgsql(connectionString, npgsql =>
                 npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "catalog")));
 
+        services.AddScoped<IBrandRepository, BrandRepository>();
+        services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IProductListCache, ProductListCache>();
         services.AddScoped<IProductCatalogReader, ProductCatalogReader>();

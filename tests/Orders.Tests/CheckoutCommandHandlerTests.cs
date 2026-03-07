@@ -57,8 +57,8 @@ public sealed class CheckoutCommandHandlerTests
                 cartId,
                 "customer-1",
                 [
-                    new CartCheckoutLineSnapshot(Guid.NewGuid(), "Item A", "USD", 10m, 2),
-                    new CartCheckoutLineSnapshot(Guid.NewGuid(), "Item B", "USD", 5.25m, 1),
+                    new CartCheckoutLineSnapshot(Guid.NewGuid(), Guid.NewGuid(), "Item A", null, null, null, null, "USD", 10m, 2),
+                    new CartCheckoutLineSnapshot(Guid.NewGuid(), Guid.NewGuid(), "Item B", null, null, null, null, "USD", 5.25m, 1),
                 ]),
         };
 
@@ -87,7 +87,7 @@ public sealed class CheckoutCommandHandlerTests
             Snapshot = new CartCheckoutSnapshot(
                 Guid.NewGuid(),
                 "customer-1",
-                [new CartCheckoutLineSnapshot(Guid.NewGuid(), "Item A", "USD", 10m, 1)]),
+                [new CartCheckoutLineSnapshot(Guid.NewGuid(), Guid.NewGuid(), "Item A", null, null, null, null, "USD", 10m, 1)]),
         };
 
         var idempotencyRepository = new StubCheckoutIdempotencyRepository();
@@ -176,8 +176,8 @@ public sealed class CheckoutCommandHandlerTests
             "customer-1",
             "checkout-session-1",
             [
-                new OrderLineData(Guid.NewGuid(), "Item A", BuildingBlocks.Domain.Shared.Money.Create("USD", 10m).Value, 1),
-                new OrderLineData(Guid.NewGuid(), "Item B", BuildingBlocks.Domain.Shared.Money.Create("EUR", 10m).Value, 1),
+                new OrderLineData(Guid.NewGuid(), Guid.NewGuid(), null, "Item A", null, null, BuildingBlocks.Domain.Shared.Money.Create("USD", 10m).Value, 1),
+                new OrderLineData(Guid.NewGuid(), Guid.NewGuid(), null, "Item B", null, null, BuildingBlocks.Domain.Shared.Money.Create("EUR", 10m).Value, 1),
             ],
             DateTime.UtcNow);
 
@@ -204,6 +204,7 @@ public sealed class CheckoutCommandHandlerTests
         public Task<Result> SyncCartReservationAsync(
             string cartId,
             Guid productId,
+            Guid variantId,
             string? sku,
             int quantity,
             CancellationToken cancellationToken)

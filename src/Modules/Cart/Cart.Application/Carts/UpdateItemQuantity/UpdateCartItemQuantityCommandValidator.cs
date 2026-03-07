@@ -10,7 +10,7 @@ public sealed class UpdateCartItemQuantityCommandValidator : AbstractValidator<U
             .NotEmpty()
             .MaximumLength(128);
 
-        RuleFor(command => command.ProductId)
+        RuleFor(command => command.VariantId)
             .NotEmpty();
 
         RuleFor(command => command.Quantity)

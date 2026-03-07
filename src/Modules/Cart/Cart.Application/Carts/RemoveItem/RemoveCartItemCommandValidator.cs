@@ -10,7 +10,7 @@ public sealed class RemoveCartItemCommandValidator : AbstractValidator<RemoveCar
             .NotEmpty()
             .MaximumLength(128);
 
-        RuleFor(command => command.ProductId)
+        RuleFor(command => command.VariantId)
             .NotEmpty();
     }
 }

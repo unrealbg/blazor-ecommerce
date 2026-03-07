@@ -13,6 +13,7 @@ public sealed class StockReservation : AggregateRoot<Guid>
     private StockReservation(
         Guid id,
         Guid productId,
+        Guid variantId,
         string? sku,
         string? cartId,
         Guid? customerId,
@@ -23,6 +24,7 @@ public sealed class StockReservation : AggregateRoot<Guid>
     {
         Id = id;
         ProductId = productId;
+        VariantId = variantId;
         Sku = NormalizeSku(sku);
         CartId = NormalizeCartId(cartId);
         CustomerId = customerId;
@@ -37,6 +39,8 @@ public sealed class StockReservation : AggregateRoot<Guid>
     }
 
     public Guid ProductId { get; private set; }
+
+    public Guid VariantId { get; private set; }
 
     public string? Sku { get; private set; }
 
@@ -60,6 +64,7 @@ public sealed class StockReservation : AggregateRoot<Guid>
 
     public static Result<StockReservation> Create(
         Guid productId,
+        Guid variantId,
         string? sku,
         string? cartId,
         Guid? customerId,
@@ -72,6 +77,12 @@ public sealed class StockReservation : AggregateRoot<Guid>
         {
             return Result<StockReservation>.Failure(
                 new Error("inventory.reservation.product_id.required", "Product id is required."));
+        }
+
+        if (variantId == Guid.Empty)
+        {
+            return Result<StockReservation>.Failure(
+                new Error("inventory.reservation.variant_id.required", "Variant id is required."));
         }
 
         if (quantity <= 0)
@@ -107,6 +118,7 @@ public sealed class StockReservation : AggregateRoot<Guid>
         return Result<StockReservation>.Success(new StockReservation(
             Guid.NewGuid(),
             productId,
+            variantId,
             sku,
             cartId,
             customerId,

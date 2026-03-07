@@ -4,5 +4,5 @@ namespace Cart.Application.Carts.UpdateItemQuantity;
 
 public sealed record UpdateCartItemQuantityCommand(
     string CustomerId,
-    Guid ProductId,
+    Guid VariantId,
     int Quantity) : ICommand<Guid>;

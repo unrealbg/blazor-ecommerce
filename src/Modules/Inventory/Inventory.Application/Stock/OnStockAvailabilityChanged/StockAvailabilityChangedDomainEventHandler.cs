@@ -28,9 +28,16 @@ public sealed class StockAvailabilityChangedDomainEventHandler(
                 product.Slug,
                 product.Name,
                 product.Description,
+                product.DefaultCategoryId,
                 product.CategorySlug,
                 product.CategoryName,
-                product.Brand,
+                product.Brand?.Name,
+                string.Join(
+                    ' ',
+                    product.Variants
+                        .SelectMany(variant => variant.SelectedOptions)
+                        .Select(option => $"{option.OptionName} {option.Value}")
+                        .Distinct(StringComparer.OrdinalIgnoreCase)),
                 product.Amount,
                 product.Currency,
                 product.IsActive,

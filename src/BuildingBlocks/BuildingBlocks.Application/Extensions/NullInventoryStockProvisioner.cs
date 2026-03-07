@@ -7,6 +7,7 @@ internal sealed class NullInventoryStockProvisioner : IInventoryStockProvisioner
 {
     public Task<Result> EnsureStockItemAsync(
         Guid productId,
+        Guid variantId,
         string? sku,
         int initialOnHandQuantity,
         bool isTracked,

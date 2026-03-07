@@ -23,7 +23,7 @@ public sealed class GetCartQueryHandler(
         var messages = new List<string>();
         var validationResult = await inventoryReservationService.ValidateCartReservationsAsync(
             request.CustomerId,
-            cart.Lines.Select(line => new InventoryCartLineRequest(line.ProductId, null, line.Quantity)).ToList(),
+            cart.Lines.Select(line => new InventoryCartLineRequest(line.ProductId, line.VariantId, line.Sku, line.Quantity)).ToList(),
             cancellationToken);
 
         if (validationResult.IsFailure)
@@ -41,7 +41,12 @@ public sealed class GetCartQueryHandler(
             cart.Lines
                 .Select(line => new CartLineDto(
                     line.ProductId,
+                    line.VariantId,
+                    line.Sku,
                     line.ProductName,
+                    line.VariantName,
+                    line.SelectedOptionsJson,
+                    line.ImageUrl,
                     line.UnitPrice.Currency,
                     line.UnitPrice.Amount,
                     line.Quantity))

@@ -11,6 +11,7 @@ public sealed class StockReservationTests
 
         var result = StockReservation.Create(
             Guid.NewGuid(),
+            Guid.NewGuid(),
             "SKU-1",
             cartId: null,
             customerId: null,
@@ -74,6 +75,7 @@ public sealed class StockReservationTests
     {
         var now = DateTime.UtcNow;
         var result = StockReservation.Create(
+            Guid.NewGuid(),
             Guid.NewGuid(),
             "SKU-1",
             cartId: "cart-1",

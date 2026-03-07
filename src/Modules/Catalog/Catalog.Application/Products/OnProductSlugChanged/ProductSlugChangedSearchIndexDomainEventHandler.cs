@@ -6,14 +6,14 @@ using Microsoft.Extensions.Logging;
 namespace Catalog.Application.Products.OnProductSlugChanged;
 
 public sealed class ProductSlugChangedSearchIndexDomainEventHandler(
-    IProductRepository productRepository,
+    IProductCatalogReader productCatalogReader,
     IProductSearchIndexer productSearchIndexer,
     ILogger<ProductSlugChangedSearchIndexDomainEventHandler> logger)
     : IDomainEventHandler<ProductSlugChanged>
 {
     public async Task Handle(ProductSlugChanged domainEvent, CancellationToken cancellationToken)
     {
-        var product = await productRepository.GetByIdAsync(domainEvent.ProductId, cancellationToken);
+        var product = await productCatalogReader.GetByIdAsync(domainEvent.ProductId, cancellationToken);
         if (product is null)
         {
             logger.LogWarning(
@@ -29,11 +29,18 @@ public sealed class ProductSlugChangedSearchIndexDomainEventHandler(
                 product.Slug,
                 product.Name,
                 product.Description,
+                product.DefaultCategoryId,
                 product.CategorySlug,
                 product.CategoryName,
-                product.Brand,
-                product.Price.Amount,
-                product.Price.Currency,
+                product.Brand?.Name,
+                string.Join(
+                    ' ',
+                    product.Variants
+                        .SelectMany(variant => variant.SelectedOptions)
+                        .Select(option => $"{option.OptionName} {option.Value}")
+                        .Distinct(StringComparer.OrdinalIgnoreCase)),
+                product.Amount,
+                product.Currency,
                 product.IsActive,
                 product.IsInStock,
                 product.ImageUrl,

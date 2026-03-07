@@ -1,4 +1,5 @@
 using System.Text.Json;
+using BuildingBlocks.Application.Contracts;
 using Catalog.Application.Products;
 using Microsoft.Extensions.Caching.Distributed;
 
@@ -9,7 +10,7 @@ internal sealed class ProductListCache(IDistributedCache distributedCache) : IPr
     private const string CacheKey = "catalog:products:v1";
     private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(30);
 
-    public async Task<IReadOnlyCollection<ProductDto>?> GetAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<ProductSnapshot>?> GetAsync(CancellationToken cancellationToken)
     {
         var payload = await distributedCache.GetStringAsync(CacheKey, cancellationToken);
         if (string.IsNullOrWhiteSpace(payload))
@@ -17,10 +18,10 @@ internal sealed class ProductListCache(IDistributedCache distributedCache) : IPr
             return null;
         }
 
-        return JsonSerializer.Deserialize<List<ProductDto>>(payload);
+        return JsonSerializer.Deserialize<List<ProductSnapshot>>(payload);
     }
 
-    public async Task SetAsync(IReadOnlyCollection<ProductDto> products, CancellationToken cancellationToken)
+    public async Task SetAsync(IReadOnlyCollection<ProductSnapshot> products, CancellationToken cancellationToken)
     {
         var payload = JsonSerializer.Serialize(products);
         await distributedCache.SetStringAsync(

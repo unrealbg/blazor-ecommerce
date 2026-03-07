@@ -4,12 +4,11 @@ using BuildingBlocks.Application.Contracts;
 namespace Catalog.Application.Products.GetProducts;
 
 public sealed class GetProductsQueryHandler(
-    IProductRepository productRepository,
-    IProductListCache productListCache,
-    IInventoryAvailabilityReader inventoryAvailabilityReader)
-    : IQueryHandler<GetProductsQuery, IReadOnlyCollection<ProductDto>>
+    IProductCatalogReader productCatalogReader,
+    IProductListCache productListCache)
+    : IQueryHandler<GetProductsQuery, IReadOnlyCollection<ProductSnapshot>>
 {
-    public async Task<IReadOnlyCollection<ProductDto>> Handle(
+    public async Task<IReadOnlyCollection<ProductSnapshot>> Handle(
         GetProductsQuery request,
         CancellationToken cancellationToken)
     {
@@ -19,39 +18,7 @@ public sealed class GetProductsQueryHandler(
             return cached;
         }
 
-        var products = await productRepository.ListAsync(cancellationToken);
-        var availabilityByProduct = await inventoryAvailabilityReader.GetByProductIdsAsync(
-            products.Select(product => product.Id).ToArray(),
-            cancellationToken);
-
-        var response = products
-            .Select(product =>
-            {
-                var hasAvailability = availabilityByProduct.TryGetValue(product.Id, out var availability);
-                var isTracked = hasAvailability && availability!.IsTracked;
-                var allowBackorder = hasAvailability && availability!.AllowBackorder;
-                var availableQuantity = hasAvailability ? (int?)availability!.AvailableQuantity : null;
-                var isInStock = hasAvailability ? availability!.IsInStock : product.IsInStock;
-
-                return new ProductDto(
-                    product.Id,
-                    product.Slug,
-                    product.Name,
-                    product.Description,
-                    product.Brand,
-                    product.Sku,
-                    product.ImageUrl,
-                    isInStock,
-                    product.CategorySlug,
-                    product.CategoryName,
-                    product.Price.Currency,
-                    product.Price.Amount,
-                    product.IsActive,
-                    isTracked,
-                    allowBackorder,
-                    availableQuantity);
-            })
-            .ToList();
+        var response = await productCatalogReader.ListAllAsync(cancellationToken);
 
         await productListCache.SetAsync(response, cancellationToken);
         return response;

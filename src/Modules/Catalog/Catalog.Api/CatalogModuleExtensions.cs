@@ -27,19 +27,7 @@ public static class CatalogModuleExtensions
 
         group.MapPost("/products", async (CreateProductRequest request, ISender sender, CancellationToken cancellationToken) =>
         {
-            var command = new CreateProductCommand(
-                request.Name,
-                request.Description,
-                request.Brand,
-                request.Sku,
-                request.ImageUrl,
-                request.IsInStock,
-                request.CategorySlug,
-                request.CategoryName,
-                request.Currency,
-                request.Amount,
-                request.IsActive);
-
+            var command = request.ToCommand();
             var result = await sender.Send(command, cancellationToken);
 
             return result.IsSuccess
@@ -100,7 +88,59 @@ public static class CatalogModuleExtensions
         string? ImageUrl = null,
         bool IsInStock = true,
         string? CategorySlug = null,
-        string? CategoryName = null);
+        string? CategoryName = null,
+        string? ShortDescription = null,
+        Guid? BrandId = null,
+        Guid? DefaultCategoryId = null,
+        string? Status = null,
+        string? ProductType = null,
+        string? SeoTitle = null,
+        string? SeoDescription = null,
+        string? CanonicalUrl = null,
+        bool IsFeatured = false,
+        DateTime? PublishedAtUtc = null,
+        decimal? CompareAtAmount = null,
+        decimal? WeightKg = null,
+        IReadOnlyCollection<CreateProductCategoryModel>? Categories = null,
+        IReadOnlyCollection<CreateProductOptionModel>? Options = null,
+        IReadOnlyCollection<CreateProductVariantModel>? Variants = null,
+        IReadOnlyCollection<CreateProductAttributeModel>? Attributes = null,
+        IReadOnlyCollection<CreateProductImageModel>? Images = null,
+        IReadOnlyCollection<CreateProductRelationModel>? Relations = null)
+    {
+        public CreateProductCommand ToCommand()
+        {
+            return new CreateProductCommand(
+                Name,
+                ShortDescription,
+                Description,
+                BrandId,
+                Brand,
+                DefaultCategoryId,
+                CategorySlug,
+                CategoryName,
+                Status ?? (IsActive ? "Active" : "Draft"),
+                ProductType ?? "Simple",
+                SeoTitle,
+                SeoDescription,
+                CanonicalUrl,
+                IsFeatured,
+                PublishedAtUtc,
+                Currency,
+                Amount,
+                Sku,
+                CompareAtAmount,
+                WeightKg,
+                ImageUrl,
+                IsInStock,
+                Categories ?? [],
+                Options ?? [],
+                Variants ?? [],
+                Attributes ?? [],
+                Images ?? [],
+                Relations ?? []);
+        }
+    }
 
     public sealed record UpdateProductSlugRequest(string Slug);
 }

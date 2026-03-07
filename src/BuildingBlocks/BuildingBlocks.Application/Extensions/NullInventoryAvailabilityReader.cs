@@ -16,4 +16,17 @@ internal sealed class NullInventoryAvailabilityReader : IInventoryAvailabilityRe
         return Task.FromResult<IReadOnlyDictionary<Guid, InventoryAvailabilitySnapshot>>(
             new Dictionary<Guid, InventoryAvailabilitySnapshot>());
     }
+
+    public Task<InventoryAvailabilitySnapshot?> GetByVariantIdAsync(Guid variantId, CancellationToken cancellationToken)
+    {
+        return Task.FromResult<InventoryAvailabilitySnapshot?>(null);
+    }
+
+    public Task<IReadOnlyDictionary<Guid, InventoryAvailabilitySnapshot>> GetByVariantIdsAsync(
+        IReadOnlyCollection<Guid> variantIds,
+        CancellationToken cancellationToken)
+    {
+        return Task.FromResult<IReadOnlyDictionary<Guid, InventoryAvailabilitySnapshot>>(
+            new Dictionary<Guid, InventoryAvailabilitySnapshot>());
+    }
 }

@@ -183,10 +183,26 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
                 .HasColumnName("product_id")
                 .IsRequired();
 
-            linesBuilder.Property(line => line.Name)
-                .HasColumnName("name")
+            linesBuilder.Property(line => line.VariantId)
+                .HasColumnName("variant_id")
+                .IsRequired();
+
+            linesBuilder.Property(line => line.Sku)
+                .HasColumnName("sku")
+                .HasMaxLength(64);
+
+            linesBuilder.Property(line => line.ProductName)
+                .HasColumnName("product_name")
                 .HasMaxLength(200)
                 .IsRequired();
+
+            linesBuilder.Property(line => line.VariantName)
+                .HasColumnName("variant_name")
+                .HasMaxLength(200);
+
+            linesBuilder.Property(line => line.SelectedOptionsJson)
+                .HasColumnName("selected_options_json")
+                .HasMaxLength(4000);
 
             linesBuilder.Property(line => line.Quantity)
                 .HasColumnName("quantity")
@@ -205,7 +221,7 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
                     .IsRequired();
             });
 
-            linesBuilder.HasKey("order_id", "ProductId");
+            linesBuilder.HasKey("order_id", "VariantId");
         });
 
         builder.Navigation(order => order.Lines)

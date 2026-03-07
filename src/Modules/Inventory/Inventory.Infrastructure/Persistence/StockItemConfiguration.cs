@@ -15,6 +15,10 @@ internal sealed class StockItemConfiguration : IEntityTypeConfiguration<StockIte
             .HasColumnName("product_id")
             .IsRequired();
 
+        builder.Property(item => item.VariantId)
+            .HasColumnName("variant_id")
+            .IsRequired();
+
         builder.Property(item => item.Sku)
             .HasColumnName("sku")
             .HasMaxLength(64);
@@ -48,15 +52,12 @@ internal sealed class StockItemConfiguration : IEntityTypeConfiguration<StockIte
             .HasColumnName("updated_at_utc")
             .IsRequired();
 
-        builder.HasIndex(item => item.ProductId)
-            .HasDatabaseName("ux_stock_items_product_id_without_sku")
-            .IsUnique()
-            .HasFilter("sku IS NULL");
+        builder.HasIndex(item => item.VariantId)
+            .HasDatabaseName("ux_stock_items_variant_id")
+            .IsUnique();
 
         builder.HasIndex(item => new { item.ProductId, item.Sku })
-            .HasDatabaseName("ux_stock_items_product_id_sku")
-            .IsUnique()
-            .HasFilter("sku IS NOT NULL");
+            .HasDatabaseName("ix_stock_items_product_id_sku");
 
         builder.HasIndex(item => item.IsTracked)
             .HasDatabaseName("ix_stock_items_is_tracked");

@@ -33,10 +33,30 @@ internal sealed class ShoppingCartConfiguration : IEntityTypeConfiguration<CartA
                 .HasColumnName("product_id")
                 .IsRequired();
 
+            linesBuilder.Property(line => line.VariantId)
+                .HasColumnName("variant_id")
+                .IsRequired();
+
+            linesBuilder.Property(line => line.Sku)
+                .HasColumnName("sku")
+                .HasMaxLength(64);
+
             linesBuilder.Property(line => line.ProductName)
                 .HasColumnName("product_name")
                 .HasMaxLength(200)
                 .IsRequired();
+
+            linesBuilder.Property(line => line.VariantName)
+                .HasColumnName("variant_name")
+                .HasMaxLength(200);
+
+            linesBuilder.Property(line => line.SelectedOptionsJson)
+                .HasColumnName("selected_options_json")
+                .HasMaxLength(4000);
+
+            linesBuilder.Property(line => line.ImageUrl)
+                .HasColumnName("image_url")
+                .HasMaxLength(2000);
 
             linesBuilder.Property(line => line.Quantity)
                 .HasColumnName("quantity")
@@ -55,7 +75,7 @@ internal sealed class ShoppingCartConfiguration : IEntityTypeConfiguration<CartA
                     .IsRequired();
             });
 
-            linesBuilder.HasKey("cart_id", "ProductId");
+            linesBuilder.HasKey("cart_id", "VariantId");
         });
 
         builder.Navigation(cart => cart.Lines)

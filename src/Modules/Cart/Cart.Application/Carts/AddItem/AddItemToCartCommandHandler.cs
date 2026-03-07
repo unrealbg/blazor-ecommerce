@@ -17,13 +17,19 @@ public sealed class AddItemToCartCommandHandler(
 {
     public async Task<Result<Guid>> Handle(AddItemToCartCommand request, CancellationToken cancellationToken)
     {
-        var product = await productCatalogReader.GetByIdAsync(request.ProductId, cancellationToken);
-        if (product is null || !product.IsActive)
+        var product = await productCatalogReader.GetByVariantIdAsync(request.VariantId, cancellationToken);
+        if (product is null || !product.IsActive || product.Id != request.ProductId)
         {
-            return Result<Guid>.Failure(new Error("cart.product.not_found", "Product was not found."));
+            return Result<Guid>.Failure(new Error("cart.product.not_found", "Product variant was not found."));
         }
 
-        var moneyResult = Money.Create(product.Currency, product.Amount);
+        var variant = product.Variants.FirstOrDefault(item => item.Id == request.VariantId && item.IsActive);
+        if (variant is null)
+        {
+            return Result<Guid>.Failure(new Error("cart.variant.not_found", "Product variant was not found."));
+        }
+
+        var moneyResult = Money.Create(variant.Currency, variant.Amount);
         if (moneyResult.IsFailure)
         {
             return Result<Guid>.Failure(moneyResult.Error);
@@ -31,7 +37,7 @@ public sealed class AddItemToCartCommandHandler(
 
         var cart = await cartRepository.GetByCustomerIdAsync(request.CustomerId, cancellationToken);
         var isNewCart = cart is null;
-        var existingQuantity = cart?.Lines.FirstOrDefault(line => line.ProductId == request.ProductId)?.Quantity ?? 0;
+        var existingQuantity = cart?.Lines.FirstOrDefault(line => line.VariantId == request.VariantId)?.Quantity ?? 0;
         var desiredQuantity = existingQuantity + request.Quantity;
 
         if (isNewCart)
@@ -49,7 +55,8 @@ public sealed class AddItemToCartCommandHandler(
         var reservationResult = await inventoryReservationService.SyncCartReservationAsync(
             request.CustomerId,
             request.ProductId,
-            product.Sku,
+            request.VariantId,
+            variant.Sku,
             desiredQuantity,
             cancellationToken);
         if (reservationResult.IsFailure)
@@ -57,18 +64,28 @@ public sealed class AddItemToCartCommandHandler(
             return Result<Guid>.Failure(reservationResult.Error);
         }
 
+        var selectedOptionsJson = variant.SelectedOptions.Count == 0
+            ? null
+            : System.Text.Json.JsonSerializer.Serialize(
+                variant.SelectedOptions.Select(option => new { option.OptionName, option.Value }));
+
         var addItemResult = cart!.AddItem(
             request.ProductId,
+            request.VariantId,
+            variant.Sku,
             product.Name,
+            variant.Name,
+            selectedOptionsJson,
+            variant.ImageUrl ?? product.ImageUrl,
             moneyResult.Value,
             request.Quantity);
-
         if (addItemResult.IsFailure)
         {
             await inventoryReservationService.SyncCartReservationAsync(
                 request.CustomerId,
                 request.ProductId,
-                product.Sku,
+                request.VariantId,
+                variant.Sku,
                 existingQuantity,
                 cancellationToken);
             return Result<Guid>.Failure(addItemResult.Error);
@@ -83,7 +100,8 @@ public sealed class AddItemToCartCommandHandler(
             await inventoryReservationService.SyncCartReservationAsync(
                 request.CustomerId,
                 request.ProductId,
-                product.Sku,
+                request.VariantId,
+                variant.Sku,
                 existingQuantity,
                 cancellationToken);
             throw;

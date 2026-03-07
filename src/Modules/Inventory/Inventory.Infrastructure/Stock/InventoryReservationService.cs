@@ -21,6 +21,7 @@ internal sealed class InventoryReservationService(
     public Task<Result> SyncCartReservationAsync(
         string cartId,
         Guid productId,
+        Guid variantId,
         string? sku,
         int quantity,
         CancellationToken cancellationToken)
@@ -41,6 +42,7 @@ internal sealed class InventoryReservationService(
         return SyncCartReservationInternalAsync(
             normalizedCartId.Value,
             productId,
+            variantId,
             sku,
             quantity,
             cancellationToken);
@@ -78,9 +80,8 @@ internal sealed class InventoryReservationService(
         var utcNow = clock.UtcNow;
         foreach (var line in NormalizeLines(lines))
         {
-            var stockItem = await stockItemRepository.GetByProductAndSkuAsync(
-                line.ProductId,
-                line.Sku,
+            var stockItem = await stockItemRepository.GetByVariantIdAsync(
+                line.VariantId,
                 cancellationToken);
             if (stockItem is null)
             {
@@ -96,10 +97,9 @@ internal sealed class InventoryReservationService(
                 continue;
             }
 
-            var reservation = await stockReservationRepository.GetActiveByCartProductSkuAsync(
+            var reservation = await stockReservationRepository.GetActiveByCartVariantIdAsync(
                 normalizedCartId.Value,
-                line.ProductId,
-                line.Sku,
+                line.VariantId,
                 cancellationToken);
 
             if (reservation is null)
@@ -207,6 +207,7 @@ internal sealed class InventoryReservationService(
     private async Task<Result> SyncCartReservationInternalAsync(
         string cartId,
         Guid productId,
+        Guid variantId,
         string? sku,
         int quantity,
         CancellationToken cancellationToken)
@@ -214,9 +215,8 @@ internal sealed class InventoryReservationService(
         var operationResult = await unitOfWork.ExecuteWithConcurrencyRetryAsync(
             async innerCancellationToken =>
             {
-                var stockItem = await stockItemRepository.GetByProductAndSkuAsync(
-                    productId,
-                    sku,
+                var stockItem = await stockItemRepository.GetByVariantIdAsync(
+                    variantId,
                     innerCancellationToken);
                 if (stockItem is null)
                 {
@@ -225,10 +225,9 @@ internal sealed class InventoryReservationService(
                         "Inventory item was not found."));
                 }
 
-                var existingReservation = await stockReservationRepository.GetActiveByCartProductSkuAsync(
+                var existingReservation = await stockReservationRepository.GetActiveByCartVariantIdAsync(
                     cartId,
-                    productId,
-                    sku,
+                    variantId,
                     innerCancellationToken);
                 var currentQuantity = existingReservation?.Quantity ?? 0;
 
@@ -314,6 +313,7 @@ internal sealed class InventoryReservationService(
                     {
                         var createReservationResult = StockReservation.Create(
                             productId,
+                            variantId,
                             sku,
                             cartId,
                             customerId: null,
@@ -460,9 +460,8 @@ internal sealed class InventoryReservationService(
             {
                 foreach (var line in normalizedLines)
                 {
-                    var stockItem = await stockItemRepository.GetByProductAndSkuAsync(
-                        line.ProductId,
-                        line.Sku,
+                    var stockItem = await stockItemRepository.GetByVariantIdAsync(
+                        line.VariantId,
                         innerCancellationToken);
                     if (stockItem is null)
                     {
@@ -476,10 +475,9 @@ internal sealed class InventoryReservationService(
                         continue;
                     }
 
-                    var reservation = await stockReservationRepository.GetActiveByCartProductSkuAsync(
+                    var reservation = await stockReservationRepository.GetActiveByCartVariantIdAsync(
                         cartId,
-                        line.ProductId,
-                        line.Sku,
+                        line.VariantId,
                         innerCancellationToken);
                     if (reservation is null)
                     {
@@ -565,9 +563,8 @@ internal sealed class InventoryReservationService(
 
                 foreach (var reservation in reservations)
                 {
-                    var stockItem = await stockItemRepository.GetByProductAndSkuAsync(
-                        reservation.ProductId,
-                        reservation.Sku,
+                    var stockItem = await stockItemRepository.GetByVariantIdAsync(
+                        reservation.VariantId,
                         innerCancellationToken);
                     if (stockItem is not null && stockItem.IsTracked)
                     {
@@ -624,9 +621,8 @@ internal sealed class InventoryReservationService(
             {
                 foreach (var line in normalizedLines)
                 {
-                    var stockItem = await stockItemRepository.GetByProductAndSkuAsync(
-                        line.ProductId,
-                        line.Sku,
+                    var stockItem = await stockItemRepository.GetByVariantIdAsync(
+                        line.VariantId,
                         innerCancellationToken);
                     if (stockItem is null)
                     {
@@ -640,10 +636,9 @@ internal sealed class InventoryReservationService(
                         continue;
                     }
 
-                    var reservation = await stockReservationRepository.GetActiveByCartProductSkuAsync(
+                    var reservation = await stockReservationRepository.GetActiveByCartVariantIdAsync(
                         cartId,
-                        line.ProductId,
-                        line.Sku,
+                        line.VariantId,
                         innerCancellationToken);
                     if (reservation is null)
                     {
@@ -771,9 +766,8 @@ internal sealed class InventoryReservationService(
             {
                 foreach (var line in normalizedLines)
                 {
-                    var stockItem = await stockItemRepository.GetByProductAndSkuAsync(
-                        line.ProductId,
-                        line.Sku,
+                    var stockItem = await stockItemRepository.GetByVariantIdAsync(
+                        line.VariantId,
                         innerCancellationToken);
                     if (stockItem is null)
                     {
@@ -787,10 +781,9 @@ internal sealed class InventoryReservationService(
                         continue;
                     }
 
-                    var reservation = await stockReservationRepository.GetActiveByOrderProductSkuAsync(
+                    var reservation = await stockReservationRepository.GetActiveByOrderVariantIdAsync(
                         orderId,
-                        line.ProductId,
-                        line.Sku,
+                        line.VariantId,
                         innerCancellationToken);
                     if (reservation is null)
                     {
@@ -917,9 +910,8 @@ internal sealed class InventoryReservationService(
 
                 foreach (var reservation in reservations)
                 {
-                    var stockItem = await stockItemRepository.GetByProductAndSkuAsync(
-                        reservation.ProductId,
-                        reservation.Sku,
+                    var stockItem = await stockItemRepository.GetByVariantIdAsync(
+                        reservation.VariantId,
                         innerCancellationToken);
                     if (stockItem is not null && stockItem.IsTracked)
                     {
@@ -968,14 +960,16 @@ internal sealed class InventoryReservationService(
         IReadOnlyCollection<InventoryCartLineRequest> lines)
     {
         return lines
-            .Where(line => line.ProductId != Guid.Empty && line.Quantity > 0)
+            .Where(line => line.ProductId != Guid.Empty && line.VariantId != Guid.Empty && line.Quantity > 0)
             .Select(line => new InventoryCartLineRequest(
                 line.ProductId,
+                line.VariantId,
                 string.IsNullOrWhiteSpace(line.Sku) ? null : line.Sku.Trim(),
                 line.Quantity))
-            .GroupBy(line => new { line.ProductId, line.Sku })
+            .GroupBy(line => new { line.ProductId, line.VariantId, line.Sku })
             .Select(group => new InventoryCartLineRequest(
                 group.Key.ProductId,
+                group.Key.VariantId,
                 group.Key.Sku,
                 group.Sum(line => line.Quantity)))
             .ToList();

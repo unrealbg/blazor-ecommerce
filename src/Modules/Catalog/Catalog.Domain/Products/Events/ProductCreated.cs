@@ -2,4 +2,4 @@ using BuildingBlocks.Domain.Primitives;
 
 namespace Catalog.Domain.Products.Events;
 
-public sealed record ProductCreated(Guid ProductId) : DomainEvent;
+public sealed record ProductCreated(Guid ProductId, Guid DefaultVariantId) : DomainEvent;

@@ -119,6 +119,7 @@ public sealed class CheckoutWithProfileCommandHandlerTests
         public Task<Result> SyncCartReservationAsync(
             string cartId,
             Guid productId,
+            Guid variantId,
             string? sku,
             int quantity,
             CancellationToken cancellationToken)
@@ -198,7 +199,7 @@ public sealed class CheckoutWithProfileCommandHandlerTests
         return new CartCheckoutSnapshot(
             Guid.NewGuid(),
             sessionId,
-            [new CartCheckoutLineSnapshot(Guid.NewGuid(), "Keyboard", "EUR", 99m, 1)]);
+            [new CartCheckoutLineSnapshot(Guid.NewGuid(), Guid.NewGuid(), "Keyboard", null, null, null, null, "EUR", 99m, 1)]);
     }
 
     private static CheckoutAddressInput BuildAddress(string firstName, string lastName)

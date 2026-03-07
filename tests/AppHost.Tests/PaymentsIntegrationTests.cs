@@ -279,7 +279,11 @@ public sealed class PaymentsIntegrationTests
             [
                 new OrderLineData(
                     productId,
+                    stockItem.VariantId,
+                    stockItem.Sku,
                     "Payments test product",
+                    null,
+                    null,
                     unitPriceResult.Value,
                     quantity),
             ],
@@ -293,13 +297,14 @@ public sealed class PaymentsIntegrationTests
 
         var reservationResult = StockReservation.Create(
             productId,
+            stockItem.VariantId,
             stockItem.Sku,
-            cartId: $"seed-cart-{Guid.NewGuid():N}",
-            customerId: null,
+            $"seed-cart-{Guid.NewGuid():N}",
+            null,
             quantity,
-            reservationToken: Guid.NewGuid().ToString("N"),
-            expiresAtUtc: DateTime.UtcNow.AddMinutes(30),
-            createdAtUtc: DateTime.UtcNow);
+            Guid.NewGuid().ToString("N"),
+            DateTime.UtcNow.AddMinutes(30),
+            DateTime.UtcNow);
 
         Assert.True(reservationResult.IsSuccess);
         var reservation = reservationResult.Value;

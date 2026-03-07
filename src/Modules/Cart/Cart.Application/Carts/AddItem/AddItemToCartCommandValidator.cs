@@ -13,6 +13,9 @@ public sealed class AddItemToCartCommandValidator : AbstractValidator<AddItemToC
         RuleFor(command => command.ProductId)
             .NotEmpty();
 
+        RuleFor(command => command.VariantId)
+            .NotEmpty();
+
         RuleFor(command => command.Quantity)
             .GreaterThan(0);
     }
