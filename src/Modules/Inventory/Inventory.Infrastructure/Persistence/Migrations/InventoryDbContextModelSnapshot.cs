@@ -102,20 +102,21 @@ namespace Inventory.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at_utc");
 
+                    b.Property<Guid>("VariantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("variant_id");
+
                     b.HasKey("Id");
 
                     b.HasIndex("IsTracked")
                         .HasDatabaseName("ix_stock_items_is_tracked");
 
-                    b.HasIndex("ProductId")
+                    b.HasIndex("VariantId")
                         .IsUnique()
-                        .HasDatabaseName("ux_stock_items_product_id_without_sku")
-                        .HasFilter("sku IS NULL");
+                        .HasDatabaseName("ux_stock_items_variant_id");
 
                     b.HasIndex("ProductId", "Sku")
-                        .IsUnique()
-                        .HasDatabaseName("ux_stock_items_product_id_sku")
-                        .HasFilter("sku IS NOT NULL");
+                        .HasDatabaseName("ix_stock_items_product_id_sku");
 
                     b.ToTable("stock_items", "inventory");
                 });
@@ -227,6 +228,10 @@ namespace Inventory.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at_utc");
 
+                    b.Property<Guid>("VariantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("variant_id");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ReservationToken")
@@ -247,6 +252,9 @@ namespace Inventory.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Status", "ExpiresAtUtc")
                         .HasDatabaseName("ix_stock_reservations_status_expires");
+
+                    b.HasIndex("VariantId", "Status")
+                        .HasDatabaseName("ix_stock_reservations_variant_status");
 
                     b.ToTable("stock_reservations", "inventory");
                 });

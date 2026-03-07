@@ -74,6 +74,14 @@ else
                 <span>@FormatPrice(selectedAmount, selectedCurrency)</span>
             </p>
 
+            @if (reviewSummary is not null && reviewSummary.ApprovedReviewCount > 0)
+            {
+                <div class="meta">
+                    <RatingStars Value="reviewSummary.AverageRating" />
+                    <span>@reviewSummary.AverageRating.ToString("0.0")/5 from @reviewSummary.ApprovedReviewCount review(s)</span>
+                </div>
+            }
+
             @if (!string.IsNullOrWhiteSpace(selectedSku))
             {
                 <p>SKU: @selectedSku</p>
@@ -155,6 +163,266 @@ else
                 </div>
             </section>
         }
+
+        <section class="admin-panel">
+            <h2>Ratings and reviews</h2>
+
+            @if (reviewSummary is null || reviewSummary.ApprovedReviewCount == 0)
+            {
+                <p>No approved reviews yet.</p>
+            }
+            else
+            {
+                <div class="form-grid">
+                    <div>
+                        <p class="price">@reviewSummary.AverageRating.ToString("0.0")/5</p>
+                        <RatingStars Value="reviewSummary.AverageRating" />
+                        <p>@reviewSummary.ApprovedReviewCount approved review(s)</p>
+                    </div>
+                    <div>
+                        @foreach (var star in Enumerable.Range(1, 5).Reverse())
+                        {
+                            var count = GetReviewCountForRating(star);
+                            <div class="meta">
+                                <span>@star star</span>
+                                <progress max="@Math.Max(1, reviewSummary.ApprovedReviewCount)" value="@count"></progress>
+                                <span>@count</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <div class="cart-actions">
+                <label>
+                    Sort reviews
+                    <select @bind="reviewSort" @bind:after="LoadReviewsAsync">
+                        <option value="newest">Newest</option>
+                        <option value="most-helpful">Most helpful</option>
+                    </select>
+                </label>
+                <label>
+                    Filter rating
+                    <select @bind="reviewRatingFilter" @bind:after="LoadReviewsAsync">
+                        <option value="">All ratings</option>
+                        <option value="5">5 stars</option>
+                        <option value="4">4 stars</option>
+                        <option value="3">3 stars</option>
+                        <option value="2">2 stars</option>
+                        <option value="1">1 star</option>
+                    </select>
+                </label>
+            </div>
+
+            @if (isReviewsLoading)
+            {
+                <p>Loading reviews...</p>
+            }
+            else if (reviewPage.Items.Count == 0)
+            {
+                <p>No reviews match the current filters.</p>
+            }
+            else
+            {
+                <div class="order-list">
+                    @foreach (var review in reviewPage.Items)
+                    {
+                        <article class="order-card">
+                            <header>
+                                <div>
+                                    <strong>@review.DisplayName</strong>
+                                    @if (review.IsVerifiedPurchase)
+                                    {
+                                        <span class="status-message">Verified purchase</span>
+                                    }
+                                </div>
+                                <p>@review.CreatedAtUtc.ToString("yyyy-MM-dd")</p>
+                            </header>
+                            <RatingStars Value="review.Rating" />
+                            @if (!string.IsNullOrWhiteSpace(review.Title))
+                            {
+                                <h3>@review.Title</h3>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(review.VariantName))
+                            {
+                                <p class="meta">Reviewed variant: @review.VariantName</p>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(review.Body))
+                            {
+                                <p>@review.Body</p>
+                            }
+
+                            <div class="cart-actions">
+                                <button class="btn-secondary" type="button" @onclick='() => VoteReviewAsync(review.Id, "Helpful")'>
+                                    Helpful (@review.HelpfulCount)
+                                </button>
+                                <button class="btn-secondary" type="button" @onclick='() => VoteReviewAsync(review.Id, "NotHelpful")'>
+                                    Not helpful (@review.NotHelpfulCount)
+                                </button>
+                                @if (currentCustomer is not null)
+                                {
+                                    <button class="btn-link danger" type="button" @onclick="() => ReportReviewAsync(review.Id)">
+                                        Report
+                                    </button>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
+
+                <div class="cart-actions">
+                    <button class="btn-secondary" type="button" disabled="@(reviewPage.Page <= 1)" @onclick="PreviousReviewPageAsync">Previous</button>
+                    <span>Page @reviewPage.Page of @reviewPage.TotalPages</span>
+                    <button class="btn-secondary" type="button" disabled="@(reviewPage.Page >= reviewPage.TotalPages)" @onclick="NextReviewPageAsync">Next</button>
+                </div>
+            }
+
+            <div class="admin-panel">
+                <h3>Write a review</h3>
+                @if (currentCustomer is null)
+                {
+                    <p>You need to sign in to submit a review.</p>
+                    <p><a class="btn-link" href="/account/login">Go to login</a></p>
+                }
+                else
+                {
+                    <EditForm Model="reviewForm" OnValidSubmit="SubmitReviewAsync">
+                        <div class="form-grid">
+                            @if (product.Variants.Count > 1)
+                            {
+                                <label>
+                                    Variant
+                                    <select @bind="reviewForm.VariantId">
+                                        <option value="">Default product</option>
+                                        @foreach (var variant in product.Variants.Where(item => item.IsActive))
+                                        {
+                                            <option value="@variant.Id">@GetVariantLabel(variant)</option>
+                                        }
+                                    </select>
+                                </label>
+                            }
+                            <label>
+                                Rating
+                                <select @bind="reviewForm.Rating">
+                                    @foreach (var rating in Enumerable.Range(1, 5).Reverse())
+                                    {
+                                        <option value="@rating">@rating</option>
+                                    }
+                                </select>
+                            </label>
+                            <label>
+                                Title
+                                <InputText @bind-Value="reviewForm.Title" />
+                            </label>
+                            <label>
+                                Review
+                                <InputTextArea @bind-Value="reviewForm.Body" />
+                            </label>
+                        </div>
+                        <button class="btn-primary" type="submit" disabled="@isSubmittingReview">Submit review</button>
+                    </EditForm>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(reviewMessage))
+                {
+                    <p class="status-message">@reviewMessage</p>
+                }
+            </div>
+        </section>
+
+        <section class="admin-panel">
+            <h2>Product Q&amp;A</h2>
+
+            @if (isQuestionsLoading)
+            {
+                <p>Loading questions...</p>
+            }
+            else if (questionPage.Items.Count == 0)
+            {
+                <p>No approved questions yet.</p>
+            }
+            else
+            {
+                <div class="order-list">
+                    @foreach (var question in questionPage.Items)
+                    {
+                        <article class="order-card">
+                            <header>
+                                <strong>@question.DisplayName</strong>
+                                <p>@question.CreatedAtUtc.ToString("yyyy-MM-dd")</p>
+                            </header>
+                            <p>@question.QuestionText</p>
+
+                            @if (question.Answers.Count == 0)
+                            {
+                                <p class="meta">No public answers yet.</p>
+                            }
+                            else
+                            {
+                                <ul>
+                                    @foreach (var answer in question.Answers.Where(item => string.Equals(item.Status, "Approved", StringComparison.OrdinalIgnoreCase)))
+                                    {
+                                        <li>
+                                            <strong>@answer.DisplayName</strong>
+                                            @if (answer.IsOfficialAnswer)
+                                            {
+                                                <span class="status-message">Official answer</span>
+                                            }
+                                            <div>@answer.AnswerText</div>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+
+                            @if (currentCustomer is not null)
+                            {
+                                <div class="form-grid">
+                                    <label>
+                                        Add answer
+                                        <InputTextArea Value="@GetPendingAnswer(question.Id)" ValueChanged="value => SetPendingAnswer(question.Id, value)" />
+                                    </label>
+                                </div>
+                                <button class="btn-secondary" type="button" @onclick="() => SubmitAnswerAsync(question.Id)">Submit answer</button>
+                            }
+                        </article>
+                    }
+                </div>
+            }
+
+            <div class="cart-actions">
+                <button class="btn-secondary" type="button" disabled="@(questionPage.Page <= 1)" @onclick="PreviousQuestionPageAsync">Previous</button>
+                <span>Page @questionPage.Page of @questionPage.TotalPages</span>
+                <button class="btn-secondary" type="button" disabled="@(questionPage.Page >= questionPage.TotalPages)" @onclick="NextQuestionPageAsync">Next</button>
+            </div>
+
+            <div class="admin-panel">
+                <h3>Ask a question</h3>
+                @if (currentCustomer is null)
+                {
+                    <p>You need to sign in to ask a question.</p>
+                    <p><a class="btn-link" href="/account/login">Go to login</a></p>
+                }
+                else
+                {
+                    <EditForm Model="questionForm" OnValidSubmit="SubmitQuestionAsync">
+                        <div class="form-grid">
+                            <label>
+                                Question
+                                <InputTextArea @bind-Value="questionForm.QuestionText" />
+                            </label>
+                        </div>
+                        <button class="btn-primary" type="submit" disabled="@isSubmittingQuestion">Submit question</button>
+                    </EditForm>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(questionMessage))
+                {
+                    <p class="status-message">@questionMessage</p>
+                }
+            </div>
+        </section>
     </article>
 }
 
@@ -171,6 +439,7 @@ else
     private string? selectedImageUrl;
     private string? selectedImageAlt;
     private string? selectionMessage;
+    private StoreCustomerProfile? currentCustomer;
     private IReadOnlyCollection<StoreProductImage> galleryImages = [];
     private IReadOnlyDictionary<string, IReadOnlyCollection<string>> optionValueLookup =
         new Dictionary<string, IReadOnlyCollection<string>>();
@@ -178,12 +447,27 @@ else
     private IReadOnlyDictionary<string, string> selectedOptions = new Dictionary<string, string>();
     private IReadOnlyDictionary<string, IReadOnlyCollection<StoreProductAttribute>> groupedAttributes =
         new Dictionary<string, IReadOnlyCollection<StoreProductAttribute>>();
+    private StoreReviewSummary? reviewSummary;
+    private StoreReviewPage reviewPage = new(1, 10, 0, 1, []);
+    private StoreQuestionPage questionPage = new(1, 10, 0, 1, []);
+    private bool isReviewsLoading;
+    private bool isQuestionsLoading;
+    private bool isSubmittingReview;
+    private bool isSubmittingQuestion;
+    private string reviewSort = "newest";
+    private string? reviewRatingFilter;
+    private string? reviewMessage;
+    private string? questionMessage;
+    private ReviewFormModel reviewForm = new();
+    private QuestionFormModel questionForm = new();
+    private Dictionary<Guid, string> pendingAnswers = [];
 
     protected override async Task OnParametersSetAsync()
     {
         isLoading = true;
 
         product = await StoreApiClient.GetProductBySlugAsync(Slug, CancellationToken.None);
+        currentCustomer = await StoreApiClient.GetCurrentCustomerAsync(CancellationToken.None);
         if (product is null)
         {
             metadata = new PageMetadata(
@@ -204,10 +488,17 @@ else
         }
 
         InitializeSelectionState(product);
+        InitializeForms(product);
+        await LoadReviewStateAsync(product.Id);
+        await LoadQuestionStateAsync(product.Id);
 
         var primaryImage = selectedImageUrl ?? product.ImageUrl ?? "/images/og-default.jpg";
-        var productDetailImage = MediaUrlService.ProductImage(primaryImage, 1200);
         var openGraphImage = SeoImageMetadata.ResolveOpenGraphImage(MediaUrlService, primaryImage);
+        var productImageUrls = galleryImages
+            .Select(image => MediaUrlService.ProductImage(image.SourceUrl ?? primaryImage, 1200))
+            .Append(MediaUrlService.ProductImage(primaryImage, 1200))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
         metadata = MetadataService.ForProduct(product.Name, product.Description, product.Slug) with
         {
@@ -225,7 +516,9 @@ else
                 selectedVariant?.IsInStock ?? product.IsInStock,
                 selectedSku,
                 product.Brand,
-                productDetailImage),
+                productImageUrls,
+                reviewSummary?.AverageRating,
+                reviewSummary?.ApprovedReviewCount ?? 0),
             metadata.CanonicalUrl);
 
         jsonLdScripts =
@@ -248,6 +541,19 @@ else
     private static string FormatPrice(decimal amount, string currency)
     {
         return $"{amount:0.00} {currency}";
+    }
+
+    private int GetReviewCountForRating(int rating)
+    {
+        return rating switch
+        {
+            5 => reviewSummary?.FiveStarCount ?? 0,
+            4 => reviewSummary?.FourStarCount ?? 0,
+            3 => reviewSummary?.ThreeStarCount ?? 0,
+            2 => reviewSummary?.TwoStarCount ?? 0,
+            1 => reviewSummary?.OneStarCount ?? 0,
+            _ => 0,
+        };
     }
 
     private string GetStockStatusLabel()
@@ -414,5 +720,243 @@ else
         }
 
         return true;
+    }
+
+    private async Task LoadReviewStateAsync(Guid productId)
+    {
+        reviewSummary = await StoreApiClient.GetProductReviewSummaryAsync(productId, CancellationToken.None);
+        await LoadReviewsAsync();
+    }
+
+    private async Task LoadQuestionStateAsync(Guid productId)
+    {
+        isQuestionsLoading = true;
+        questionPage = await StoreApiClient.GetProductQuestionsAsync(productId, questionPage.Page, questionPage.PageSize, CancellationToken.None);
+        isQuestionsLoading = false;
+    }
+
+    private async Task LoadReviewsAsync()
+    {
+        if (product is null)
+        {
+            return;
+        }
+
+        isReviewsLoading = true;
+        int? ratingFilter = int.TryParse(reviewRatingFilter, out var parsedRating) ? parsedRating : null;
+        reviewPage = await StoreApiClient.GetProductReviewsAsync(
+            product.Id,
+            reviewPage.Page <= 0 ? 1 : reviewPage.Page,
+            reviewPage.PageSize <= 0 ? 10 : reviewPage.PageSize,
+            reviewSort,
+            ratingFilter,
+            CancellationToken.None);
+        isReviewsLoading = false;
+    }
+
+    private async Task PreviousReviewPageAsync()
+    {
+        if (reviewPage.Page <= 1)
+        {
+            return;
+        }
+
+        reviewPage = reviewPage with { Page = reviewPage.Page - 1 };
+        await LoadReviewsAsync();
+    }
+
+    private async Task NextReviewPageAsync()
+    {
+        if (reviewPage.Page >= reviewPage.TotalPages)
+        {
+            return;
+        }
+
+        reviewPage = reviewPage with { Page = reviewPage.Page + 1 };
+        await LoadReviewsAsync();
+    }
+
+    private async Task PreviousQuestionPageAsync()
+    {
+        if (product is null || questionPage.Page <= 1)
+        {
+            return;
+        }
+
+        questionPage = questionPage with { Page = questionPage.Page - 1 };
+        await LoadQuestionStateAsync(product.Id);
+    }
+
+    private async Task NextQuestionPageAsync()
+    {
+        if (product is null || questionPage.Page >= questionPage.TotalPages)
+        {
+            return;
+        }
+
+        questionPage = questionPage with { Page = questionPage.Page + 1 };
+        await LoadQuestionStateAsync(product.Id);
+    }
+
+    private async Task SubmitReviewAsync()
+    {
+        if (product is null)
+        {
+            return;
+        }
+
+        isSubmittingReview = true;
+        reviewMessage = null;
+
+        var reviewId = await StoreApiClient.SubmitReviewAsync(
+            product.Id,
+            new StoreSubmitReviewRequest(reviewForm.VariantId, reviewForm.Title, reviewForm.Body, reviewForm.Rating),
+            CancellationToken.None);
+
+        reviewMessage = reviewId is null
+            ? "Unable to submit review."
+            : "Review submitted for moderation.";
+
+        if (reviewId is not null)
+        {
+            reviewForm = new ReviewFormModel { Rating = 5, VariantId = selectedVariant?.Id ?? product.DefaultVariantId };
+            await LoadReviewsAsync();
+        }
+
+        isSubmittingReview = false;
+    }
+
+    private async Task VoteReviewAsync(Guid reviewId, string voteType)
+    {
+        var result = await StoreApiClient.VoteReviewAsync(reviewId, voteType, CancellationToken.None);
+        if (result is null)
+        {
+            reviewMessage = "Unable to submit vote.";
+            return;
+        }
+
+        reviewPage = reviewPage with
+        {
+            Items = reviewPage.Items.Select(review => review.Id == reviewId
+                ? review with
+                {
+                    HelpfulCount = result.HelpfulCount,
+                    NotHelpfulCount = result.NotHelpfulCount,
+                }
+                : review).ToArray(),
+        };
+    }
+
+    private async Task ReportReviewAsync(Guid reviewId)
+    {
+        var reportId = await StoreApiClient.ReportReviewAsync(reviewId, "Other", null, CancellationToken.None);
+        reviewMessage = reportId is null
+            ? "Unable to report review."
+            : "Review reported for moderation.";
+    }
+
+    private async Task SubmitQuestionAsync()
+    {
+        if (product is null)
+        {
+            return;
+        }
+
+        isSubmittingQuestion = true;
+        questionMessage = null;
+
+        var questionId = await StoreApiClient.SubmitQuestionAsync(
+            product.Id,
+            new StoreSubmitQuestionRequest(questionForm.QuestionText ?? string.Empty),
+            CancellationToken.None);
+
+        questionMessage = questionId is null
+            ? "Unable to submit question."
+            : "Question submitted for moderation.";
+
+        if (questionId is not null)
+        {
+            questionForm = new QuestionFormModel();
+            await LoadQuestionStateAsync(product.Id);
+        }
+
+        isSubmittingQuestion = false;
+    }
+
+    private async Task SubmitAnswerAsync(Guid questionId)
+    {
+        if (string.IsNullOrWhiteSpace(GetPendingAnswer(questionId)))
+        {
+            questionMessage = "Answer is too short.";
+            return;
+        }
+
+        var answerId = await StoreApiClient.SubmitAnswerAsync(
+            questionId,
+            new StoreSubmitAnswerRequest(GetPendingAnswer(questionId)),
+            CancellationToken.None);
+
+        questionMessage = answerId is null
+            ? "Unable to submit answer."
+            : "Answer submitted for moderation.";
+
+        if (product is not null && answerId is not null)
+        {
+            pendingAnswers.Remove(questionId);
+            await LoadQuestionStateAsync(product.Id);
+        }
+    }
+
+    private string GetPendingAnswer(Guid questionId)
+    {
+        return pendingAnswers.TryGetValue(questionId, out var value) ? value : string.Empty;
+    }
+
+    private void SetPendingAnswer(Guid questionId, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            pendingAnswers.Remove(questionId);
+            return;
+        }
+
+        pendingAnswers[questionId] = value;
+    }
+
+    private void InitializeForms(StoreProduct currentProduct)
+    {
+        reviewForm = new ReviewFormModel
+        {
+            Rating = 5,
+            VariantId = selectedVariant?.Id ?? currentProduct.DefaultVariantId,
+        };
+        questionForm = new QuestionFormModel();
+    }
+
+    private static string GetVariantLabel(StoreProductVariant variant)
+    {
+        if (!string.IsNullOrWhiteSpace(variant.Name))
+        {
+            return variant.Name;
+        }
+
+        var optionSummary = string.Join(", ", variant.SelectedOptions.Select(option => $"{option.OptionName}: {option.Value}"));
+        return string.IsNullOrWhiteSpace(optionSummary) ? variant.Sku : optionSummary;
+    }
+
+    private sealed class ReviewFormModel
+    {
+        public Guid? VariantId { get; set; }
+
+        public string? Title { get; set; }
+
+        public string? Body { get; set; }
+
+        public int Rating { get; set; } = 5;
+    }
+
+    private sealed class QuestionFormModel
+    {
+        public string? QuestionText { get; set; }
     }
 }

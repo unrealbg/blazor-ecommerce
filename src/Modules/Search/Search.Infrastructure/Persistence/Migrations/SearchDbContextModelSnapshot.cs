@@ -67,9 +67,13 @@ namespace Search.Infrastructure.Persistence.Migrations
                         .HasColumnName("product_id");
 
                     b.Property<string>("Brand")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
                         .HasColumnName("brand");
+
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
 
                     b.Property<string>("CategoryName")
                         .HasMaxLength(200)
@@ -77,8 +81,8 @@ namespace Search.Infrastructure.Persistence.Migrations
                         .HasColumnName("category_name");
 
                     b.Property<string>("CategorySlug")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
+                        .HasMaxLength(220)
+                        .HasColumnType("character varying(220)")
                         .HasColumnName("category_slug");
 
                     b.Property<DateTime>("CreatedAtUtc")
@@ -131,6 +135,11 @@ namespace Search.Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("price_amount");
 
+                    b.Property<string>("SearchText")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("search_text");
+
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(220)
@@ -145,6 +154,9 @@ namespace Search.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Brand")
                         .HasDatabaseName("ix_product_search_documents_brand");
+
+                    b.HasIndex("CategoryId")
+                        .HasDatabaseName("ix_product_search_documents_category_id");
 
                     b.HasIndex("CategorySlug")
                         .HasDatabaseName("ix_product_search_documents_category_slug");

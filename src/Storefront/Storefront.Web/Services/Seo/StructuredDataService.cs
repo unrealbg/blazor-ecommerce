@@ -14,7 +14,12 @@ public sealed class StructuredDataService(IPageMetadataService pageMetadataServi
     public string BuildProductJsonLd(ProductSeoModel model, string canonicalUrl)
     {
         var normalizedCanonical = EnsureAbsoluteUrl(canonicalUrl);
-        var normalizedImageUrl = NormalizeImageUrl(model.ImageUrl, normalizedCanonical);
+        var normalizedImageUrls = model.ImageUrls
+            .Where(url => !string.IsNullOrWhiteSpace(url))
+            .Select(url => NormalizeImageUrl(url, normalizedCanonical))
+            .Where(url => !string.IsNullOrWhiteSpace(url))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
         var normalizedDescription = NormalizeDescription(model.Description);
 
         var payload = new Dictionary<string, object?>
@@ -31,12 +36,20 @@ public sealed class StructuredDataService(IPageMetadataService pageMetadataServi
                     ["@type"] = "Brand",
                     ["name"] = model.Brand,
                 },
-            ["image"] = normalizedImageUrl is null ? null : new[] { normalizedImageUrl },
+            ["image"] = normalizedImageUrls.Length == 0 ? null : normalizedImageUrls,
+            ["aggregateRating"] = model.ApprovedReviewCount > 0 && model.AverageRating is > 0m
+                ? new Dictionary<string, object?>
+                {
+                    ["@type"] = "AggregateRating",
+                    ["ratingValue"] = model.AverageRating.Value.ToString("0.00", CultureInfo.InvariantCulture),
+                    ["reviewCount"] = model.ApprovedReviewCount,
+                }
+                : null,
             ["offers"] = new Dictionary<string, object?>
             {
                 ["@type"] = "Offer",
                 ["url"] = normalizedCanonical,
-                ["priceCurrency"] = "EUR",
+                ["priceCurrency"] = model.Currency,
                 ["price"] = model.PriceAmount.ToString("0.00", CultureInfo.InvariantCulture),
                 ["availability"] = model.IsInStock
                     ? "https://schema.org/InStock"

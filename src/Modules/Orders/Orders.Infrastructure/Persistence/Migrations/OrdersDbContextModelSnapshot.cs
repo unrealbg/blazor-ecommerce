@@ -64,6 +64,16 @@ namespace Orders.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AppliedCouponsJson")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("applied_coupons_json");
+
+                    b.Property<string>("AppliedPromotionsJson")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("applied_promotions_json");
+
                     b.Property<string>("CheckoutSessionId")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -250,6 +260,54 @@ namespace Orders.Infrastructure.Persistence.Migrations
                                 .HasForeignKey("OrderId");
                         });
 
+                    b.OwnsOne("BuildingBlocks.Domain.Shared.Money", "CartDiscountTotal", b1 =>
+                        {
+                            b1.Property<Guid>("OrderId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("cart_discount_total_amount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("cart_discount_total_currency");
+
+                            b1.HasKey("OrderId");
+
+                            b1.ToTable("orders", "orders");
+
+                            b1.WithOwner()
+                                .HasForeignKey("OrderId");
+                        });
+
+                    b.OwnsOne("BuildingBlocks.Domain.Shared.Money", "LineDiscountTotal", b1 =>
+                        {
+                            b1.Property<Guid>("OrderId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("line_discount_total_amount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("line_discount_total_currency");
+
+                            b1.HasKey("OrderId");
+
+                            b1.ToTable("orders", "orders");
+
+                            b1.WithOwner()
+                                .HasForeignKey("OrderId");
+                        });
+
                     b.OwnsOne("Orders.Domain.Orders.OrderAddressSnapshot", "ShippingAddress", b1 =>
                         {
                             b1.Property<Guid>("OrderId")
@@ -295,6 +353,30 @@ namespace Orders.Infrastructure.Persistence.Migrations
                                 .HasMaxLength(200)
                                 .HasColumnType("character varying(200)")
                                 .HasColumnName("shipping_street");
+
+                            b1.HasKey("OrderId");
+
+                            b1.ToTable("orders", "orders");
+
+                            b1.WithOwner()
+                                .HasForeignKey("OrderId");
+                        });
+
+                    b.OwnsOne("BuildingBlocks.Domain.Shared.Money", "ShippingDiscountTotal", b1 =>
+                        {
+                            b1.Property<Guid>("OrderId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("shipping_discount_total_amount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("shipping_discount_total_currency");
 
                             b1.HasKey("OrderId");
 
@@ -352,6 +434,30 @@ namespace Orders.Infrastructure.Persistence.Migrations
                                 .HasForeignKey("OrderId");
                         });
 
+                    b.OwnsOne("BuildingBlocks.Domain.Shared.Money", "SubtotalBeforeDiscount", b1 =>
+                        {
+                            b1.Property<Guid>("OrderId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("subtotal_before_discount_amount");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(3)
+                                .HasColumnType("character varying(3)")
+                                .HasColumnName("subtotal_before_discount_currency");
+
+                            b1.HasKey("OrderId");
+
+                            b1.ToTable("orders", "orders");
+
+                            b1.WithOwner()
+                                .HasForeignKey("OrderId");
+                        });
+
                     b.OwnsOne("BuildingBlocks.Domain.Shared.Money", "Total", b1 =>
                         {
                             b1.Property<Guid>("OrderId")
@@ -381,22 +487,61 @@ namespace Orders.Infrastructure.Persistence.Migrations
                             b1.Property<Guid>("order_id")
                                 .HasColumnType("uuid");
 
-                            b1.Property<Guid>("ProductId")
+                            b1.Property<Guid>("VariantId")
                                 .ValueGeneratedOnAdd()
+                                .HasColumnType("uuid")
+                                .HasColumnName("variant_id");
+
+                            b1.Property<string>("AppliedDiscountsJson")
+                                .HasMaxLength(4000)
+                                .HasColumnType("character varying(4000)")
+                                .HasColumnName("applied_discounts_json");
+
+                            b1.Property<decimal>("BaseUnitAmount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("base_unit_amount");
+
+                            b1.Property<decimal?>("CompareAtPriceAmount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("compare_at_price_amount");
+
+                            b1.Property<decimal>("DiscountTotalAmount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("discount_total_amount");
+
+                            b1.Property<Guid>("ProductId")
                                 .HasColumnType("uuid")
                                 .HasColumnName("product_id");
 
-                            b1.Property<string>("Name")
+                            b1.Property<string>("ProductName")
                                 .IsRequired()
                                 .HasMaxLength(200)
                                 .HasColumnType("character varying(200)")
-                                .HasColumnName("name");
+                                .HasColumnName("product_name");
 
                             b1.Property<int>("Quantity")
                                 .HasColumnType("integer")
                                 .HasColumnName("quantity");
 
-                            b1.HasKey("order_id", "ProductId");
+                            b1.Property<string>("SelectedOptionsJson")
+                                .HasMaxLength(4000)
+                                .HasColumnType("character varying(4000)")
+                                .HasColumnName("selected_options_json");
+
+                            b1.Property<string>("Sku")
+                                .HasMaxLength(64)
+                                .HasColumnType("character varying(64)")
+                                .HasColumnName("sku");
+
+                            b1.Property<string>("VariantName")
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("variant_name");
+
+                            b1.HasKey("order_id", "VariantId");
 
                             b1.ToTable("order_lines", "orders");
 
@@ -405,11 +550,13 @@ namespace Orders.Infrastructure.Persistence.Migrations
 
                             b1.OwnsOne("BuildingBlocks.Domain.Shared.Money", "UnitPrice", b2 =>
                                 {
-                                    b2.Property<Guid>("OrderLineorder_id")
-                                        .HasColumnType("uuid");
+                                    b2.Property<Guid>("OrderLineUnitPriceOrderId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("order_id");
 
-                                    b2.Property<Guid>("OrderLineProductId")
-                                        .HasColumnType("uuid");
+                                    b2.Property<Guid>("OrderLineUnitPriceVariantId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("variant_id");
 
                                     b2.Property<decimal>("Amount")
                                         .HasPrecision(18, 2)
@@ -422,12 +569,12 @@ namespace Orders.Infrastructure.Persistence.Migrations
                                         .HasColumnType("character varying(3)")
                                         .HasColumnName("unit_currency");
 
-                                    b2.HasKey("OrderLineorder_id", "OrderLineProductId");
+                                    b2.HasKey("OrderLineUnitPriceOrderId", "OrderLineUnitPriceVariantId");
 
                                     b2.ToTable("order_lines", "orders");
 
                                     b2.WithOwner()
-                                        .HasForeignKey("OrderLineorder_id", "OrderLineProductId");
+                                        .HasForeignKey("OrderLineUnitPriceOrderId", "OrderLineUnitPriceVariantId");
                                 });
 
                             b1.Navigation("UnitPrice")
@@ -437,15 +584,27 @@ namespace Orders.Infrastructure.Persistence.Migrations
                     b.Navigation("BillingAddress")
                         .IsRequired();
 
+                    b.Navigation("CartDiscountTotal")
+                        .IsRequired();
+
+                    b.Navigation("LineDiscountTotal")
+                        .IsRequired();
+
                     b.Navigation("Lines");
 
                     b.Navigation("ShippingAddress")
+                        .IsRequired();
+
+                    b.Navigation("ShippingDiscountTotal")
                         .IsRequired();
 
                     b.Navigation("ShippingPrice")
                         .IsRequired();
 
                     b.Navigation("Subtotal")
+                        .IsRequired();
+
+                    b.Navigation("SubtotalBeforeDiscount")
                         .IsRequired();
 
                     b.Navigation("Total")

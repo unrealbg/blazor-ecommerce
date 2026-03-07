@@ -1,3 +1,4 @@
+using System.Net.Sockets;
 using BuildingBlocks.Application.Contracts;
 using BuildingBlocks.Infrastructure.Modules;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +28,11 @@ public sealed class RedirectsInfrastructureInstaller : IModuleInfrastructureInst
         var redisConnectionString = configuration.GetConnectionString("Redis");
         if (!string.IsNullOrWhiteSpace(redisConnectionString))
         {
-            services.TryAddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConnectionString));
+            var redisConnection = TryConnectRedis(redisConnectionString);
+            if (redisConnection is not null)
+            {
+                services.TryAddSingleton(redisConnection);
+            }
         }
 
         services.AddMemoryCache();
@@ -47,5 +52,31 @@ public sealed class RedirectsInfrastructureInstaller : IModuleInfrastructureInst
         using var scope = serviceProvider.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<RedirectsDbContext>();
         await dbContext.Database.MigrateAsync(cancellationToken);
+    }
+
+    private static IConnectionMultiplexer? TryConnectRedis(string connectionString)
+    {
+        try
+        {
+            return ConnectionMultiplexer.Connect(BuildRedisOptions(connectionString));
+        }
+        catch (RedisConnectionException)
+        {
+            return null;
+        }
+        catch (SocketException)
+        {
+            return null;
+        }
+    }
+
+    private static ConfigurationOptions BuildRedisOptions(string connectionString)
+    {
+        var options = ConfigurationOptions.Parse(connectionString);
+        options.AbortOnConnectFail = false;
+        options.ConnectRetry = 1;
+        options.ConnectTimeout = 1000;
+        options.SyncTimeout = 1000;
+        return options;
     }
 }

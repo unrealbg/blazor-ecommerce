@@ -1,0 +1,83 @@
+@page "/admin/reviews/reports"
+@rendermode InteractiveServer
+@layout Storefront.Web.Components.Layout.AdminLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>Review Reports</PageTitle>
+
+<h1>Review Reports</h1>
+
+@if (isLoading)
+{
+    <p>Loading reports...</p>
+}
+else if (page.Items.Count == 0)
+{
+    <p>No reports found.</p>
+}
+else
+{
+    <table class="cart-table">
+        <thead>
+        <tr>
+            <th>Product</th>
+            <th>Reason</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var report in page.Items)
+        {
+            <tr>
+                <td><a href="/product/@report.ProductSlug">@report.ProductName</a></td>
+                <td>@report.ReasonType</td>
+                <td>@report.Status</td>
+                <td>@report.CreatedAtUtc.ToString("u")</td>
+                <td>
+                    <button class="btn-secondary" type="button" @onclick="() => ResolveAsync(report.Id, false)">Resolve</button>
+                    <button class="btn-link" type="button" @onclick="() => ResolveAsync(report.Id, true)">Dismiss</button>
+                </td>
+            </tr>
+            @if (!string.IsNullOrWhiteSpace(report.Message))
+            {
+                <tr>
+                    <td colspan="5">@report.Message</td>
+                </tr>
+            }
+        }
+        </tbody>
+    </table>
+}
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <p class="status-message">@message</p>
+}
+
+@code {
+    private StoreReviewReportPage page = new(1, 20, 0, 1, []);
+    private bool isLoading = true;
+    private string? message;
+
+    protected override Task OnInitializedAsync()
+    {
+        return LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        page = await StoreApiClient.GetReviewReportsAsync("Open", 1, 20, CancellationToken.None);
+        isLoading = false;
+    }
+
+    private async Task ResolveAsync(Guid reportId, bool dismiss)
+    {
+        var success = await StoreApiClient.ResolveReviewReportAsync(reportId, dismiss, null, CancellationToken.None);
+        message = success ? "Report updated." : "Unable to update report.";
+        await LoadAsync();
+    }
+}

@@ -56,6 +56,12 @@
     <Project Path="src/Modules/Redirects/Redirects.Domain/Redirects.Domain.csproj" />
     <Project Path="src/Modules/Redirects/Redirects.Infrastructure/Redirects.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Reviews/">
+    <Project Path="src/Modules/Reviews/Reviews.Api/Reviews.Api.csproj" />
+    <Project Path="src/Modules/Reviews/Reviews.Application/Reviews.Application.csproj" />
+    <Project Path="src/Modules/Reviews/Reviews.Domain/Reviews.Domain.csproj" />
+    <Project Path="src/Modules/Reviews/Reviews.Infrastructure/Reviews.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Search/">
     <Project Path="src/Modules/Search/Search.Api/Search.Api.csproj" />
     <Project Path="src/Modules/Search/Search.Application/Search.Application.csproj" />
@@ -80,6 +86,7 @@
     <Project Path="tests/Orders.Tests/Orders.Tests.csproj" />
     <Project Path="tests/Payments.Tests/Payments.Tests.csproj" />
     <Project Path="tests/Pricing.Tests/Pricing.Tests.csproj" />
+    <Project Path="tests/Reviews.Tests/Reviews.Tests.csproj" />
     <Project Path="tests/Shipping.Tests/Shipping.Tests.csproj" />
     <Project Path="tests/Storefront.Tests/Storefront.Tests.csproj" />
   </Folder>

@@ -24,6 +24,62 @@ public sealed class StoreApiClient(
         return GetOrDefaultAsync<StoreProduct>($"/api/v1/catalog/products/by-slug/{slug}", cancellationToken);
     }
 
+    public Task<StoreReviewSummary?> GetProductReviewSummaryAsync(Guid productId, CancellationToken cancellationToken)
+    {
+        return GetOrDefaultAsync<StoreReviewSummary>(
+            $"/api/v1/reviews/products/{productId:D}/summary",
+            cancellationToken);
+    }
+
+    public async Task<StoreReviewPage> GetProductReviewsAsync(
+        Guid productId,
+        int page,
+        int pageSize,
+        string? sort,
+        int? rating,
+        CancellationToken cancellationToken)
+    {
+        var queryParameters = new List<KeyValuePair<string, string?>>
+        {
+            new("page", Math.Max(1, page).ToString(CultureInfo.InvariantCulture)),
+            new("pageSize", Math.Clamp(pageSize, 1, 50).ToString(CultureInfo.InvariantCulture)),
+        };
+
+        if (!string.IsNullOrWhiteSpace(sort))
+        {
+            queryParameters.Add(new KeyValuePair<string, string?>("sort", sort.Trim()));
+        }
+
+        if (rating is >= 1 and <= 5)
+        {
+            queryParameters.Add(new KeyValuePair<string, string?>("rating", rating.Value.ToString(CultureInfo.InvariantCulture)));
+        }
+
+        var uri = $"/api/v1/reviews/products/{productId:D}{QueryString.Create(queryParameters)}";
+        var response = await httpClient.GetFromJsonAsync<StoreReviewPage>(uri, cancellationToken);
+
+        return response ?? new StoreReviewPage(1, 10, 0, 1, []);
+    }
+
+    public async Task<StoreQuestionPage> GetProductQuestionsAsync(
+        Guid productId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var queryString = QueryString.Create(
+        [
+            new KeyValuePair<string, string?>("page", Math.Max(1, page).ToString(CultureInfo.InvariantCulture)),
+            new KeyValuePair<string, string?>("pageSize", Math.Clamp(pageSize, 1, 50).ToString(CultureInfo.InvariantCulture)),
+        ]);
+
+        var response = await httpClient.GetFromJsonAsync<StoreQuestionPage>(
+            $"/api/v1/reviews/products/{productId:D}/questions{queryString}",
+            cancellationToken);
+
+        return response ?? new StoreQuestionPage(1, 10, 0, 1, []);
+    }
+
     public async Task<StoreSearchProductsResponse> SearchProductsAsync(
         StoreSearchProductsRequest request,
         CancellationToken cancellationToken)
@@ -130,6 +186,136 @@ public sealed class StoreApiClient(
     {
         var response = await httpClient.DeleteAsync($"/api/v1/cart/{customerId}/coupon", cancellationToken);
         return response.IsSuccessStatusCode;
+    }
+
+    public async Task<Guid?> SubmitReviewAsync(
+        Guid productId,
+        StoreSubmitReviewRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/reviews/products/{productId:D}")
+        {
+            Content = JsonContent.Create(request),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<CreateReviewEntityResponse>(cancellationToken);
+        return payload?.Id;
+    }
+
+    public async Task<bool> UpdateMyReviewAsync(
+        Guid reviewId,
+        StoreSubmitReviewRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/reviews/me/{reviewId:D}")
+        {
+            Content = JsonContent.Create(request),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<StoreReviewVoteResult?> VoteReviewAsync(
+        Guid reviewId,
+        string voteType,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/reviews/{reviewId:D}/vote")
+        {
+            Content = JsonContent.Create(new VoteReviewRequest(voteType)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        return await response.Content.ReadFromJsonAsync<StoreReviewVoteResult>(cancellationToken);
+    }
+
+    public async Task<Guid?> ReportReviewAsync(
+        Guid reviewId,
+        string reasonType,
+        string? message,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/reviews/{reviewId:D}/report")
+        {
+            Content = JsonContent.Create(new ReportReviewRequest(reasonType, message)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<CreateReviewEntityResponse>(cancellationToken);
+        return payload?.Id;
+    }
+
+    public async Task<Guid?> SubmitQuestionAsync(
+        Guid productId,
+        StoreSubmitQuestionRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/reviews/products/{productId:D}/questions")
+        {
+            Content = JsonContent.Create(request),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<CreateReviewEntityResponse>(cancellationToken);
+        return payload?.Id;
+    }
+
+    public async Task<Guid?> SubmitAnswerAsync(
+        Guid questionId,
+        StoreSubmitAnswerRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/reviews/questions/{questionId:D}/answers")
+        {
+            Content = JsonContent.Create(request),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<CreateReviewEntityResponse>(cancellationToken);
+        return payload?.Id;
+    }
+
+    public async Task<IReadOnlyCollection<StoreMyReview>> GetMyReviewsAsync(CancellationToken cancellationToken)
+    {
+        var response = await GetAuthorizedOrDefaultAsync<IReadOnlyCollection<StoreMyReview>>(
+            "/api/v1/reviews/me",
+            cancellationToken);
+        return response ?? [];
+    }
+
+    public async Task<IReadOnlyCollection<StoreMyQuestion>> GetMyQuestionsAsync(CancellationToken cancellationToken)
+    {
+        var response = await GetAuthorizedOrDefaultAsync<IReadOnlyCollection<StoreMyQuestion>>(
+            "/api/v1/reviews/me/questions",
+            cancellationToken);
+        return response ?? [];
     }
 
     public async Task<Guid?> CheckoutAsync(string customerId, string idempotencyKey, CancellationToken cancellationToken)
@@ -1113,6 +1299,133 @@ public sealed class StoreApiClient(
         return response.IsSuccessStatusCode;
     }
 
+    public async Task<StoreReviewModerationPage> GetAdminReviewsAsync(
+        string? status,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var uri = BuildReviewAdminUri("/api/v1/reviews/admin/reviews", status, page, pageSize);
+        var response = await GetAuthorizedOrDefaultAsync<StoreReviewModerationPage>(uri, cancellationToken);
+        return response ?? new StoreReviewModerationPage(1, 20, 0, 1, []);
+    }
+
+    public Task<bool> ApproveReviewAsync(Guid reviewId, string? notes, CancellationToken cancellationToken)
+    {
+        return SendReviewModerationAsync($"/api/v1/reviews/admin/reviews/{reviewId:D}/approve", notes, cancellationToken);
+    }
+
+    public Task<bool> RejectReviewAsync(Guid reviewId, string? notes, CancellationToken cancellationToken)
+    {
+        return SendReviewModerationAsync($"/api/v1/reviews/admin/reviews/{reviewId:D}/reject", notes, cancellationToken);
+    }
+
+    public Task<bool> HideReviewAsync(Guid reviewId, string? notes, CancellationToken cancellationToken)
+    {
+        return SendReviewModerationAsync($"/api/v1/reviews/admin/reviews/{reviewId:D}/hide", notes, cancellationToken);
+    }
+
+    public async Task<StoreQuestionModerationPage> GetAdminQuestionsAsync(
+        string? status,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var uri = BuildReviewAdminUri("/api/v1/reviews/admin/questions", status, page, pageSize);
+        var response = await GetAuthorizedOrDefaultAsync<StoreQuestionModerationPage>(uri, cancellationToken);
+        return response ?? new StoreQuestionModerationPage(1, 20, 0, 1, []);
+    }
+
+    public Task<bool> ApproveQuestionAsync(Guid questionId, string? notes, CancellationToken cancellationToken)
+    {
+        return SendReviewModerationAsync($"/api/v1/reviews/admin/questions/{questionId:D}/approve", notes, cancellationToken);
+    }
+
+    public Task<bool> RejectQuestionAsync(Guid questionId, string? notes, CancellationToken cancellationToken)
+    {
+        return SendReviewModerationAsync($"/api/v1/reviews/admin/questions/{questionId:D}/reject", notes, cancellationToken);
+    }
+
+    public Task<bool> HideQuestionAsync(Guid questionId, string? notes, CancellationToken cancellationToken)
+    {
+        return SendReviewModerationAsync($"/api/v1/reviews/admin/questions/{questionId:D}/hide", notes, cancellationToken);
+    }
+
+    public async Task<Guid?> AddOfficialAnswerAsync(
+        Guid questionId,
+        string displayName,
+        string answerText,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"/api/v1/reviews/admin/questions/{questionId:D}/official-answer")
+        {
+            Content = JsonContent.Create(new OfficialAnswerRequest(displayName, answerText)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<CreateReviewEntityResponse>(cancellationToken);
+        return payload?.Id;
+    }
+
+    public async Task<StoreAnswerModerationPage> GetAdminAnswersAsync(
+        string? status,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var uri = BuildReviewAdminUri("/api/v1/reviews/admin/answers", status, page, pageSize);
+        var response = await GetAuthorizedOrDefaultAsync<StoreAnswerModerationPage>(uri, cancellationToken);
+        return response ?? new StoreAnswerModerationPage(1, 20, 0, 1, []);
+    }
+
+    public Task<bool> ApproveAnswerAsync(Guid answerId, string? notes, CancellationToken cancellationToken)
+    {
+        return SendReviewModerationAsync($"/api/v1/reviews/admin/answers/{answerId:D}/approve", notes, cancellationToken);
+    }
+
+    public Task<bool> RejectAnswerAsync(Guid answerId, string? notes, CancellationToken cancellationToken)
+    {
+        return SendReviewModerationAsync($"/api/v1/reviews/admin/answers/{answerId:D}/reject", notes, cancellationToken);
+    }
+
+    public Task<bool> HideAnswerAsync(Guid answerId, string? notes, CancellationToken cancellationToken)
+    {
+        return SendReviewModerationAsync($"/api/v1/reviews/admin/answers/{answerId:D}/hide", notes, cancellationToken);
+    }
+
+    public async Task<StoreReviewReportPage> GetReviewReportsAsync(
+        string? status,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var uri = BuildReviewAdminUri("/api/v1/reviews/admin/reports", status, page, pageSize);
+        var response = await GetAuthorizedOrDefaultAsync<StoreReviewReportPage>(uri, cancellationToken);
+        return response ?? new StoreReviewReportPage(1, 20, 0, 1, []);
+    }
+
+    public async Task<bool> ResolveReviewReportAsync(
+        Guid reportId,
+        bool dismiss,
+        string? notes,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/reviews/admin/reports/{reportId:D}/resolve")
+        {
+            Content = JsonContent.Create(new ResolveReviewReportRequest(dismiss, notes)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
     private static string BuildSearchUri(StoreSearchProductsRequest request)
     {
         var queryParameters = new List<KeyValuePair<string, string?>>();
@@ -1164,6 +1477,22 @@ public sealed class StoreApiClient(
             : $"/api/v1/search/products{QueryString.Create(queryParameters)}";
     }
 
+    private static string BuildReviewAdminUri(string path, string? status, int page, int pageSize)
+    {
+        var queryParameters = new List<KeyValuePair<string, string?>>
+        {
+            new("page", Math.Max(1, page).ToString(CultureInfo.InvariantCulture)),
+            new("pageSize", Math.Clamp(pageSize, 1, 100).ToString(CultureInfo.InvariantCulture)),
+        };
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            queryParameters.Add(new KeyValuePair<string, string?>("status", status.Trim()));
+        }
+
+        return $"{path}{QueryString.Create(queryParameters)}";
+    }
+
     private async Task<T?> GetOrDefaultAsync<T>(string uri, CancellationToken cancellationToken)
     {
         using var response = await httpClient.GetAsync(uri, cancellationToken);
@@ -1213,6 +1542,20 @@ public sealed class StoreApiClient(
         return response;
     }
 
+    private async Task<bool> SendReviewModerationAsync(
+        string path,
+        string? notes,
+        CancellationToken cancellationToken)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, path)
+        {
+            Content = JsonContent.Create(new ModerationNotesRequest(notes)),
+        };
+
+        using var response = await SendWithCookieForwardingAsync(httpRequest, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
     private sealed record AddCartItemRequest(Guid ProductId, Guid VariantId, int Quantity);
 
     private sealed record ApplyCouponRequest(string CouponCode);
@@ -1240,7 +1583,19 @@ public sealed class StoreApiClient(
 
     private sealed record CreateRedirectRuleResponse(Guid Id);
 
+    private sealed record CreateReviewEntityResponse(Guid Id);
+
     private sealed record CreatePricingEntityResponse(Guid Id);
+
+    private sealed record VoteReviewRequest(string VoteType);
+
+    private sealed record ReportReviewRequest(string ReasonType, string? Message);
+
+    private sealed record ModerationNotesRequest(string? Notes);
+
+    private sealed record OfficialAnswerRequest(string DisplayName, string AnswerText);
+
+    private sealed record ResolveReviewReportRequest(bool Dismiss, string? Notes);
 
     private sealed record CreatePaymentIntentRequest(Guid OrderId, string? Provider, string? CustomerEmail);
 

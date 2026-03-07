@@ -16,9 +16,11 @@ using Orders.Api;
 using Payments.Api;
 using Pricing.Api;
 using Redirects.Api;
+using Reviews.Api;
 using Search.Api;
 using Serilog;
 using Shipping.Api;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,13 +39,14 @@ builder.Services.AddApplicationCore();
 builder.Services.AddSharedInfrastructure(builder.Configuration);
 
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
-if (string.IsNullOrWhiteSpace(redisConnectionString))
+if (!RedisConnectionHelper.CanConnect(redisConnectionString))
 {
     builder.Services.AddDistributedMemoryCache();
 }
 else
 {
-    builder.Services.AddStackExchangeRedisCache(options => options.Configuration = redisConnectionString);
+    builder.Services.AddStackExchangeRedisCache(options =>
+        options.ConfigurationOptions = RedisConnectionHelper.BuildOptions(redisConnectionString!));
 }
 
 builder.Services
@@ -105,6 +108,7 @@ builder.Services.AddCustomersModule();
 builder.Services.AddInventoryModule();
 builder.Services.AddPaymentsModule();
 builder.Services.AddPricingModule();
+builder.Services.AddReviewsModule();
 builder.Services.AddShippingModule();
 
 builder.Services.AddHealthChecks()
@@ -145,6 +149,7 @@ apiV1.MapCustomersEndpoints();
 apiV1.MapInventoryEndpoints();
 apiV1.MapPaymentsEndpoints();
 apiV1.MapPricingEndpoints();
+apiV1.MapReviewsEndpoints();
 apiV1.MapShippingEndpoints();
 app.MapDirectusWebhookEndpoint();
 

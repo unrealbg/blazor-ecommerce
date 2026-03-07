@@ -18,6 +18,7 @@ using Orders.Infrastructure.Persistence;
 using Payments.Infrastructure.Persistence;
 using Pricing.Infrastructure.Persistence;
 using Redirects.Infrastructure.Persistence;
+using Reviews.Infrastructure.Persistence;
 using Search.Infrastructure.Persistence;
 using Shipping.Infrastructure.Persistence;
 
@@ -81,6 +82,7 @@ public sealed class AppHostWebApplicationFactory : WebApplicationFactory<Program
             this.ReplaceDbContext<InventoryDbContext>(services);
             this.ReplaceDbContext<PaymentsDbContext>(services);
             this.ReplaceDbContext<PricingDbContext>(services);
+            this.ReplaceDbContext<ReviewsDbContext>(services);
             this.ReplaceDbContext<ShippingDbContext>(services);
             services.RemoveAll<ICartCheckoutAccessor>();
             services.AddScoped<ICartCheckoutAccessor, TestCartCheckoutAccessor>();
