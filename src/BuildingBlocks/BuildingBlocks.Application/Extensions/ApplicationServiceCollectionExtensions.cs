@@ -3,6 +3,7 @@ using BuildingBlocks.Application.Abstractions;
 using BuildingBlocks.Application.Auditing;
 using BuildingBlocks.Application.Behaviors;
 using BuildingBlocks.Application.Contracts;
+using BuildingBlocks.Application.Operations;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,6 +27,8 @@ public static class ApplicationServiceCollectionExtensions
         services.TryAddScoped<IOrderPaymentService, NullOrderPaymentService>();
         services.TryAddScoped<IOrderPricingReader, NullOrderPricingReader>();
         services.TryAddScoped<IOrderReviewVerifier, NullOrderReviewVerifier>();
+        services.TryAddScoped<ICustomerOrderExportReader, NullCustomerOrderExportReader>();
+        services.TryAddScoped<ICustomerReviewExportReader, NullCustomerReviewExportReader>();
         services.TryAddScoped<IReviewSummaryReader, NullReviewSummaryReader>();
         services.TryAddScoped<IShippingQuoteService, NullShippingQuoteService>();
         services.TryAddScoped<IOrderFulfillmentService, NullOrderFulfillmentService>();
@@ -33,6 +36,7 @@ public static class ApplicationServiceCollectionExtensions
         services.TryAddScoped<ICartPricingService, NullCartPricingService>();
         services.TryAddScoped<IPricingRedemptionService, NullPricingRedemptionService>();
         services.TryAddScoped<IAuditTrail, NullAuditTrail>();
+        services.TryAddSingleton<IOperationalAlertSink, NullOperationalAlertSink>();
 
         return services;
     }

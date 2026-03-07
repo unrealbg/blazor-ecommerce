@@ -193,6 +193,23 @@ public sealed class Customer : AggregateRoot<Guid>
         RaiseDomainEvent(new CustomerLoggedIn(Id, userId));
     }
 
+    public void Anonymize(string replacementEmail, DateTime utcNow)
+    {
+        Email = replacementEmail.Trim().ToLowerInvariant();
+        NormalizedEmail = replacementEmail.Trim().ToUpperInvariant();
+        FirstName = null;
+        LastName = null;
+        PhoneNumber = null;
+        IsActive = false;
+        UserId = null;
+        UpdatedAtUtc = utcNow;
+
+        foreach (var address in _addresses)
+        {
+            address.Anonymize(utcNow);
+        }
+    }
+
     private static Result<Customer> Create(
         string email,
         string? firstName,

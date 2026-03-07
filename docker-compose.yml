@@ -77,8 +77,21 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=blazor_ecommerce;Username=postgres;Password=postgres
       ConnectionStrings__Redis: redis:6379
+      Observability__ServiceName: blazor-ecommerce-app
+      Observability__EnableConsoleExporter: "true"
+      Observability__CorrelationHeaderName: X-Correlation-Id
+      Readiness__OutboxWarningThreshold: 250
+      Readiness__FailedWebhookWarningThreshold: 25
+      Readiness__OldestOutboxMinutesThreshold: 15
       Outbox__BatchSize: 20
       Outbox__PollingInterval: 00:00:05
+      Outbox__MaxRetryAttempts: 5
+      Outbox__RetryBaseDelaySeconds: 15
+      Outbox__StuckWarningAgeMinutes: 15
+      Retention__ProcessedOutboxDays: 30
+      Retention__WebhookPayloadDays: 90
+      Retention__AuditLogDays: 3650
+      Retention__SweepIntervalMinutes: 60
     ports:
       - "8080:8080"
     depends_on:

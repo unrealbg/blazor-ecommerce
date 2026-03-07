@@ -2,7 +2,9 @@ using BuildingBlocks.Application.Authorization;
 using BuildingBlocks.Application.Contracts;
 using BuildingBlocks.Infrastructure.Modules;
 using Customers.Application.Auth;
+using Customers.Application.Compliance;
 using Customers.Application.Customers;
+using Customers.Infrastructure.Compliance;
 using Customers.Infrastructure.Customers;
 using Customers.Infrastructure.Identity;
 using Customers.Infrastructure.Persistence;
@@ -40,6 +42,9 @@ public sealed class CustomersInfrastructureInstaller : IModuleInfrastructureInst
                 options.Password.RequireLowercase = false;
                 options.Password.RequireNonAlphanumeric = false;
                 options.Password.RequireDigit = true;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+                options.Lockout.AllowedForNewUsers = true;
             })
             .AddRoles<IdentityRole<Guid>>()
             .AddSignInManager()
@@ -54,6 +59,8 @@ public sealed class CustomersInfrastructureInstaller : IModuleInfrastructureInst
         services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<ICustomersUnitOfWork>(provider => provider.GetRequiredService<CustomersDbContext>());
         services.AddScoped<IIdentityAuthService, IdentityAuthService>();
+        services.AddScoped<ICustomerDataExportService, CustomerDataExportService>();
+        services.AddScoped<ICustomerDataErasureService, CustomerDataErasureService>();
         services.AddScoped<ICustomerCheckoutAccessor, CustomerCheckoutAccessor>();
         services.AddScoped<ICustomerSessionCache, CustomerSessionCache>();
         services.Configure<BackofficeSeedOptions>(configuration.GetSection(BackofficeSeedOptions.SectionName));

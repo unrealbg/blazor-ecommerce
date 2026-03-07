@@ -7,6 +7,7 @@ using Shipping.Application.Providers;
 using Shipping.Application.Shipping;
 using Shipping.Infrastructure.Persistence;
 using Shipping.Infrastructure.Providers;
+using Shipping.Infrastructure.Retention;
 using Shipping.Infrastructure.Shipping;
 using Shipping.Infrastructure.Webhooks;
 
@@ -34,6 +35,7 @@ public sealed class ShippingInfrastructureInstaller : IModuleInfrastructureInsta
         services.AddScoped<IShipmentRepository, ShipmentRepository>();
         services.AddScoped<IShipmentEventRepository, ShipmentEventRepository>();
         services.AddScoped<ICarrierWebhookInboxRepository, CarrierWebhookInboxRepository>();
+        services.AddScoped<BuildingBlocks.Infrastructure.Retention.IRetentionTask, ShippingWebhookRetentionTask>();
         services.AddScoped<IShippingUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<ShippingDbContext>());
 
         services.AddScoped<IShippingCarrierProvider, DemoCarrierProvider>();

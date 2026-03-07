@@ -70,6 +70,22 @@ public sealed class Address : Entity<Guid>
         UpdatedAtUtc = DateTime.UtcNow;
     }
 
+    public void Anonymize(DateTime utcNow)
+    {
+        Label = "Removed";
+        FirstName = "Removed";
+        LastName = "Removed";
+        Company = null;
+        Street1 = "Removed";
+        Street2 = null;
+        City = "Removed";
+        PostalCode = "Removed";
+        Phone = null;
+        IsDefaultBilling = false;
+        IsDefaultShipping = false;
+        UpdatedAtUtc = utcNow;
+    }
+
     private void Apply(AddressData data)
     {
         Label = data.Label.Trim();

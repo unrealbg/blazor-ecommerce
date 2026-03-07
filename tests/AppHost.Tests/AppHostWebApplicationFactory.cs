@@ -55,6 +55,8 @@ public sealed class AppHostWebApplicationFactory : WebApplicationFactory<Program
                 ["Infrastructure:SkipInitialization"] = "true",
                 ["ConnectionStrings:Postgres"] = "Host=localhost;Port=5432;Database=test;Username=test;Password=test",
                 ["ConnectionStrings:Redis"] = string.Empty,
+                ["Observability:EnableConsoleExporter"] = "false",
+                ["Observability:ServiceName"] = "blazor-ecommerce-tests",
                 ["Authentication:Jwt:Authority"] = "https://auth.test/",
                 ["Authentication:Jwt:Audience"] = "apphost-tests",
                 ["Outbox:BatchSize"] = "20",

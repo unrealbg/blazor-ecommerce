@@ -7,6 +7,7 @@ using BuildingBlocks.Application.Authorization;
 using BuildingBlocks.Domain.Results;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -28,7 +29,7 @@ public static class BackofficeModuleExtensions
 
         group.MapGet("/session", async (
             HttpContext context,
-            IBackofficeQueryService queryService,
+            [FromServices] IBackofficeQueryService queryService,
             CancellationToken cancellationToken) =>
         {
             var session = await queryService.GetSessionAsync(context.User, cancellationToken);
@@ -36,7 +37,7 @@ public static class BackofficeModuleExtensions
         });
 
         group.MapGet("/dashboard", async (
-            IBackofficeQueryService queryService,
+            [FromServices] IBackofficeQueryService queryService,
             CancellationToken cancellationToken) =>
         {
             var dashboard = await queryService.GetDashboardAsync(cancellationToken);
@@ -53,7 +54,7 @@ public static class BackofficeModuleExtensions
             string? customerEmail,
             int page,
             int pageSize,
-            IBackofficeQueryService queryService,
+            [FromServices] IBackofficeQueryService queryService,
             CancellationToken cancellationToken) =>
         {
             var result = await queryService.GetOrdersAsync(
@@ -73,7 +74,7 @@ public static class BackofficeModuleExtensions
 
         group.MapGet("/orders/{orderId:guid}", async (
             Guid orderId,
-            IBackofficeQueryService queryService,
+            [FromServices] IBackofficeQueryService queryService,
             CancellationToken cancellationToken) =>
         {
             var order = await queryService.GetOrderAsync(orderId, cancellationToken);
@@ -82,7 +83,7 @@ public static class BackofficeModuleExtensions
 
         group.MapGet("/orders/{orderId:guid}/notes", async (
             Guid orderId,
-            IBackofficeQueryService queryService,
+            [FromServices] IBackofficeQueryService queryService,
             CancellationToken cancellationToken) =>
         {
             var notes = await queryService.GetOrderNotesAsync(orderId, cancellationToken);
@@ -93,7 +94,7 @@ public static class BackofficeModuleExtensions
             Guid orderId,
             AddOrderInternalNoteRequest request,
             HttpContext context,
-            IOrderInternalNoteService noteService,
+            [FromServices] IOrderInternalNoteService noteService,
             CancellationToken cancellationToken) =>
         {
             var result = await noteService.AddOrderNoteAsync(
@@ -113,7 +114,7 @@ public static class BackofficeModuleExtensions
             string? query,
             int page,
             int pageSize,
-            IBackofficeQueryService queryService,
+            [FromServices] IBackofficeQueryService queryService,
             CancellationToken cancellationToken) =>
         {
             var result = await queryService.GetCustomersAsync(query, page, pageSize, cancellationToken);
@@ -122,7 +123,7 @@ public static class BackofficeModuleExtensions
 
         group.MapGet("/customers/{customerId:guid}", async (
             Guid customerId,
-            IBackofficeQueryService queryService,
+            [FromServices] IBackofficeQueryService queryService,
             CancellationToken cancellationToken) =>
         {
             var customer = await queryService.GetCustomerAsync(customerId, cancellationToken);
@@ -130,7 +131,7 @@ public static class BackofficeModuleExtensions
         }).RequireAuthorization(BackofficePolicyNames.Permission(BackofficePermissions.CustomersView));
 
         group.MapGet("/staff/roles", async (
-            IStaffManagementService service,
+            [FromServices] IStaffManagementService service,
             CancellationToken cancellationToken) =>
         {
             var roles = await service.GetRoleCatalogAsync(cancellationToken);
@@ -142,7 +143,7 @@ public static class BackofficeModuleExtensions
             bool? isActive,
             int page,
             int pageSize,
-            IStaffManagementService service,
+            [FromServices] IStaffManagementService service,
             CancellationToken cancellationToken) =>
         {
             var result = await service.GetStaffAsync(query, isActive, page, pageSize, cancellationToken);
@@ -151,7 +152,7 @@ public static class BackofficeModuleExtensions
 
         group.MapGet("/staff/{userId:guid}", async (
             Guid userId,
-            IStaffManagementService service,
+            [FromServices] IStaffManagementService service,
             CancellationToken cancellationToken) =>
         {
             var user = await service.GetStaffUserAsync(userId, cancellationToken);
@@ -161,8 +162,8 @@ public static class BackofficeModuleExtensions
         group.MapPost("/staff", async (
             CreateStaffUserRequest request,
             HttpContext context,
-            IStaffManagementService service,
-            IAuditTrail auditTrail,
+            [FromServices] IStaffManagementService service,
+            [FromServices] IAuditTrail auditTrail,
             CancellationToken cancellationToken) =>
         {
             var result = await service.CreateStaffUserAsync(
@@ -201,8 +202,8 @@ public static class BackofficeModuleExtensions
             Guid userId,
             SetStaffActiveRequest request,
             HttpContext context,
-            IStaffManagementService service,
-            IAuditTrail auditTrail,
+            [FromServices] IStaffManagementService service,
+            [FromServices] IAuditTrail auditTrail,
             CancellationToken cancellationToken) =>
         {
             var result = await service.SetStaffActiveAsync(userId, request.IsActive, cancellationToken);
@@ -228,8 +229,8 @@ public static class BackofficeModuleExtensions
             Guid userId,
             string roleName,
             HttpContext context,
-            IStaffManagementService service,
-            IAuditTrail auditTrail,
+            [FromServices] IStaffManagementService service,
+            [FromServices] IAuditTrail auditTrail,
             CancellationToken cancellationToken) =>
         {
             var result = await service.AssignRoleAsync(userId, roleName, cancellationToken);
@@ -255,8 +256,8 @@ public static class BackofficeModuleExtensions
             Guid userId,
             string roleName,
             HttpContext context,
-            IStaffManagementService service,
-            IAuditTrail auditTrail,
+            [FromServices] IStaffManagementService service,
+            [FromServices] IAuditTrail auditTrail,
             CancellationToken cancellationToken) =>
         {
             var result = await service.RemoveRoleAsync(userId, roleName, cancellationToken);
@@ -287,7 +288,7 @@ public static class BackofficeModuleExtensions
             DateTime? toUtc,
             int page,
             int pageSize,
-            IBackofficeQueryService queryService,
+            [FromServices] IBackofficeQueryService queryService,
             CancellationToken cancellationToken) =>
         {
             var result = await queryService.GetAuditEntriesAsync(
@@ -306,7 +307,7 @@ public static class BackofficeModuleExtensions
 
         group.MapGet("/audit/{auditEntryId:guid}", async (
             Guid auditEntryId,
-            IBackofficeQueryService queryService,
+            [FromServices] IBackofficeQueryService queryService,
             CancellationToken cancellationToken) =>
         {
             var entry = await queryService.GetAuditEntryAsync(auditEntryId, cancellationToken);
@@ -314,11 +315,101 @@ public static class BackofficeModuleExtensions
         }).RequireAuthorization(BackofficePolicyNames.Permission(BackofficePermissions.AuditView));
 
         group.MapGet("/system", async (
-            IBackofficeQueryService queryService,
+            [FromServices] IBackofficeQueryService queryService,
             CancellationToken cancellationToken) =>
         {
             var result = await queryService.GetSystemSummaryAsync(cancellationToken);
             return Results.Ok(result);
+        }).RequireAuthorization(BackofficePolicyNames.Permission(BackofficePermissions.SystemView));
+
+        group.MapPost("/system/outbox/{outboxMessageId:guid}/retry", async (
+            Guid outboxMessageId,
+            ConfirmationRequest request,
+            HttpContext context,
+            [FromServices] ISystemOperationsService service,
+            [FromServices] IAuditTrail auditTrail,
+            CancellationToken cancellationToken) =>
+        {
+            if (!request.IsConfirmed)
+            {
+                return Results.Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Confirmation required",
+                    detail: "This recovery action requires explicit confirmation.",
+                    extensions: new Dictionary<string, object?> { ["code"] = "backoffice.confirmation.required" });
+            }
+
+            var result = await service.RetryOutboxMessageAsync(outboxMessageId, cancellationToken);
+            if (result.IsFailure)
+            {
+                return BusinessError(result.Error);
+            }
+
+            await auditTrail.WriteAsync(
+                CreateAuditInput(context, "OutboxRetryRequested", "OutboxMessage", outboxMessageId.ToString("D"), "Requested outbox message retry.", null),
+                cancellationToken);
+
+            return Results.Ok(new { retried = true, id = outboxMessageId });
+        }).RequireAuthorization(BackofficePolicyNames.Permission(BackofficePermissions.SystemView));
+
+        group.MapPost("/system/payment-webhooks/{webhookMessageId:guid}/reprocess", async (
+            Guid webhookMessageId,
+            ConfirmationRequest request,
+            HttpContext context,
+            [FromServices] ISystemOperationsService service,
+            [FromServices] IAuditTrail auditTrail,
+            CancellationToken cancellationToken) =>
+        {
+            if (!request.IsConfirmed)
+            {
+                return Results.Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Confirmation required",
+                    detail: "This recovery action requires explicit confirmation.",
+                    extensions: new Dictionary<string, object?> { ["code"] = "backoffice.confirmation.required" });
+            }
+
+            var result = await service.ReprocessPaymentWebhookAsync(webhookMessageId, cancellationToken);
+            if (result.IsFailure)
+            {
+                return BusinessError(result.Error);
+            }
+
+            await auditTrail.WriteAsync(
+                CreateAuditInput(context, "PaymentWebhookReprocessRequested", "PaymentWebhookInboxMessage", webhookMessageId.ToString("D"), "Requested payment webhook reprocess.", null),
+                cancellationToken);
+
+            return Results.Ok(new { reprocessed = result.Value, id = webhookMessageId });
+        }).RequireAuthorization(BackofficePolicyNames.Permission(BackofficePermissions.SystemView));
+
+        group.MapPost("/system/shipping-webhooks/{webhookMessageId:guid}/reprocess", async (
+            Guid webhookMessageId,
+            ConfirmationRequest request,
+            HttpContext context,
+            [FromServices] ISystemOperationsService service,
+            [FromServices] IAuditTrail auditTrail,
+            CancellationToken cancellationToken) =>
+        {
+            if (!request.IsConfirmed)
+            {
+                return Results.Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Confirmation required",
+                    detail: "This recovery action requires explicit confirmation.",
+                    extensions: new Dictionary<string, object?> { ["code"] = "backoffice.confirmation.required" });
+            }
+
+            var result = await service.ReprocessShippingWebhookAsync(webhookMessageId, cancellationToken);
+            if (result.IsFailure)
+            {
+                return BusinessError(result.Error);
+            }
+
+            await auditTrail.WriteAsync(
+                CreateAuditInput(context, "ShippingWebhookReprocessRequested", "ShippingWebhookInboxMessage", webhookMessageId.ToString("D"), "Requested shipping webhook reprocess.", null),
+                cancellationToken);
+
+            return Results.Ok(new { reprocessed = result.Value, id = webhookMessageId });
         }).RequireAuthorization(BackofficePolicyNames.Permission(BackofficePermissions.SystemView));
 
         return endpoints;
@@ -393,4 +484,6 @@ public static class BackofficeModuleExtensions
     public sealed record SetStaffActiveRequest(bool IsActive);
 
     public sealed record AddOrderInternalNoteRequest(string Note);
+
+    public sealed record ConfirmationRequest(bool IsConfirmed);
 }

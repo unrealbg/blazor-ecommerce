@@ -1,5 +1,6 @@
 using BuildingBlocks.Application.Contracts;
 using BuildingBlocks.Domain.Results;
+using BuildingBlocks.Application.Security;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -125,6 +126,7 @@ public static class RedirectsModuleExtensions
             return Results.Accepted();
         })
         .AllowAnonymous()
+        .RequireRateLimiting(RateLimitingPolicyNames.PublicWebhook)
         .WithTags("Redirects");
 
         return endpoints;

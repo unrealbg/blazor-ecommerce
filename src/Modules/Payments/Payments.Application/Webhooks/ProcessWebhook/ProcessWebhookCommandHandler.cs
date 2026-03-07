@@ -1,4 +1,5 @@
 using BuildingBlocks.Application.Abstractions;
+using BuildingBlocks.Application.Diagnostics;
 using BuildingBlocks.Domain.Abstractions;
 using BuildingBlocks.Domain.Results;
 using Microsoft.Extensions.Logging;
@@ -20,6 +21,9 @@ public sealed class ProcessWebhookCommandHandler(
 {
     public async Task<Result<bool>> Handle(ProcessWebhookCommand request, CancellationToken cancellationToken)
     {
+        using var activity = CommerceDiagnostics.StartActivity("payments.webhook.process");
+        activity?.SetTag("payment.provider", request.Provider);
+
         IPaymentProvider provider;
         try
         {
@@ -51,25 +55,44 @@ public sealed class ProcessWebhookCommandHandler(
             cancellationToken);
         if (existingMessage is not null)
         {
-            return Result<bool>.Success(false);
+            if (existingMessage.ProcessingStatus == WebhookInboxProcessingStatus.Failed)
+            {
+                existingMessage.RequeueForProcessing();
+            }
+            else
+            {
+                logger.LogInformation(
+                    "Ignoring duplicate payment webhook {Provider} {ExternalEventId}",
+                    provider.Name,
+                    webhookResult.ExternalEventId);
+                return Result<bool>.Success(false);
+            }
         }
 
         return await unitOfWork.ExecuteInTransactionAsync(
             async innerCancellationToken =>
             {
-                var inboxResult = WebhookInboxMessage.Create(
-                    provider.Name,
-                    webhookResult.ExternalEventId,
-                    webhookResult.EventType,
-                    request.Payload,
-                    clock.UtcNow);
-                if (inboxResult.IsFailure)
+                WebhookInboxMessage inboxMessage;
+                if (existingMessage is null)
                 {
-                    return Result<bool>.Failure(inboxResult.Error);
-                }
+                    var inboxResult = WebhookInboxMessage.Create(
+                        provider.Name,
+                        webhookResult.ExternalEventId,
+                        webhookResult.EventType,
+                        request.Payload,
+                        clock.UtcNow);
+                    if (inboxResult.IsFailure)
+                    {
+                        return Result<bool>.Failure(inboxResult.Error);
+                    }
 
-                var inboxMessage = inboxResult.Value;
-                await webhookInboxRepository.AddAsync(inboxMessage, innerCancellationToken);
+                    inboxMessage = inboxResult.Value;
+                    await webhookInboxRepository.AddAsync(inboxMessage, innerCancellationToken);
+                }
+                else
+                {
+                    inboxMessage = existingMessage;
+                }
 
                 try
                 {
@@ -80,9 +103,15 @@ public sealed class ProcessWebhookCommandHandler(
                     if (paymentIntentEntity is null)
                     {
                         inboxMessage.MarkIgnored(clock.UtcNow, "Payment intent was not found.");
+                        logger.LogWarning(
+                            "Payment webhook ignored because payment intent was not found. Provider {Provider} ExternalEventId {ExternalEventId}",
+                            provider.Name,
+                            webhookResult.ExternalEventId);
                         await unitOfWork.SaveChangesAsync(innerCancellationToken);
                         return Result<bool>.Success(false);
                     }
+
+                    activity?.SetTag("payment.intent.id", paymentIntentEntity.Id);
 
                     var statusUpdateResult = ApplyStatusFromWebhook(paymentIntentEntity, webhookResult, clock.UtcNow);
                     if (statusUpdateResult.IsFailure)
@@ -112,12 +141,18 @@ public sealed class ProcessWebhookCommandHandler(
                     await paymentTransactionRepository.AddAsync(transactionResult.Value, innerCancellationToken);
                     inboxMessage.MarkProcessed(clock.UtcNow);
                     await unitOfWork.SaveChangesAsync(innerCancellationToken);
+                    logger.LogInformation(
+                        "Processed payment webhook {Provider} {ExternalEventId} for payment intent {PaymentIntentId}",
+                        provider.Name,
+                        webhookResult.ExternalEventId,
+                        paymentIntentEntity.Id);
                     return Result<bool>.Success(true);
                 }
                 catch (Exception exception)
                 {
                     inboxMessage.MarkFailed(clock.UtcNow, exception.ToString());
                     await unitOfWork.SaveChangesAsync(innerCancellationToken);
+                    CommerceDiagnostics.RecordPaymentWebhookFailure(provider.Name);
                     logger.LogError(exception, "Webhook processing failed for provider {Provider}", provider.Name);
                     return Result<bool>.Failure(new Error(
                         "payments.webhook.processing_failed",

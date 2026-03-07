@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using BuildingBlocks.Infrastructure.Operations;
 using Redirects.Application.RedirectRules;
 
 namespace Redirects.Infrastructure.Persistence;
@@ -8,6 +9,7 @@ namespace Redirects.Infrastructure.Persistence;
 internal sealed class RedirectHitBackgroundService(
     RedirectHitQueue redirectHitQueue,
     IServiceScopeFactory serviceScopeFactory,
+    IBackgroundJobMonitor backgroundJobMonitor,
     ILogger<RedirectHitBackgroundService> logger)
     : BackgroundService
 {
@@ -17,8 +19,10 @@ internal sealed class RedirectHitBackgroundService(
         {
             try
             {
+                using var execution = backgroundJobMonitor.Start("redirect-hit-flush");
                 if (!await redirectHitQueue.Reader.WaitToReadAsync(stoppingToken))
                 {
+                    execution.Complete(0, "no-buffered-hits");
                     continue;
                 }
 
@@ -46,6 +50,7 @@ internal sealed class RedirectHitBackgroundService(
 
                 if (aggregatedHits.Count == 0)
                 {
+                    execution.Complete(0, "no-buffered-hits");
                     continue;
                 }
 
@@ -60,6 +65,8 @@ internal sealed class RedirectHitBackgroundService(
                         value.LastHitAtUtc,
                         stoppingToken);
                 }
+
+                execution.Complete(aggregatedHits.Count);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

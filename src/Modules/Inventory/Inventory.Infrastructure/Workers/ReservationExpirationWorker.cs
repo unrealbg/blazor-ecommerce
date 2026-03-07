@@ -1,4 +1,6 @@
 using Inventory.Application.Stock;
+using BuildingBlocks.Application.Diagnostics;
+using BuildingBlocks.Infrastructure.Operations;
 using Inventory.Domain.Stock;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -10,6 +12,7 @@ namespace Inventory.Infrastructure.Workers;
 internal sealed class ReservationExpirationWorker(
     IServiceScopeFactory scopeFactory,
     IOptions<InventoryModuleOptions> options,
+    IBackgroundJobMonitor backgroundJobMonitor,
     ILogger<ReservationExpirationWorker> logger)
     : BackgroundService
 {
@@ -19,12 +22,15 @@ internal sealed class ReservationExpirationWorker(
     {
         while (!stoppingToken.IsCancellationRequested)
         {
+            using var execution = backgroundJobMonitor.Start("inventory-reservation-expiration");
             try
             {
-                await SweepExpiredReservationsAsync(stoppingToken);
+                var expiredCount = await SweepExpiredReservationsAsync(stoppingToken);
+                execution.Complete(expiredCount, expiredCount == 0 ? "no-expired-reservations" : null);
             }
             catch (Exception exception)
             {
+                execution.Fail(exception);
                 logger.LogError(exception, "Failed processing reservation expiration sweep.");
             }
 
@@ -32,7 +38,7 @@ internal sealed class ReservationExpirationWorker(
         }
     }
 
-    private async Task SweepExpiredReservationsAsync(CancellationToken cancellationToken)
+    private async Task<int> SweepExpiredReservationsAsync(CancellationToken cancellationToken)
     {
         using var scope = scopeFactory.CreateScope();
 
@@ -52,7 +58,7 @@ internal sealed class ReservationExpirationWorker(
 
                 if (expiredReservations.Count == 0)
                 {
-                    return BuildingBlocks.Domain.Results.Result<bool>.Success(true);
+                    return BuildingBlocks.Domain.Results.Result<int>.Success(0);
                 }
 
                 foreach (var reservation in expiredReservations)
@@ -66,14 +72,14 @@ internal sealed class ReservationExpirationWorker(
                         var releaseResult = stockItem.Release(reservation.Quantity, clock.UtcNow);
                         if (releaseResult.IsFailure)
                         {
-                            return BuildingBlocks.Domain.Results.Result<bool>.Failure(releaseResult.Error);
+                            return BuildingBlocks.Domain.Results.Result<int>.Failure(releaseResult.Error);
                         }
                     }
 
                     var expireResult = reservation.Expire(clock.UtcNow);
                     if (expireResult.IsFailure)
                     {
-                        return BuildingBlocks.Domain.Results.Result<bool>.Failure(expireResult.Error);
+                        return BuildingBlocks.Domain.Results.Result<int>.Failure(expireResult.Error);
                     }
 
                     var movementResult = StockMovement.Create(
@@ -87,7 +93,7 @@ internal sealed class ReservationExpirationWorker(
                         clock.UtcNow);
                     if (movementResult.IsFailure)
                     {
-                        return BuildingBlocks.Domain.Results.Result<bool>.Failure(movementResult.Error);
+                        return BuildingBlocks.Domain.Results.Result<int>.Failure(movementResult.Error);
                     }
 
                     await stockMovementRepository.AddAsync(movementResult.Value, innerCancellationToken);
@@ -95,8 +101,9 @@ internal sealed class ReservationExpirationWorker(
 
                 await unitOfWork.SaveChangesAsync(innerCancellationToken);
                 logger.LogInformation("Expired {Count} stock reservations.", expiredReservations.Count);
+                CommerceDiagnostics.RecordReservationExpiration(expiredReservations.Count);
 
-                return BuildingBlocks.Domain.Results.Result<bool>.Success(true);
+                return BuildingBlocks.Domain.Results.Result<int>.Success(expiredReservations.Count);
             },
             Math.Max(1, this.options.RetryOnConcurrencyCount),
             cancellationToken);
@@ -104,6 +111,9 @@ internal sealed class ReservationExpirationWorker(
         if (result.IsFailure)
         {
             logger.LogWarning("Reservation expiration sweep failed: {Code} - {Message}", result.Error.Code, result.Error.Message);
+            return 0;
         }
+
+        return result.Value;
     }
 }

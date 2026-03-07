@@ -1,6 +1,8 @@
 using BuildingBlocks.Application.Abstractions;
+using BuildingBlocks.Application.Diagnostics;
 using BuildingBlocks.Domain.Abstractions;
 using BuildingBlocks.Domain.Results;
+using Microsoft.Extensions.Logging;
 using Shipping.Application.Providers;
 using Shipping.Application.Shipping;
 using Shipping.Domain.Shipping;
@@ -13,11 +15,15 @@ public sealed class ProcessCarrierWebhookCommandHandler(
     IShipmentEventRepository shipmentEventRepository,
     IShippingCarrierProviderFactory carrierProviderFactory,
     IShippingUnitOfWork unitOfWork,
-    IClock clock)
+    IClock clock,
+    ILogger<ProcessCarrierWebhookCommandHandler> logger)
     : ICommandHandler<ProcessCarrierWebhookCommand, bool>
 {
     public async Task<Result<bool>> Handle(ProcessCarrierWebhookCommand request, CancellationToken cancellationToken)
     {
+        using var activity = CommerceDiagnostics.StartActivity("shipping.webhook.process");
+        activity?.SetTag("shipping.provider", request.Provider);
+
         IShippingCarrierProvider carrierProvider;
         try
         {
@@ -38,22 +44,41 @@ public sealed class ProcessCarrierWebhookCommandHandler(
             cancellationToken);
         if (existing is not null)
         {
-            return Result<bool>.Success(false);
+            if (existing.ProcessingStatus == CarrierWebhookInboxProcessingStatus.Failed)
+            {
+                existing.RequeueForProcessing();
+            }
+            else
+            {
+                logger.LogInformation(
+                    "Ignoring duplicate shipping webhook {Provider} {ExternalEventId}",
+                    request.Provider,
+                    webhook.ExternalEventId);
+                return Result<bool>.Success(false);
+            }
         }
 
-        var createInboxResult = CarrierWebhookInboxMessage.Create(
-            request.Provider,
-            webhook.ExternalEventId,
-            webhook.EventType,
-            request.Payload,
-            clock.UtcNow);
-        if (createInboxResult.IsFailure)
+        CarrierWebhookInboxMessage inboxMessage;
+        if (existing is null)
         {
-            return Result<bool>.Failure(createInboxResult.Error);
-        }
+            var createInboxResult = CarrierWebhookInboxMessage.Create(
+                request.Provider,
+                webhook.ExternalEventId,
+                webhook.EventType,
+                request.Payload,
+                clock.UtcNow);
+            if (createInboxResult.IsFailure)
+            {
+                return Result<bool>.Failure(createInboxResult.Error);
+            }
 
-        var inboxMessage = createInboxResult.Value;
-        await webhookInboxRepository.AddAsync(inboxMessage, cancellationToken);
+            inboxMessage = createInboxResult.Value;
+            await webhookInboxRepository.AddAsync(inboxMessage, cancellationToken);
+        }
+        else
+        {
+            inboxMessage = existing;
+        }
 
         if (webhook.ShipmentId is null || webhook.ShipmentId.Value == Guid.Empty)
         {
@@ -69,6 +94,8 @@ public sealed class ProcessCarrierWebhookCommandHandler(
             await unitOfWork.SaveChangesAsync(cancellationToken);
             return Result<bool>.Success(false);
         }
+
+        activity?.SetTag("shipment.id", shipment.Id);
 
         var statusResult = ApplyStatus(shipment, webhook.Status, webhook.Message, clock.UtcNow);
         if (statusResult.IsFailure)
@@ -109,6 +136,23 @@ public sealed class ProcessCarrierWebhookCommandHandler(
         await shipmentEventRepository.AddAsync(createEventResult.Value, cancellationToken);
         inboxMessage.MarkProcessed(clock.UtcNow);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "Processed shipping webhook {Provider} {ExternalEventId} for shipment {ShipmentId}",
+            request.Provider,
+            webhook.ExternalEventId,
+            shipment.Id);
+
+        if (string.Equals(webhook.Status, "delivered", StringComparison.OrdinalIgnoreCase))
+        {
+            CommerceDiagnostics.RecordShipment("delivery", request.Provider, "success");
+        }
+
+        if (string.Equals(webhook.Status, "failed", StringComparison.OrdinalIgnoreCase))
+        {
+            CommerceDiagnostics.RecordShipment("delivery", request.Provider, "failure");
+            CommerceDiagnostics.RecordShippingWebhookFailure(request.Provider);
+        }
 
         return Result<bool>.Success(true);
     }

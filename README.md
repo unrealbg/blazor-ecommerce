@@ -107,6 +107,39 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 
 - Liveness: `GET /health/live`
 - Readiness (DB): `GET /health/ready`
+- Startup: `GET /health/startup`
+
+## Production Hardening
+
+- Structured problem details now include `correlationId`, stable `code`, and request `instance` for auth and unhandled failures.
+- OpenTelemetry traces and metrics are wired through `CommerceDiagnostics`, with configurable console export under `Observability`.
+- AppHost enforces fixed-window rate limits for auth, review writes, search suggest, payment mutations, and public webhook endpoints under `RateLimiting`.
+- Security defaults were tightened for auth cookies and response headers in `AppHost`, while API auth failures stay JSON-first.
+- Shared outbox dispatch now tracks retry/dead-letter state, backlog age, and emits operational alerts through a pluggable `IOperationalAlertSink`.
+- Background workers register execution state in the shared operational registry, which feeds backoffice system visibility.
+- Retention cleanup runs through shared `IRetentionTask` implementations, including processed outbox cleanup and webhook payload trimming.
+- Customer privacy hooks are exposed through `GET /api/v1/customers/me/export` and `POST /api/v1/customers/me/erase`.
+- Backoffice operational recovery endpoints support replaying failed outbox and webhook work without direct database intervention.
+
+## Operational Endpoints
+
+- `GET /api/v1/backoffice/system`
+- `POST /api/v1/backoffice/system/outbox/{outboxMessageId}/retry`
+- `POST /api/v1/backoffice/system/payment-webhooks/{webhookMessageId}/reprocess`
+- `POST /api/v1/backoffice/system/shipping-webhooks/{webhookMessageId}/reprocess`
+
+## Important Configuration
+
+- `Observability:ServiceName`
+- `Observability:EnableConsoleExporter`
+- `RateLimiting:*`
+- `Security:*`
+- `Readiness:OutboxWarningThreshold`
+- `Readiness:OldestOutboxMinutesThreshold`
+- `Readiness:FailedWebhookWarningThreshold`
+- `Retention:SweepInterval`
+- `Outbox:BatchSize`
+- `Outbox:PollingInterval`
 
 ## API Routes (v1)
 
@@ -370,10 +403,7 @@ The storefront now serves public image URLs through an internal media proxy endp
 ```json
 {
   "Media": {
-    "AllowedHosts": [
-      "localhost:8055",
-      "localhost:5100"
-    ],
+    "AllowedHosts": ["localhost:8055", "localhost:5100"],
     "CachePath": "cache/media",
     "DefaultQualityJpeg": 82,
     "DefaultQualityWebp": 80,
@@ -406,7 +436,7 @@ docker compose up -d directus-db directus
    - `DIRECTUS_SECRET`
    - `ADMIN_EMAIL`
    - `ADMIN_PASSWORD`
-   Example:
+     Example:
 
 ```bash
 set DIRECTUS_KEY=replace-me
@@ -414,6 +444,7 @@ set DIRECTUS_SECRET=replace-me
 set ADMIN_EMAIL=admin@example.com
 set ADMIN_PASSWORD=StrongPassword123!
 ```
+
 4. Login with `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
 5. Create content collections:
    - `blog_posts`
@@ -1327,6 +1358,7 @@ curl http://localhost:8080/api/v1/orders/my
 - `/admin/questions`
 
 Capabilities:
+
 - moderate pending reviews
 - moderate pending questions and answers
 - add official answers

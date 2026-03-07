@@ -1,8 +1,10 @@
 using System.Text.Json;
 using BuildingBlocks.Application.Abstractions;
 using BuildingBlocks.Application.Contracts;
+using BuildingBlocks.Application.Diagnostics;
 using BuildingBlocks.Domain.Abstractions;
 using BuildingBlocks.Domain.Results;
+using Microsoft.Extensions.Logging;
 using Shipping.Application.Providers;
 using Shipping.Domain.Shipping;
 
@@ -15,13 +17,17 @@ public sealed class CreateShipmentCommandHandler(
     IShipmentEventRepository shipmentEventRepository,
     IShippingCarrierProviderFactory carrierProviderFactory,
     IShippingUnitOfWork unitOfWork,
-    IClock clock)
+    IClock clock,
+    ILogger<CreateShipmentCommandHandler> logger)
     : ICommandHandler<CreateShipmentCommand, Guid>
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public async Task<Result<Guid>> Handle(CreateShipmentCommand request, CancellationToken cancellationToken)
     {
+        using var activity = CommerceDiagnostics.StartActivity("shipping.create_shipment");
+        activity?.SetTag("order.id", request.OrderId);
+
         var order = await orderFulfillmentService.GetByIdAsync(request.OrderId, cancellationToken);
         if (order is null)
         {
@@ -154,6 +160,12 @@ public sealed class CreateShipmentCommandHandler(
         }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        logger.LogInformation(
+            "Created shipment {ShipmentId} for order {OrderId} provider {Provider}",
+            shipment.Id,
+            request.OrderId,
+            carrierProvider.Name);
+        CommerceDiagnostics.RecordShipment("create", carrierProvider.Name, "success");
         return Result<Guid>.Success(shipment.Id);
     }
 }

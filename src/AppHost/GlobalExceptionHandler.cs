@@ -60,6 +60,7 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         };
 
         serverErrorProblem.Extensions["errorType"] = "server";
+        serverErrorProblem.Extensions["correlationId"] = httpContext.TraceIdentifier;
         await WriteProblemAsync(httpContext, serverErrorProblem, cancellationToken);
         return true;
     }
@@ -71,6 +72,8 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
     {
         httpContext.Response.StatusCode = problemDetails.Status ?? StatusCodes.Status500InternalServerError;
         httpContext.Response.ContentType = "application/problem+json";
+        problemDetails.Instance = httpContext.Request.Path;
+        problemDetails.Extensions["correlationId"] = httpContext.TraceIdentifier;
         await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
     }
 }

@@ -37,9 +37,11 @@ public static class ApiProblemDetailsWriter
             Status = statusCode,
             Title = title,
             Detail = detail,
+            Instance = context.Request.Path,
             Extensions =
             {
                 ["code"] = code,
+                ["correlationId"] = context.TraceIdentifier,
             },
         });
     }

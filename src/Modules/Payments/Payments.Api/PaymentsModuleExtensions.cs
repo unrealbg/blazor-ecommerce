@@ -1,4 +1,5 @@
 using BuildingBlocks.Domain.Results;
+using BuildingBlocks.Application.Security;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -61,13 +62,13 @@ public static class PaymentsModuleExtensions
             return result.IsSuccess
                 ? Results.Ok(result.Value)
                 : BusinessError(result.Error);
-        }).AllowAnonymous();
+        }).AllowAnonymous().RequireRateLimiting(RateLimitingPolicyNames.PaymentMutations);
 
         group.MapGet("/intents/{id:guid}", async (Guid id, ISender sender, CancellationToken cancellationToken) =>
         {
             var paymentIntent = await sender.Send(new GetPaymentIntentQuery(id), cancellationToken);
             return paymentIntent is not null ? Results.Ok(paymentIntent) : Results.NotFound();
-        }).AllowAnonymous();
+        }).AllowAnonymous().RequireRateLimiting(RateLimitingPolicyNames.PaymentMutations);
 
         group.MapGet("/intents/by-order/{orderId:guid}", async (
             Guid orderId,
@@ -76,7 +77,7 @@ public static class PaymentsModuleExtensions
         {
             var paymentIntent = await sender.Send(new GetPaymentIntentByOrderQuery(orderId), cancellationToken);
             return paymentIntent is not null ? Results.Ok(paymentIntent) : Results.NotFound();
-        }).AllowAnonymous();
+        }).AllowAnonymous().RequireRateLimiting(RateLimitingPolicyNames.PublicWebhook);
 
         group.MapPost("/intents/{id:guid}/confirm", async (
             Guid id,

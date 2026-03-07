@@ -1,7 +1,9 @@
 using BuildingBlocks.Application.Abstractions;
 using BuildingBlocks.Application.Contracts;
+using BuildingBlocks.Application.Diagnostics;
 using BuildingBlocks.Domain.Abstractions;
 using BuildingBlocks.Domain.Results;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Payments.Application.Providers;
 using Payments.Domain.Payments;
@@ -16,7 +18,8 @@ public sealed class CreatePaymentIntentCommandHandler(
     IPaymentProviderFactory paymentProviderFactory,
     IPaymentsUnitOfWork unitOfWork,
     IClock clock,
-    IOptions<PaymentsModuleOptions> options)
+    IOptions<PaymentsModuleOptions> options,
+    ILogger<CreatePaymentIntentCommandHandler> logger)
     : ICommandHandler<CreatePaymentIntentCommand, PaymentIntentActionResult>
 {
     private const string CreateOperation = "create-intent";
@@ -26,6 +29,9 @@ public sealed class CreatePaymentIntentCommandHandler(
         CreatePaymentIntentCommand request,
         CancellationToken cancellationToken)
     {
+        using var activity = CommerceDiagnostics.StartActivity("payments.create_intent");
+        activity?.SetTag("order.id", request.OrderId);
+
         var idempotencyKey = request.IdempotencyKey.Trim();
         var existingRecord = await paymentIdempotencyRepository.GetByOperationAndKeyAsync(
             CreateOperation,
@@ -139,6 +145,7 @@ public sealed class CreatePaymentIntentCommandHandler(
                 }
                 catch (InvalidOperationException)
                 {
+                    CommerceDiagnostics.RecordPaymentIntentCreation(false, providerName);
                     return Result<PaymentIntentActionResult>.Failure(new Error(
                         "payments.provider.unavailable",
                         "Requested payment provider is unavailable."));
@@ -165,6 +172,11 @@ public sealed class CreatePaymentIntentCommandHandler(
                 }
                 catch (Exception)
                 {
+                    logger.LogWarning(
+                        "Payment provider unavailable while creating payment intent for order {OrderId} provider {Provider}",
+                        request.OrderId,
+                        providerName);
+                    CommerceDiagnostics.RecordPaymentIntentCreation(false, providerName);
                     return Result<PaymentIntentActionResult>.Failure(new Error(
                         "payments.provider.unavailable",
                         "Payment provider is unavailable."));
@@ -215,6 +227,13 @@ public sealed class CreatePaymentIntentCommandHandler(
 
                 await paymentIdempotencyRepository.AddAsync(createIdempotencyResult.Value, innerCancellationToken);
                 await unitOfWork.SaveChangesAsync(innerCancellationToken);
+
+                logger.LogInformation(
+                    "Created payment intent {PaymentIntentId} for order {OrderId} provider {Provider}",
+                    paymentIntentEntity.Id,
+                    request.OrderId,
+                    providerName);
+                CommerceDiagnostics.RecordPaymentIntentCreation(true, providerName);
 
                 return Result<PaymentIntentActionResult>.Success(PaymentIntentMappings.ToActionResult(
                     paymentIntentEntity,

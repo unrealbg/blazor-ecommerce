@@ -1,9 +1,16 @@
+using System.Threading.RateLimiting;
 using AppHost.Authorization;
+using AppHost.Configuration;
+using AppHost.Health;
 using Backoffice.Api;
 using BuildingBlocks.Application.Authorization;
 using BuildingBlocks.Application.Extensions;
+using BuildingBlocks.Application.Diagnostics;
+using BuildingBlocks.Application.Security;
 using BuildingBlocks.Infrastructure.Extensions;
 using BuildingBlocks.Infrastructure.Modules;
+using BuildingBlocks.Infrastructure.Messaging;
+using BuildingBlocks.Infrastructure.Operations;
 using BuildingBlocks.Infrastructure.Persistence;
 using Cart.Api;
 using Catalog.Api;
@@ -15,7 +22,10 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using OpenTelemetry.Trace;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 using Orders.Api;
 using Payments.Api;
 using Pricing.Api;
@@ -34,13 +44,36 @@ builder.Host.UseSerilog((context, services, configuration) =>
         .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services)
         .Enrich.FromLogContext()
+        .Enrich.WithProperty("Application", "AppHost")
         .WriteTo.Console();
 });
 
+builder.Services.AddOptions<AppObservabilityOptions>()
+    .BindConfiguration(AppObservabilityOptions.SectionName)
+    .Validate(options => !string.IsNullOrWhiteSpace(options.ServiceName), "Observability service name is required.")
+    .ValidateOnStart();
+builder.Services.AddOptions<AppRateLimitingOptions>()
+    .BindConfiguration(AppRateLimitingOptions.SectionName)
+    .ValidateOnStart();
+builder.Services.AddOptions<AppSecurityOptions>()
+    .BindConfiguration(AppSecurityOptions.SectionName)
+    .ValidateOnStart();
+builder.Services.AddOptions<AppReadinessOptions>()
+    .BindConfiguration(AppReadinessOptions.SectionName)
+    .ValidateOnStart();
+
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-builder.Services.AddProblemDetails();
+builder.Services.AddProblemDetails(options =>
+{
+    options.CustomizeProblemDetails = context =>
+    {
+        context.ProblemDetails.Extensions["correlationId"] = context.HttpContext.TraceIdentifier;
+        context.ProblemDetails.Extensions["traceId"] = System.Diagnostics.Activity.Current?.TraceId.ToString();
+    };
+});
 builder.Services.AddApplicationCore();
 builder.Services.AddSharedInfrastructure(builder.Configuration);
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, BackofficeAuthorizationPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, BackofficeAuthorizationHandler>();
 
@@ -65,8 +98,13 @@ builder.Services
     .AddCookie(IdentityConstants.ApplicationScheme, options =>
     {
         options.Cookie.Name = "blazor-ecommerce-auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
         options.SlidingExpiration = true;
-        options.ExpireTimeSpan = TimeSpan.FromDays(14);
+        options.ExpireTimeSpan = TimeSpan.FromHours(12);
         options.Events.OnRedirectToLogin = context =>
         {
             if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
@@ -96,6 +134,74 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
+builder.Services.AddRateLimiter(options =>
+{
+    var rateLimitOptions = builder.Configuration.GetSection(AppRateLimitingOptions.SectionName).Get<AppRateLimitingOptions>() ?? new AppRateLimitingOptions();
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.ContentType = "application/problem+json";
+        return new ValueTask(context.HttpContext.Response.WriteAsJsonAsync(
+            new
+            {
+                title = "Too many requests",
+                status = StatusCodes.Status429TooManyRequests,
+                detail = "Request rate limit exceeded.",
+                correlationId = context.HttpContext.TraceIdentifier,
+            },
+            cancellationToken));
+    };
+
+    options.AddPolicy(RateLimitingPolicyNames.Auth, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            GetPartitionKey(httpContext),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = Math.Max(1, rateLimitOptions.AuthPermits),
+                Window = TimeSpan.FromSeconds(Math.Max(1, rateLimitOptions.AuthWindowSeconds)),
+                QueueLimit = 0,
+            }));
+
+    options.AddPolicy(RateLimitingPolicyNames.ReviewsWrite, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            GetPartitionKey(httpContext),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = Math.Max(1, rateLimitOptions.ReviewPermits),
+                Window = TimeSpan.FromSeconds(Math.Max(1, rateLimitOptions.ReviewWindowSeconds)),
+                QueueLimit = 0,
+            }));
+
+    options.AddPolicy(RateLimitingPolicyNames.SearchSuggest, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            GetPartitionKey(httpContext),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = Math.Max(1, rateLimitOptions.SearchSuggestPermits),
+                Window = TimeSpan.FromSeconds(Math.Max(1, rateLimitOptions.SearchSuggestWindowSeconds)),
+                QueueLimit = 0,
+            }));
+
+    options.AddPolicy(RateLimitingPolicyNames.PaymentMutations, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            GetPartitionKey(httpContext),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = Math.Max(1, rateLimitOptions.PaymentPermits),
+                Window = TimeSpan.FromSeconds(Math.Max(1, rateLimitOptions.PaymentWindowSeconds)),
+                QueueLimit = 0,
+            }));
+
+    options.AddPolicy(RateLimitingPolicyNames.PublicWebhook, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            GetPartitionKey(httpContext),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = Math.Max(1, rateLimitOptions.WebhookPermits),
+                Window = TimeSpan.FromSeconds(Math.Max(1, rateLimitOptions.WebhookWindowSeconds)),
+                QueueLimit = 0,
+            }));
+});
 
 var moduleInstallers = ModuleInfrastructureLoader.LoadInstallers();
 foreach (var installer in moduleInstallers)
@@ -117,23 +223,77 @@ builder.Services.AddReviewsModule();
 builder.Services.AddShippingModule();
 
 builder.Services.AddHealthChecks()
-    .AddDbContextCheck<OutboxDbContext>("postgres", tags: ["ready"]);
+    .AddCheck("process", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(), tags: ["live", "startup"])
+    .AddDbContextCheck<OutboxDbContext>("postgres", tags: ["ready", "startup"])
+    .AddCheck<RedisReadinessHealthCheck>("redis", failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded, tags: ["ready"])
+    .AddCheck<OutboxReadinessHealthCheck>("outbox", failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded, tags: ["ready"]);
 
 builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource =>
+    {
+        var observability = builder.Configuration.GetSection(AppObservabilityOptions.SectionName).Get<AppObservabilityOptions>() ?? new AppObservabilityOptions();
+        resource.AddAttributes(
+        [
+            new KeyValuePair<string, object>("service.name", observability.ServiceName),
+        ]);
+    })
     .WithTracing(tracing =>
     {
         tracing
             .AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation()
             .AddEntityFrameworkCoreInstrumentation()
-            .AddConsoleExporter();
+            .AddSource(CommerceDiagnostics.ActivitySourceName);
+
+        var observability = builder.Configuration.GetSection(AppObservabilityOptions.SectionName).Get<AppObservabilityOptions>() ?? new AppObservabilityOptions();
+        if (observability.EnableConsoleExporter)
+        {
+            tracing.AddConsoleExporter();
+        }
+    })
+    .WithMetrics(metrics =>
+    {
+        metrics
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddMeter(CommerceDiagnostics.MeterName);
+
+        var observability = builder.Configuration.GetSection(AppObservabilityOptions.SectionName).Get<AppObservabilityOptions>() ?? new AppObservabilityOptions();
+        if (observability.EnableConsoleExporter)
+        {
+            metrics.AddConsoleExporter();
+        }
     });
 
 var app = builder.Build();
 var skipInfrastructureInitialization = builder.Configuration.GetValue<bool>("Infrastructure:SkipInitialization");
 
+app.UseMiddleware<CorrelationIdMiddleware>();
+
 app.UseExceptionHandler();
-app.UseSerilogRequestLogging();
+app.UseSerilogRequestLogging(options =>
+{
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        diagnosticContext.Set("CorrelationId", httpContext.TraceIdentifier);
+        diagnosticContext.Set("TraceId", System.Diagnostics.Activity.Current?.TraceId.ToString());
+        diagnosticContext.Set("UserId", httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value);
+    };
+});
+app.Use(async (context, next) =>
+{
+    var security = context.RequestServices.GetRequiredService<Microsoft.Extensions.Options.IOptions<AppSecurityOptions>>().Value;
+    context.Response.Headers.TryAdd("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.TryAdd("X-Frame-Options", security.FrameOptions);
+    context.Response.Headers.TryAdd("Referrer-Policy", security.ReferrerPolicy);
+    if (!string.IsNullOrWhiteSpace(security.ContentSecurityPolicy))
+    {
+        context.Response.Headers.TryAdd("Content-Security-Policy", security.ContentSecurityPolicy);
+    }
+
+    await next();
+});
+app.UseRateLimiter();
 app.UseRedirectRules();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -161,13 +321,32 @@ app.MapDirectusWebhookEndpoint();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
-    Predicate = _ => false,
+    Predicate = registration => registration.Tags.Contains("live"),
+    ResponseWriter = HealthResponseWriter.WriteAsync,
 });
 
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = registration => registration.Tags.Contains("ready"),
+    ResponseWriter = HealthResponseWriter.WriteAsync,
 });
+
+app.MapHealthChecks("/health/startup", new HealthCheckOptions
+{
+    Predicate = registration => registration.Tags.Contains("startup"),
+    ResponseWriter = HealthResponseWriter.WriteAsync,
+});
+
+static string GetPartitionKey(HttpContext httpContext)
+{
+    var userId = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    if (!string.IsNullOrWhiteSpace(userId))
+    {
+        return $"user:{userId}";
+    }
+
+    return $"ip:{httpContext.Connection.RemoteIpAddress}";
+}
 
 app.Run();
 
