@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using BuildingBlocks.Application.Contracts;
 using BuildingBlocks.Domain.Results;
+using BuildingBlocks.Application.Security;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -53,7 +54,7 @@ public static class ShippingModuleExtensions
                 cancellationToken);
 
             return result.IsSuccess ? Results.Ok(result.Value) : BusinessError(result.Error);
-        }).AllowAnonymous();
+        }).AllowAnonymous().RequireRateLimiting(RateLimitingPolicyNames.PublicWebhook);
 
         group.MapGet("/methods", async (
             bool activeOnly,

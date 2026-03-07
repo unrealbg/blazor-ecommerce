@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Orders.Application.Orders;
+using Orders.Infrastructure.Orders;
 using Orders.Infrastructure.Persistence;
 
 namespace Orders.Infrastructure.DependencyInjection;
@@ -28,6 +29,7 @@ public sealed class OrdersInfrastructureInstaller : IModuleInfrastructureInstall
         services.AddScoped<IOrderPaymentService, OrderPaymentService>();
         services.AddScoped<IOrderPricingReader, OrderPricingReader>();
         services.AddScoped<IOrderReviewVerifier, OrderReviewVerifier>();
+        services.AddScoped<ICustomerOrderExportReader, OrderExportReader>();
         services.AddScoped<IOrderFulfillmentService, OrderFulfillmentService>();
         services.AddScoped<IOrdersUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<OrdersDbContext>());
     }

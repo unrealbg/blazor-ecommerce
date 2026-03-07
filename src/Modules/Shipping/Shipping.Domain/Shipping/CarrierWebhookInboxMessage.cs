@@ -106,4 +106,17 @@ public sealed class CarrierWebhookInboxMessage : Entity<Guid>
         ProcessedAtUtc = processedAtUtc;
         Error = string.IsNullOrWhiteSpace(error) ? "Carrier webhook processing failed." : error.Trim();
     }
+
+    public void RequeueForProcessing()
+    {
+        ProcessingStatus = CarrierWebhookInboxProcessingStatus.Received;
+        ProcessedAtUtc = null;
+        Error = null;
+    }
+
+    public void TrimPayloadForRetention(DateTime processedAtUtc)
+    {
+        Payload = "{}";
+        ProcessedAtUtc ??= processedAtUtc;
+    }
 }

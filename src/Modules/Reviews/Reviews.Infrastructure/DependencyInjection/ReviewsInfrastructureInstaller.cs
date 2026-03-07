@@ -28,6 +28,7 @@ public sealed class ReviewsInfrastructureInstaller : IModuleInfrastructureInstal
 
         services.AddScoped<IReviewsService, ReviewsService>();
         services.AddScoped<IReviewSummaryReader, ReviewSummaryReader>();
+        services.AddScoped<ICustomerReviewExportReader, ReviewExportReader>();
     }
 
     public async Task InitializeAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken)

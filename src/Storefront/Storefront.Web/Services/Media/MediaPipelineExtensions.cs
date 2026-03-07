@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.ResponseCompression;
 using Storefront.Web.Services.Content;
 
@@ -39,6 +40,12 @@ public static class MediaPipelineExtensions
                 IMediaImageProxyService mediaImageProxyService,
                 CancellationToken cancellationToken) =>
             {
+                var statusCodePagesFeature = context.Features.Get<IStatusCodePagesFeature>();
+                if (statusCodePagesFeature is not null)
+                {
+                    statusCodePagesFeature.Enabled = false;
+                }
+
                 try
                 {
                     var request = BuildRequest(context.Request.Query);
@@ -47,7 +54,7 @@ public static class MediaPipelineExtensions
                         context.Request.Headers.Accept.ToString(),
                         cancellationToken);
 
-                    context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+                    context.Response.Headers.CacheControl = "private, max-age=31536000, immutable";
                     context.Response.Headers.ETag = payload.ETag;
                     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
                     context.Response.Headers["X-Media-Cache"] = payload.FromCache ? "HIT" : "MISS";

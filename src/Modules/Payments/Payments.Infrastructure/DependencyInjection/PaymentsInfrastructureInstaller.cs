@@ -6,6 +6,7 @@ using Payments.Application.Payments;
 using Payments.Application.Providers;
 using Payments.Infrastructure.Persistence;
 using Payments.Infrastructure.Providers;
+using Payments.Infrastructure.Retention;
 using Payments.Infrastructure.Webhooks;
 
 namespace Payments.Infrastructure.DependencyInjection;
@@ -31,6 +32,7 @@ public sealed class PaymentsInfrastructureInstaller : IModuleInfrastructureInsta
         services.AddScoped<IPaymentTransactionRepository, PaymentTransactionRepository>();
         services.AddScoped<IWebhookInboxRepository, WebhookInboxRepository>();
         services.AddScoped<IPaymentIdempotencyRepository, PaymentIdempotencyRepository>();
+        services.AddScoped<BuildingBlocks.Infrastructure.Retention.IRetentionTask, PaymentsWebhookRetentionTask>();
         services.AddScoped<IPaymentsUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<PaymentsDbContext>());
 
         services.AddScoped<IPaymentProvider, DemoPaymentProvider>();

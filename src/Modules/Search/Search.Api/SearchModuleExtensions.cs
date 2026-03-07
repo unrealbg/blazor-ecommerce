@@ -1,4 +1,5 @@
 using BuildingBlocks.Domain.Results;
+using BuildingBlocks.Application.Security;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -50,7 +51,7 @@ public static class SearchModuleExtensions
                 cancellationToken);
 
             return Results.Ok(result);
-        });
+        }).RequireRateLimiting(RateLimitingPolicyNames.SearchSuggest);
 
         group.MapGet("/suggest", async (
             [FromQuery(Name = "q")] string query,

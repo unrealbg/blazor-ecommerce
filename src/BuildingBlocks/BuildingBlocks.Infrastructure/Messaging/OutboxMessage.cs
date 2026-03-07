@@ -44,4 +44,10 @@ public sealed class OutboxMessage
         Error = error;
         ProcessedOnUtc = processedOnUtc;
     }
+
+    public void ResetForRetry()
+    {
+        Error = null;
+        ProcessedOnUtc = null;
+    }
 }

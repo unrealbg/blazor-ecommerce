@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using BuildingBlocks.Application.Security;
 using BuildingBlocks.Domain.Results;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -86,7 +87,7 @@ public static class ReviewsModuleExtensions
             return result.IsSuccess
                 ? Results.Created($"/api/v1/reviews/{result.Value:D}", new { id = result.Value })
                 : BusinessError(result.Error);
-        });
+        }).RequireRateLimiting(RateLimitingPolicyNames.ReviewsWrite);
 
         authenticatedGroup.MapPut("/me/{reviewId:guid}", async (
             HttpContext context,
@@ -103,7 +104,7 @@ public static class ReviewsModuleExtensions
 
             var result = await service.UpdateMyReviewAsync(userId.Value, reviewId, request, cancellationToken);
             return result.IsSuccess ? Results.NoContent() : BusinessError(result.Error);
-        });
+        }).RequireRateLimiting(RateLimitingPolicyNames.ReviewsWrite);
 
         authenticatedGroup.MapPost("/products/{productId:guid}/questions", async (
             HttpContext context,
@@ -122,7 +123,7 @@ public static class ReviewsModuleExtensions
             return result.IsSuccess
                 ? Results.Created($"/api/v1/reviews/questions/{result.Value:D}", new { id = result.Value })
                 : BusinessError(result.Error);
-        });
+        }).RequireRateLimiting(RateLimitingPolicyNames.ReviewsWrite);
 
         authenticatedGroup.MapPost("/questions/{questionId:guid}/answers", async (
             HttpContext context,
@@ -141,7 +142,7 @@ public static class ReviewsModuleExtensions
             return result.IsSuccess
                 ? Results.Created($"/api/v1/reviews/answers/{result.Value:D}", new { id = result.Value })
                 : BusinessError(result.Error);
-        });
+        }).RequireRateLimiting(RateLimitingPolicyNames.ReviewsWrite);
 
         authenticatedGroup.MapPost("/{reviewId:guid}/vote", async (
             HttpContext context,
@@ -163,7 +164,7 @@ public static class ReviewsModuleExtensions
 
             var result = await service.VoteReviewAsync(userId.Value, reviewId, voteType, cancellationToken);
             return result.IsSuccess ? Results.Ok(result.Value) : BusinessError(result.Error);
-        });
+        }).RequireRateLimiting(RateLimitingPolicyNames.ReviewsWrite);
 
         authenticatedGroup.MapPost("/{reviewId:guid}/report", async (
             HttpContext context,
@@ -192,7 +193,7 @@ public static class ReviewsModuleExtensions
             return result.IsSuccess
                 ? Results.Created($"/api/v1/reviews/admin/reports/{result.Value:D}", new { id = result.Value })
                 : BusinessError(result.Error);
-        });
+        }).RequireRateLimiting(RateLimitingPolicyNames.ReviewsWrite);
 
         authenticatedGroup.MapGet("/me", async (
             HttpContext context,

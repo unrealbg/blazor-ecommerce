@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Caching.Distributed;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -59,13 +60,18 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
         {
             services.RemoveAll<IStoreApiClient>();
             services.RemoveAll<IContentClient>();
+            services.RemoveAll<DirectusContentClient>();
             services.RemoveAll<IMediaSourceFetcher>();
+            services.RemoveAll<IDistributedCache>();
+            services.AddDistributedMemoryCache();
             services.AddSingleton<IStoreApiClient, FakeStoreApiClient>();
-            services.AddHttpClient<IContentClient, DirectusContentClient>(client =>
+            services.AddHttpClient<DirectusContentClient>(client =>
                 {
                     client.BaseAddress = new Uri("http://localhost:8055");
                 })
                 .ConfigurePrimaryHttpMessageHandler(() => new FakeCmsHttpMessageHandler());
+            services.AddScoped<IContentClient>(serviceProvider =>
+                ActivatorUtilities.CreateInstance<FeatureFlaggedContentClient>(serviceProvider));
             services.AddHttpClient<IMediaSourceFetcher, MediaSourceFetcher>(client =>
                 {
                     client.BaseAddress = new Uri("http://localhost:8055");

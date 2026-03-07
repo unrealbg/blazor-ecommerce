@@ -1,0 +1,42 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - master
+      - dev
+  pull_request:
+
+jobs:
+  build-test-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore blazor-ecommerce.slnx
+
+      - name: Build
+        run: dotnet build blazor-ecommerce.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test blazor-ecommerce.slnx --configuration Release --no-build --logger "console;verbosity=minimal"
+
+      - name: Publish AppHost
+        run: dotnet publish src/AppHost/AppHost.csproj --configuration Release --no-build -o artifacts/apphost
+
+      - name: Publish Storefront
+        run: dotnet publish src/Storefront/Storefront.Web/Storefront.Web.csproj --configuration Release --no-build -o artifacts/storefront
+
+      - name: Build AppHost Container
+        run: docker build -f src/AppHost/Dockerfile -t blazor-ecommerce/apphost:ci .
+
+      - name: Build Storefront Container
+        run: docker build -f src/Storefront/Storefront.Web/Dockerfile -t blazor-ecommerce/storefront:ci .

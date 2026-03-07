@@ -77,8 +77,31 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=blazor_ecommerce;Username=postgres;Password=postgres
       ConnectionStrings__Redis: redis:6379
+      Build__ApplicationName: blazor-ecommerce-app
+      Build__Version: dev
+      Build__SourceRevisionId: local-dev
+      Build__BuildTimestampUtc: 2026-03-07T00:00:00Z
+      Release__SeedMode: minimal
+      Release__MigrationMode: manual
+      Release__RunSmokeTestsAfterDeploy: "true"
+      FeatureFlags__EnableOperationalRecoveryActions: "true"
+      FeatureFlags__EnableDemoProviders: "true"
+      FeatureFlags__EnableReviewModeration: "true"
+      Observability__ServiceName: blazor-ecommerce-app
+      Observability__EnableConsoleExporter: "true"
+      Observability__CorrelationHeaderName: X-Correlation-Id
+      Readiness__OutboxWarningThreshold: 250
+      Readiness__FailedWebhookWarningThreshold: 25
+      Readiness__OldestOutboxMinutesThreshold: 15
       Outbox__BatchSize: 20
       Outbox__PollingInterval: 00:00:05
+      Outbox__MaxRetryAttempts: 5
+      Outbox__RetryBaseDelaySeconds: 15
+      Outbox__StuckWarningAgeMinutes: 15
+      Retention__ProcessedOutboxDays: 30
+      Retention__WebhookPayloadDays: 90
+      Retention__AuditLogDays: 3650
+      Retention__SweepIntervalMinutes: 60
     ports:
       - "8080:8080"
     depends_on:
@@ -98,6 +121,21 @@ services:
       Api__BaseUrl: http://app:8080
       Cms__BaseUrl: http://directus:8055
       Cms__ApiToken: ""
+      Build__ApplicationName: blazor-ecommerce-storefront
+      Build__Version: dev
+      Build__SourceRevisionId: local-dev
+      Build__BuildTimestampUtc: 2026-03-07T00:00:00Z
+      Caching__HomePageSeconds: 60
+      Caching__CategoryPageSeconds: 30
+      Caching__ProductPageSeconds: 45
+      Caching__SearchPageSeconds: 15
+      Caching__ContentPageSeconds: 300
+      FeatureFlags__EnableReviews: "true"
+      FeatureFlags__EnableCmsContent: "true"
+      FeatureFlags__EnableSearchSuggestions: "true"
+      FeatureFlags__EnableWarmup: "true"
+      Warmup__Enabled: "true"
+      Warmup__TimeoutSeconds: 20
       ConnectionStrings__Redis: redis:6379
       Site__BaseUrl: http://localhost:5100
     ports:

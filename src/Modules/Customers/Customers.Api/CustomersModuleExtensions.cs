@@ -1,6 +1,8 @@
 using System.Security.Claims;
+using BuildingBlocks.Application.Security;
 using BuildingBlocks.Domain.Results;
 using Customers.Application.Auth;
+using Customers.Application.Compliance;
 using Customers.Application.Customers;
 using Customers.Application.DependencyInjection;
 using MediatR;
@@ -129,6 +131,49 @@ public static class CustomersModuleExtensions
             return result.IsSuccess ? Results.NoContent() : BusinessError(result.Error);
         });
 
+        customersGroup.MapGet("/me/export", async (
+            HttpContext context,
+            ICustomerDataExportService exportService,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = GetUserId(context.User);
+            if (userId is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var export = await exportService.ExportByUserIdAsync(userId.Value, cancellationToken);
+            return export is null ? Results.NotFound() : Results.Ok(export);
+        });
+
+        customersGroup.MapPost("/me/erase", async (
+            HttpContext context,
+            ConfirmErasureRequest request,
+            ICustomerDataErasureService erasureService,
+            CancellationToken cancellationToken) =>
+        {
+            if (!string.Equals(request.ConfirmationText, "ERASE", StringComparison.Ordinal))
+            {
+                return Results.Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Invalid request",
+                    detail: "ConfirmationText must equal ERASE.",
+                    extensions: new Dictionary<string, object?>
+                    {
+                        ["code"] = "customers.erasure.confirmation.invalid",
+                    });
+            }
+
+            var userId = GetUserId(context.User);
+            if (userId is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var result = await erasureService.EraseByUserIdAsync(userId.Value, cancellationToken);
+            return result is null ? Results.NotFound() : Results.Ok(result);
+        });
+
         var authGroup = endpoints.MapGroup("/auth").WithTags("Auth");
         authGroup.AllowAnonymous();
 
@@ -147,7 +192,7 @@ public static class CustomersModuleExtensions
                 cancellationToken);
 
             return result.IsSuccess ? Results.Ok(result.Value) : BusinessError(result.Error);
-        });
+        }).RequireRateLimiting(RateLimitingPolicyNames.Auth);
 
         authGroup.MapPost("/login", async (
             LoginRequest request,
@@ -159,13 +204,13 @@ public static class CustomersModuleExtensions
                 cancellationToken);
 
             return result.IsSuccess ? Results.Ok(result.Value) : BusinessError(result.Error);
-        });
+        }).RequireRateLimiting(RateLimitingPolicyNames.Auth);
 
         authGroup.MapPost("/logout", async (ISender sender, CancellationToken cancellationToken) =>
         {
             var result = await sender.Send(new LogoutCommand(), cancellationToken);
             return result.IsSuccess ? Results.NoContent() : BusinessError(result.Error);
-        });
+        }).RequireRateLimiting(RateLimitingPolicyNames.Auth);
 
         authGroup.MapPost("/forgot-password", async (
             ForgotPasswordRequest request,
@@ -174,7 +219,7 @@ public static class CustomersModuleExtensions
         {
             var result = await sender.Send(new ForgotPasswordCommand(request.Email), cancellationToken);
             return result.IsSuccess ? Results.NoContent() : BusinessError(result.Error);
-        });
+        }).RequireRateLimiting(RateLimitingPolicyNames.Auth);
 
         authGroup.MapPost("/reset-password", async (
             ResetPasswordRequest request,
@@ -186,7 +231,7 @@ public static class CustomersModuleExtensions
                 cancellationToken);
 
             return result.IsSuccess ? Results.NoContent() : BusinessError(result.Error);
-        });
+        }).RequireRateLimiting(RateLimitingPolicyNames.Auth);
 
         authGroup.MapGet("/verify-email", async (
             [FromQuery(Name = "userId")] Guid userId,
@@ -256,6 +301,8 @@ public static class CustomersModuleExtensions
     public sealed record ForgotPasswordRequest(string Email);
 
     public sealed record ResetPasswordRequest(string Email, string Token, string NewPassword);
+
+    public sealed record ConfirmErasureRequest(string ConfirmationText);
 
     public sealed record AddressRequest(
         string Label,

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Backoffice.Application.Backoffice;
 using Backoffice.Infrastructure.Persistence;
 using BuildingBlocks.Application.Authorization;
+using BuildingBlocks.Infrastructure.Operations;
 using BuildingBlocks.Infrastructure.Persistence;
 using Customers.Infrastructure.Persistence;
 using Inventory.Infrastructure.Persistence;
@@ -31,6 +32,7 @@ internal sealed partial class BackofficeQueryService : IBackofficeQueryService
     private readonly SearchDbContext searchDbContext;
     private readonly OutboxDbContext outboxDbContext;
     private readonly IConfiguration configuration;
+    private readonly IOperationalStateRegistry operationalStateRegistry;
 
     public BackofficeQueryService(
         IBackofficePermissionService permissionService,
@@ -44,7 +46,8 @@ internal sealed partial class BackofficeQueryService : IBackofficeQueryService
         ShippingDbContext shippingDbContext,
         SearchDbContext searchDbContext,
         OutboxDbContext outboxDbContext,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IOperationalStateRegistry operationalStateRegistry)
     {
         this.permissionService = permissionService;
         this.backofficeDbContext = backofficeDbContext;
@@ -58,6 +61,7 @@ internal sealed partial class BackofficeQueryService : IBackofficeQueryService
         this.searchDbContext = searchDbContext;
         this.outboxDbContext = outboxDbContext;
         this.configuration = configuration;
+        this.operationalStateRegistry = operationalStateRegistry;
     }
 
     public async Task<BackofficeSessionDto?> GetSessionAsync(

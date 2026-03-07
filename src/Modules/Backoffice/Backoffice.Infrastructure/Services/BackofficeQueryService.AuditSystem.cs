@@ -68,12 +68,13 @@ internal sealed partial class BackofficeQueryService
             ? 1
             : (int)Math.Ceiling(totalCount / (double)normalizedPageSize);
 
-        var items = await query
+        var items = (await query
             .OrderByDescending(entry => entry.OccurredAtUtc)
             .Skip((normalizedPage - 1) * normalizedPageSize)
             .Take(normalizedPageSize)
+            .ToListAsync(cancellationToken))
             .Select(MapAuditEntry)
-            .ToListAsync(cancellationToken);
+            .ToArray();
 
         return new BackofficeAuditPage(
             normalizedPage,
@@ -88,37 +89,72 @@ internal sealed partial class BackofficeQueryService
         return backofficeDbContext.AuditEntries
             .AsNoTracking()
             .Where(entry => entry.Id == auditEntryId)
-            .Select(MapAuditEntry)
-            .SingleOrDefaultAsync(cancellationToken);
+            .ToListAsync(cancellationToken)
+            .ContinueWith(
+                task => task.Result.Select(MapAuditEntry).SingleOrDefault(),
+                cancellationToken);
     }
 
     public async Task<BackofficeSystemSummaryDto> GetSystemSummaryAsync(CancellationToken cancellationToken)
     {
         var databaseHealthy = await ordersDbContext.Database.CanConnectAsync(cancellationToken) &&
                               await backofficeDbContext.Database.CanConnectAsync(cancellationToken);
+        var snapshot = operationalStateRegistry.GetSnapshot();
+        var workers = operationalStateRegistry.GetWorkers()
+            .Select(worker => new BackofficeWorkerStatusDto(
+                worker.Name,
+                worker.State,
+                worker.LastStartedAtUtc,
+                worker.LastSucceededAtUtc,
+                worker.LastFailedAtUtc,
+                worker.LastError,
+                worker.ConsecutiveFailureCount,
+                worker.LastDurationMs,
+                worker.LastCorrelationId,
+                worker.LastProcessedCount,
+                worker.LastNote))
+            .ToArray();
+        var alerts = operationalStateRegistry.GetAlerts()
+            .Select(alert => new BackofficeOperationalAlertDto(
+                alert.Code,
+                alert.Severity,
+                alert.Summary,
+                alert.Details,
+                alert.OccurredAtUtc,
+                alert.Context))
+            .ToArray();
 
         return new BackofficeSystemSummaryDto(
+            EnvironmentName: configuration["ASPNETCORE_ENVIRONMENT"] ?? "Unknown",
+            ApplicationVersion: configuration["Build:Version"] ?? "dev",
+            SourceRevisionId: configuration["Build:SourceRevisionId"],
+            BuildTimestampUtc: configuration["Build:BuildTimestampUtc"],
+            SeedMode: configuration["Release:SeedMode"] ?? "none",
+            MigrationMode: configuration["Release:MigrationMode"] ?? "manual",
+            ActiveFeatureFlags: configuration
+                .GetSection("FeatureFlags")
+                .GetChildren()
+                .Where(section => bool.TryParse(section.Value, out var enabled) && enabled)
+                .Select(section => section.Key)
+                .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+                .ToArray(),
             DatabaseHealthy: databaseHealthy,
             RedisHealthy: await CheckRedisAsync(cancellationToken),
-            PendingOutboxMessages: await outboxDbContext.OutboxMessages.CountAsync(
-                message => message.ProcessedOnUtc == null,
-                cancellationToken),
-            FailedOutboxMessages: await outboxDbContext.OutboxMessages.CountAsync(
-                message => message.Error != null,
-                cancellationToken),
-            FailedPaymentWebhooks: await paymentsDbContext.WebhookInboxMessages.CountAsync(
-                message => message.ProcessingStatus == WebhookInboxProcessingStatus.Failed,
-                cancellationToken),
-            FailedShippingWebhooks: await shippingDbContext.CarrierWebhookInboxMessages.CountAsync(
-                message => message.ProcessingStatus == CarrierWebhookInboxProcessingStatus.Failed,
-                cancellationToken),
-            PendingPaymentWebhooks: await paymentsDbContext.WebhookInboxMessages.CountAsync(
-                message => message.ProcessingStatus == WebhookInboxProcessingStatus.Received,
-                cancellationToken),
-            PendingShippingWebhooks: await shippingDbContext.CarrierWebhookInboxMessages.CountAsync(
-                message => message.ProcessingStatus == CarrierWebhookInboxProcessingStatus.Received,
-                cancellationToken),
-            SearchDocumentCount: await searchDbContext.ProductSearchDocuments.CountAsync(cancellationToken));
+            PendingOutboxMessages: snapshot.PendingOutboxMessages,
+            FailedOutboxMessages: snapshot.FailedOutboxMessages,
+            DeadLetteredOutboxMessages: snapshot.DeadLetteredOutboxMessages,
+            OldestPendingOutboxAgeSeconds: snapshot.OldestPendingOutboxAgeSeconds,
+            FailedPaymentWebhooks: snapshot.FailedPaymentWebhooks,
+            FailedShippingWebhooks: snapshot.FailedShippingWebhooks,
+            PendingPaymentWebhooks: snapshot.PendingPaymentWebhooks,
+            PendingShippingWebhooks: snapshot.PendingShippingWebhooks,
+            SearchDocumentCount: await searchDbContext.ProductSearchDocuments.CountAsync(cancellationToken),
+            LowStockVariants: snapshot.LowStockVariants,
+            ActiveInventoryReservations: snapshot.ActiveInventoryReservations,
+            PendingReviewModeration: snapshot.PendingReviewModeration,
+            LastUpdatedAtUtc: snapshot.LastUpdatedAtUtc,
+            Workers: workers,
+            Alerts: alerts);
     }
 
     public async Task<IReadOnlyCollection<OrderInternalNoteDto>> GetOrderNotesAsync(Guid orderId, CancellationToken cancellationToken)
@@ -142,12 +178,13 @@ internal sealed partial class BackofficeQueryService
         int take,
         CancellationToken cancellationToken)
     {
-        return await backofficeDbContext.AuditEntries
+        return (await backofficeDbContext.AuditEntries
             .AsNoTracking()
             .OrderByDescending(entry => entry.OccurredAtUtc)
             .Take(take)
+            .ToListAsync(cancellationToken))
             .Select(MapAuditEntry)
-            .ToListAsync(cancellationToken);
+            .ToArray();
     }
 
     private async Task<IReadOnlyCollection<BackofficeAuditEntryDto>> GetOrderAuditEntriesAsync(
@@ -163,16 +200,17 @@ internal sealed partial class BackofficeQueryService
                 (paymentIntentId != null && entry.TargetType == "PaymentIntent" && entry.TargetId == paymentIntentId.Value.ToString("D")) ||
                 (shipmentId != null && entry.TargetType == "Shipment" && entry.TargetId == shipmentId.Value.ToString("D")));
 
-        return await query
+        return (await query
             .OrderByDescending(entry => entry.OccurredAtUtc)
             .Take(25)
+            .ToListAsync(cancellationToken))
             .Select(MapAuditEntry)
-            .ToListAsync(cancellationToken);
+            .ToArray();
     }
 
     private async Task<bool> CheckRedisAsync(CancellationToken cancellationToken)
     {
-        var connectionString = configuration.GetConnectionString("Redis");
+        var connectionString = configuration["ConnectionStrings:Redis"];
         if (string.IsNullOrWhiteSpace(connectionString))
         {
             return false;

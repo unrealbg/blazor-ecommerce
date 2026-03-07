@@ -67,8 +67,8 @@ internal sealed class OrderInternalNoteService(
                 authorUserId,
                 authorEmail,
                 authorDisplayName,
-                ipAddress: null,
-                correlationId: null),
+                IpAddress: null,
+                CorrelationId: null),
             cancellationToken);
 
         return Result<Guid>.Success(entity.Id);

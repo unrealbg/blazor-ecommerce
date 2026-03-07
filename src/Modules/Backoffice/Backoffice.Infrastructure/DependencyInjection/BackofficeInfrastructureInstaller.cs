@@ -1,8 +1,10 @@
 using Backoffice.Application.Backoffice;
 using Backoffice.Infrastructure.Persistence;
+using Backoffice.Infrastructure.Retention;
 using Backoffice.Infrastructure.Services;
 using BuildingBlocks.Application.Auditing;
 using BuildingBlocks.Infrastructure.Modules;
+using BuildingBlocks.Infrastructure.Retention;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,7 +27,10 @@ public sealed class BackofficeInfrastructureInstaller : IModuleInfrastructureIns
         services.AddScoped<IBackofficeQueryService, BackofficeQueryService>();
         services.AddScoped<IStaffManagementService, StaffManagementService>();
         services.AddScoped<IOrderInternalNoteService, OrderInternalNoteService>();
+        services.AddScoped<ISystemOperationsService, SystemOperationsService>();
         services.AddScoped<IAuditTrail, BackofficeAuditTrail>();
+        services.AddScoped<IRetentionTask, AuditRetentionTask>();
+        services.AddHostedService<OperationalSnapshotBackgroundService>();
     }
 
     public async Task InitializeAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken)
