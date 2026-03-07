@@ -17,7 +17,7 @@ services:
       retries: 10
 
   directus-db:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: blazor-ecommerce-directus-postgres
     environment:
       POSTGRES_DB: directus
@@ -34,7 +34,7 @@ services:
       retries: 10
 
   directus:
-    image: directus/directus:latest
+    image: directus/directus:11.14.0
     container_name: blazor-ecommerce-directus
     environment:
       KEY: ${DIRECTUS_KEY}
