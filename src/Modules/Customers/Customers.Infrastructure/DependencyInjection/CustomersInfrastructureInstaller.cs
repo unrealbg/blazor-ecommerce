@@ -1,3 +1,4 @@
+using BuildingBlocks.Application.Authorization;
 using BuildingBlocks.Application.Contracts;
 using BuildingBlocks.Infrastructure.Modules;
 using Customers.Application.Auth;
@@ -10,6 +11,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Customers.Infrastructure.DependencyInjection;
 
@@ -54,6 +56,9 @@ public sealed class CustomersInfrastructureInstaller : IModuleInfrastructureInst
         services.AddScoped<IIdentityAuthService, IdentityAuthService>();
         services.AddScoped<ICustomerCheckoutAccessor, CustomerCheckoutAccessor>();
         services.AddScoped<ICustomerSessionCache, CustomerSessionCache>();
+        services.Configure<BackofficeSeedOptions>(configuration.GetSection(BackofficeSeedOptions.SectionName));
+        services.AddScoped<IBackofficePermissionService, BackofficePermissionService>();
+        services.AddScoped<BackofficeIdentitySeeder>();
     }
 
     public async Task InitializeAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken)
@@ -61,8 +66,10 @@ public sealed class CustomersInfrastructureInstaller : IModuleInfrastructureInst
         using var scope = serviceProvider.CreateScope();
         var customersDb = scope.ServiceProvider.GetRequiredService<CustomersDbContext>();
         var identityDb = scope.ServiceProvider.GetRequiredService<IdentityAppDbContext>();
+        var seeder = scope.ServiceProvider.GetRequiredService<BackofficeIdentitySeeder>();
 
         await customersDb.Database.MigrateAsync(cancellationToken);
         await identityDb.Database.MigrateAsync(cancellationToken);
+        await seeder.SeedAsync(cancellationToken);
     }
 }

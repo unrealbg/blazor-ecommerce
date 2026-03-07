@@ -18,6 +18,22 @@ public sealed class IdentityAppDbContext(DbContextOptions<IdentityAppDbContext> 
             entity.Property(user => user.CreatedAtUtc)
                 .HasColumnName("created_at_utc")
                 .IsRequired();
+            entity.Property(user => user.DisplayName)
+                .HasColumnName("display_name")
+                .HasMaxLength(160);
+            entity.Property(user => user.Department)
+                .HasColumnName("department")
+                .HasMaxLength(120);
+            entity.Property(user => user.IsStaff)
+                .HasColumnName("is_staff")
+                .IsRequired();
+            entity.Property(user => user.IsActive)
+                .HasColumnName("is_active")
+                .IsRequired();
+            entity.Property(user => user.LastLoginAtUtc)
+                .HasColumnName("last_login_at_utc");
+            entity.HasIndex(user => new { user.IsStaff, user.IsActive })
+                .HasDatabaseName("IX_users_staff_active");
         });
 
         builder.Entity<IdentityRole<Guid>>(entity => entity.ToTable("roles"));
