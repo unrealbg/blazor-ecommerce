@@ -199,6 +199,10 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
         private static readonly List<StoreVariantPrice> VariantPrices = [];
         private static readonly List<StorePromotion> Promotions = [];
         private static readonly List<StoreCoupon> Coupons = [];
+        private static readonly List<StoreProductReview> Reviews = BuildReviews();
+        private static readonly List<StoreProductQuestion> Questions = BuildQuestions();
+        private static readonly List<StoreReviewReport> ReviewReports = [];
+        private static readonly List<ReviewVoteState> ReviewVotes = [];
 
         private static StoreCustomerProfile? currentCustomer;
 
@@ -1186,6 +1190,225 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
             return Task.FromResult(true);
         }
 
+        public Task<StoreReviewModerationPage> GetAdminReviewsAsync(
+            string? status,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken)
+        {
+            var filtered = Reviews
+                .Where(review => string.IsNullOrWhiteSpace(status) ||
+                                 string.Equals(review.Status, status, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(review => review.Status, StringComparer.OrdinalIgnoreCase)
+                .ThenByDescending(review => review.CreatedAtUtc)
+                .Select(review =>
+                {
+                    var product = Products.Single(item => item.Id == review.ProductId);
+                    return new StoreModerationReview(
+                        review.Id,
+                        review.ProductId,
+                        product.Name,
+                        product.Slug,
+                        currentCustomer?.Id ?? Guid.NewGuid(),
+                        review.DisplayName,
+                        review.Rating,
+                        review.Title,
+                        review.Body,
+                        review.Status,
+                        review.IsVerifiedPurchase,
+                        review.ReportCount,
+                        review.CreatedAtUtc);
+                })
+                .ToArray();
+
+            return Task.FromResult(BuildModerationPage(filtered, page, pageSize));
+        }
+
+        public Task<bool> ApproveReviewAsync(Guid reviewId, string? notes, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(UpdateReviewStatus(reviewId, "Approved"));
+        }
+
+        public Task<bool> RejectReviewAsync(Guid reviewId, string? notes, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(UpdateReviewStatus(reviewId, "Rejected"));
+        }
+
+        public Task<bool> HideReviewAsync(Guid reviewId, string? notes, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(UpdateReviewStatus(reviewId, "Hidden"));
+        }
+
+        public Task<StoreQuestionModerationPage> GetAdminQuestionsAsync(
+            string? status,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken)
+        {
+            var filtered = Questions
+                .Where(question => string.IsNullOrWhiteSpace(status) ||
+                                   string.Equals(question.Status, status, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(question => question.Status, StringComparer.OrdinalIgnoreCase)
+                .ThenByDescending(question => question.CreatedAtUtc)
+                .Select(question =>
+                {
+                    var product = Products.Single(item => item.Id == question.ProductId);
+                    return new StoreModerationQuestion(
+                        question.Id,
+                        question.ProductId,
+                        product.Name,
+                        product.Slug,
+                        question.CustomerId,
+                        question.DisplayName,
+                        question.QuestionText,
+                        question.Status,
+                        question.AnswerCount,
+                        question.ReportCount,
+                        question.CreatedAtUtc);
+                })
+                .ToArray();
+
+            return Task.FromResult(BuildQuestionModerationPage(filtered, page, pageSize));
+        }
+
+        public Task<bool> ApproveQuestionAsync(Guid questionId, string? notes, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(UpdateQuestionStatus(questionId, "Approved"));
+        }
+
+        public Task<bool> RejectQuestionAsync(Guid questionId, string? notes, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(UpdateQuestionStatus(questionId, "Rejected"));
+        }
+
+        public Task<bool> HideQuestionAsync(Guid questionId, string? notes, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(UpdateQuestionStatus(questionId, "Hidden"));
+        }
+
+        public Task<Guid?> AddOfficialAnswerAsync(
+            Guid questionId,
+            string displayName,
+            string answerText,
+            CancellationToken cancellationToken)
+        {
+            var index = Questions.FindIndex(question => question.Id == questionId);
+            if (index < 0)
+            {
+                return Task.FromResult<Guid?>(null);
+            }
+
+            var question = Questions[index];
+            var answers = question.Answers.ToList();
+            var answerId = Guid.NewGuid();
+            answers.Add(new StoreProductAnswer(
+                answerId,
+                questionId,
+                currentCustomer?.Id,
+                displayName,
+                answerText,
+                "Approved",
+                true,
+                "Admin",
+                DateTime.UtcNow));
+
+            Questions[index] = question with
+            {
+                AnswerCount = answers.Count(answer => string.Equals(answer.Status, "Approved", StringComparison.OrdinalIgnoreCase)),
+                Answers = answers,
+            };
+
+            return Task.FromResult<Guid?>(answerId);
+        }
+
+        public Task<StoreAnswerModerationPage> GetAdminAnswersAsync(
+            string? status,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken)
+        {
+            var filtered = Questions
+                .SelectMany(question => question.Answers.Select(answer => new { question, answer }))
+                .Where(item => string.IsNullOrWhiteSpace(status) ||
+                               string.Equals(item.answer.Status, status, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(item => item.answer.Status, StringComparer.OrdinalIgnoreCase)
+                .ThenByDescending(item => item.answer.CreatedAtUtc)
+                .Select(item =>
+                {
+                    var product = Products.Single(product => product.Id == item.question.ProductId);
+                    return new StoreModerationAnswer(
+                        item.answer.Id,
+                        item.question.Id,
+                        item.question.ProductId,
+                        product.Name,
+                        product.Slug,
+                        item.question.QuestionText,
+                        item.answer.CustomerId,
+                        item.answer.DisplayName,
+                        item.answer.AnswerText,
+                        item.answer.Status,
+                        item.answer.IsOfficialAnswer,
+                        item.answer.AnsweredByType,
+                        item.answer.CreatedAtUtc);
+                })
+                .ToArray();
+
+            return Task.FromResult(BuildAnswerModerationPage(filtered, page, pageSize));
+        }
+
+        public Task<bool> ApproveAnswerAsync(Guid answerId, string? notes, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(UpdateAnswerStatus(answerId, "Approved"));
+        }
+
+        public Task<bool> RejectAnswerAsync(Guid answerId, string? notes, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(UpdateAnswerStatus(answerId, "Rejected"));
+        }
+
+        public Task<bool> HideAnswerAsync(Guid answerId, string? notes, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(UpdateAnswerStatus(answerId, "Hidden"));
+        }
+
+        public Task<StoreReviewReportPage> GetReviewReportsAsync(
+            string? status,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken)
+        {
+            var filtered = ReviewReports
+                .Where(report => string.IsNullOrWhiteSpace(status) ||
+                                 string.Equals(report.Status, status, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(report => report.Status, StringComparer.OrdinalIgnoreCase)
+                .ThenByDescending(report => report.CreatedAtUtc)
+                .ToArray();
+
+            return Task.FromResult(BuildReviewReportPage(filtered, page, pageSize));
+        }
+
+        public Task<bool> ResolveReviewReportAsync(
+            Guid reportId,
+            bool dismiss,
+            string? notes,
+            CancellationToken cancellationToken)
+        {
+            var index = ReviewReports.FindIndex(report => report.Id == reportId);
+            if (index < 0)
+            {
+                return Task.FromResult(false);
+            }
+
+            ReviewReports[index] = ReviewReports[index] with
+            {
+                Status = dismiss ? "Dismissed" : "Resolved",
+                ResolvedAtUtc = DateTime.UtcNow,
+                ResolutionNotes = notes,
+            };
+
+            return Task.FromResult(true);
+        }
+
         public Task<StoreCart?> GetCartAsync(string customerId, CancellationToken cancellationToken)
         {
             return Task.FromResult<StoreCart?>(new StoreCart(Guid.NewGuid(), customerId, [], []));
@@ -1195,6 +1418,363 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
         {
             var product = Products.SingleOrDefault(item => string.Equals(item.Slug, slug, StringComparison.Ordinal));
             return Task.FromResult(product);
+        }
+
+        public Task<StoreReviewSummary?> GetProductReviewSummaryAsync(Guid productId, CancellationToken cancellationToken)
+        {
+            var summary = BuildReviewSummary(productId);
+            return Task.FromResult<StoreReviewSummary?>(summary);
+        }
+
+        public Task<StoreReviewPage> GetProductReviewsAsync(
+            Guid productId,
+            int page,
+            int pageSize,
+            string? sort,
+            int? rating,
+            CancellationToken cancellationToken)
+        {
+            var approved = Reviews
+                .Where(review => review.ProductId == productId)
+                .Where(review => string.Equals(review.Status, "Approved", StringComparison.OrdinalIgnoreCase));
+
+            if (rating is >= 1 and <= 5)
+            {
+                approved = approved.Where(review => review.Rating == rating.Value);
+            }
+
+            approved = string.Equals(sort, "most-helpful", StringComparison.OrdinalIgnoreCase)
+                ? approved.OrderByDescending(review => review.HelpfulCount).ThenByDescending(review => review.CreatedAtUtc)
+                : approved.OrderByDescending(review => review.CreatedAtUtc);
+
+            var normalizedPage = Math.Max(1, page);
+            var normalizedPageSize = Math.Clamp(pageSize, 1, 50);
+            var total = approved.Count();
+            var totalPages = total == 0 ? 1 : (int)Math.Ceiling(total / (double)normalizedPageSize);
+            var items = approved
+                .Skip((normalizedPage - 1) * normalizedPageSize)
+                .Take(normalizedPageSize)
+                .ToArray();
+
+            return Task.FromResult(new StoreReviewPage(normalizedPage, normalizedPageSize, total, totalPages, items));
+        }
+
+        public Task<StoreQuestionPage> GetProductQuestionsAsync(
+            Guid productId,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken)
+        {
+            var approved = Questions
+                .Where(question => question.ProductId == productId)
+                .Where(question => string.Equals(question.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(question => question.CreatedAtUtc)
+                .ToArray();
+
+            var normalizedPage = Math.Max(1, page);
+            var normalizedPageSize = Math.Clamp(pageSize, 1, 50);
+            var total = approved.Length;
+            var totalPages = total == 0 ? 1 : (int)Math.Ceiling(total / (double)normalizedPageSize);
+            var items = approved
+                .Skip((normalizedPage - 1) * normalizedPageSize)
+                .Take(normalizedPageSize)
+                .ToArray();
+
+            return Task.FromResult(new StoreQuestionPage(normalizedPage, normalizedPageSize, total, totalPages, items));
+        }
+
+        public Task<Guid?> SubmitReviewAsync(
+            Guid productId,
+            StoreSubmitReviewRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (currentCustomer is null)
+            {
+                return Task.FromResult<Guid?>(null);
+            }
+
+            var product = Products.SingleOrDefault(item => item.Id == productId);
+            if (product is null)
+            {
+                return Task.FromResult<Guid?>(null);
+            }
+
+            var reviewId = Guid.NewGuid();
+            var variantName = product.Variants.SingleOrDefault(variant => variant.Id == request.VariantId)?.Name;
+            Reviews.Add(new StoreProductReview(
+                reviewId,
+                productId,
+                request.VariantId,
+                BuildCurrentDisplayName(),
+                request.Title,
+                request.Body,
+                request.Rating,
+                "Pending",
+                false,
+                null,
+                DateTime.UtcNow,
+                0,
+                0,
+                0,
+                variantName));
+
+            return Task.FromResult<Guid?>(reviewId);
+        }
+
+        public Task<bool> UpdateMyReviewAsync(
+            Guid reviewId,
+            StoreSubmitReviewRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (currentCustomer is null)
+            {
+                return Task.FromResult(false);
+            }
+
+            var index = Reviews.FindIndex(review => review.Id == reviewId);
+            if (index < 0)
+            {
+                return Task.FromResult(false);
+            }
+
+            var review = Reviews[index];
+            Reviews[index] = review with
+            {
+                VariantId = request.VariantId,
+                Title = request.Title,
+                Body = request.Body,
+                Rating = request.Rating,
+                Status = string.Equals(review.Status, "Approved", StringComparison.OrdinalIgnoreCase) ? "Pending" : review.Status,
+            };
+
+            return Task.FromResult(true);
+        }
+
+        public Task<StoreReviewVoteResult?> VoteReviewAsync(
+            Guid reviewId,
+            string voteType,
+            CancellationToken cancellationToken)
+        {
+            if (currentCustomer is null)
+            {
+                return Task.FromResult<StoreReviewVoteResult?>(null);
+            }
+
+            var index = Reviews.FindIndex(review => review.Id == reviewId);
+            if (index < 0)
+            {
+                return Task.FromResult<StoreReviewVoteResult?>(null);
+            }
+
+            var normalizedVoteType = string.Equals(voteType, "NotHelpful", StringComparison.OrdinalIgnoreCase)
+                ? "NotHelpful"
+                : "Helpful";
+            var voterKey = currentCustomer.Email;
+            var existingVote = ReviewVotes.FindIndex(vote => vote.ReviewId == reviewId && string.Equals(vote.CustomerKey, voterKey, StringComparison.OrdinalIgnoreCase));
+            var review = Reviews[index];
+            var helpful = review.HelpfulCount;
+            var notHelpful = review.NotHelpfulCount;
+
+            if (existingVote >= 0)
+            {
+                if (string.Equals(ReviewVotes[existingVote].VoteType, normalizedVoteType, StringComparison.OrdinalIgnoreCase))
+                {
+                    return Task.FromResult<StoreReviewVoteResult?>(new StoreReviewVoteResult(reviewId, helpful, notHelpful, normalizedVoteType));
+                }
+
+                if (string.Equals(ReviewVotes[existingVote].VoteType, "Helpful", StringComparison.OrdinalIgnoreCase))
+                {
+                    helpful = Math.Max(0, helpful - 1);
+                }
+                else
+                {
+                    notHelpful = Math.Max(0, notHelpful - 1);
+                }
+
+                ReviewVotes[existingVote] = new ReviewVoteState(reviewId, voterKey, normalizedVoteType);
+            }
+            else
+            {
+                ReviewVotes.Add(new ReviewVoteState(reviewId, voterKey, normalizedVoteType));
+            }
+
+            if (string.Equals(normalizedVoteType, "Helpful", StringComparison.OrdinalIgnoreCase))
+            {
+                helpful++;
+            }
+            else
+            {
+                notHelpful++;
+            }
+
+            Reviews[index] = review with
+            {
+                HelpfulCount = helpful,
+                NotHelpfulCount = notHelpful,
+            };
+
+            return Task.FromResult<StoreReviewVoteResult?>(new StoreReviewVoteResult(reviewId, helpful, notHelpful, normalizedVoteType));
+        }
+
+        public Task<Guid?> ReportReviewAsync(
+            Guid reviewId,
+            string reasonType,
+            string? message,
+            CancellationToken cancellationToken)
+        {
+            var reviewIndex = Reviews.FindIndex(review => review.Id == reviewId);
+            if (reviewIndex < 0)
+            {
+                return Task.FromResult<Guid?>(null);
+            }
+
+            var review = Reviews[reviewIndex];
+            var reportId = Guid.NewGuid();
+            ReviewReports.Add(new StoreReviewReport(
+                reportId,
+                reviewId,
+                review.ProductId,
+                Products.Single(product => product.Id == review.ProductId).Name,
+                Products.Single(product => product.Id == review.ProductId).Slug,
+                currentCustomer?.Id,
+                string.IsNullOrWhiteSpace(reasonType) ? "Other" : reasonType,
+                message,
+                "Open",
+                DateTime.UtcNow,
+                null,
+                null));
+
+            Reviews[reviewIndex] = review with
+            {
+                ReportCount = review.ReportCount + 1,
+            };
+
+            return Task.FromResult<Guid?>(reportId);
+        }
+
+        public Task<Guid?> SubmitQuestionAsync(
+            Guid productId,
+            StoreSubmitQuestionRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (currentCustomer is null)
+            {
+                return Task.FromResult<Guid?>(null);
+            }
+
+            var questionId = Guid.NewGuid();
+            Questions.Add(new StoreProductQuestion(
+                questionId,
+                productId,
+                currentCustomer.Id,
+                BuildCurrentDisplayName(),
+                request.QuestionText,
+                "Pending",
+                DateTime.UtcNow,
+                0,
+                0,
+                []));
+
+            return Task.FromResult<Guid?>(questionId);
+        }
+
+        public Task<Guid?> SubmitAnswerAsync(
+            Guid questionId,
+            StoreSubmitAnswerRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (currentCustomer is null)
+            {
+                return Task.FromResult<Guid?>(null);
+            }
+
+            var index = Questions.FindIndex(question => question.Id == questionId);
+            if (index < 0)
+            {
+                return Task.FromResult<Guid?>(null);
+            }
+
+            var answerId = Guid.NewGuid();
+            var question = Questions[index];
+            var answers = question.Answers.ToList();
+            answers.Add(new StoreProductAnswer(
+                answerId,
+                questionId,
+                currentCustomer.Id,
+                BuildCurrentDisplayName(),
+                request.AnswerText,
+                "Pending",
+                false,
+                "Customer",
+                DateTime.UtcNow));
+
+            Questions[index] = question with
+            {
+                AnswerCount = answers.Count(answer => string.Equals(answer.Status, "Approved", StringComparison.OrdinalIgnoreCase)),
+                Answers = answers,
+            };
+
+            return Task.FromResult<Guid?>(answerId);
+        }
+
+        public Task<IReadOnlyCollection<StoreMyReview>> GetMyReviewsAsync(CancellationToken cancellationToken)
+        {
+            if (currentCustomer is null)
+            {
+                return Task.FromResult<IReadOnlyCollection<StoreMyReview>>([]);
+            }
+
+            var myReviews = Reviews
+                .Where(review => string.Equals(review.DisplayName, BuildCurrentDisplayName(), StringComparison.Ordinal))
+                .Select(review =>
+                {
+                    var product = Products.Single(item => item.Id == review.ProductId);
+                    return new StoreMyReview(
+                        review.Id,
+                        review.ProductId,
+                        review.VariantId,
+                        product.Name,
+                        product.Slug,
+                        review.DisplayName,
+                        review.Title,
+                        review.Body,
+                        review.Rating,
+                        review.Status,
+                        review.IsVerifiedPurchase,
+                        review.CreatedAtUtc);
+                })
+                .OrderByDescending(review => review.CreatedAtUtc)
+                .ToArray();
+
+            return Task.FromResult<IReadOnlyCollection<StoreMyReview>>(myReviews);
+        }
+
+        public Task<IReadOnlyCollection<StoreMyQuestion>> GetMyQuestionsAsync(CancellationToken cancellationToken)
+        {
+            if (currentCustomer is null)
+            {
+                return Task.FromResult<IReadOnlyCollection<StoreMyQuestion>>([]);
+            }
+
+            var myQuestions = Questions
+                .Where(question => question.CustomerId == currentCustomer.Id)
+                .Select(question =>
+                {
+                    var product = Products.Single(item => item.Id == question.ProductId);
+                    return new StoreMyQuestion(
+                        question.Id,
+                        question.ProductId,
+                        product.Name,
+                        product.Slug,
+                        question.QuestionText,
+                        question.Status,
+                        question.CreatedAtUtc,
+                        question.Answers);
+                })
+                .OrderByDescending(question => question.CreatedAtUtc)
+                .ToArray();
+
+            return Task.FromResult<IReadOnlyCollection<StoreMyQuestion>>(myQuestions);
         }
 
         public Task<StoreSearchProductsResponse> SearchProductsAsync(
@@ -1379,6 +1959,154 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
             };
 
             return Task.FromResult(true);
+        }
+
+        private static StoreReviewSummary BuildReviewSummary(Guid productId)
+        {
+            var approved = Reviews
+                .Where(review => review.ProductId == productId)
+                .Where(review => string.Equals(review.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+
+            var averageRating = approved.Length == 0
+                ? 0m
+                : decimal.Round(approved.Average(review => (decimal)review.Rating), 2, MidpointRounding.AwayFromZero);
+
+            return new StoreReviewSummary(
+                productId,
+                approved.Length,
+                averageRating,
+                approved.Count(review => review.Rating == 5),
+                approved.Count(review => review.Rating == 4),
+                approved.Count(review => review.Rating == 3),
+                approved.Count(review => review.Rating == 2),
+                approved.Count(review => review.Rating == 1),
+                DateTime.UtcNow);
+        }
+
+        private static bool UpdateReviewStatus(Guid reviewId, string status)
+        {
+            var index = Reviews.FindIndex(review => review.Id == reviewId);
+            if (index < 0)
+            {
+                return false;
+            }
+
+            Reviews[index] = Reviews[index] with
+            {
+                Status = status,
+            };
+            return true;
+        }
+
+        private static bool UpdateQuestionStatus(Guid questionId, string status)
+        {
+            var index = Questions.FindIndex(question => question.Id == questionId);
+            if (index < 0)
+            {
+                return false;
+            }
+
+            Questions[index] = Questions[index] with
+            {
+                Status = status,
+            };
+            return true;
+        }
+
+        private static bool UpdateAnswerStatus(Guid answerId, string status)
+        {
+            var questionIndex = Questions.FindIndex(question => question.Answers.Any(answer => answer.Id == answerId));
+            if (questionIndex < 0)
+            {
+                return false;
+            }
+
+            var question = Questions[questionIndex];
+            var answers = question.Answers.ToList();
+            var answerIndex = answers.FindIndex(answer => answer.Id == answerId);
+            if (answerIndex < 0)
+            {
+                return false;
+            }
+
+            answers[answerIndex] = answers[answerIndex] with
+            {
+                Status = status,
+            };
+
+            Questions[questionIndex] = question with
+            {
+                Answers = answers,
+                AnswerCount = answers.Count(answer => string.Equals(answer.Status, "Approved", StringComparison.OrdinalIgnoreCase)),
+            };
+
+            return true;
+        }
+
+        private static StoreReviewModerationPage BuildModerationPage(
+            IReadOnlyCollection<StoreModerationReview> items,
+            int page,
+            int pageSize)
+        {
+            var normalizedPage = Math.Max(1, page);
+            var normalizedPageSize = Math.Clamp(pageSize, 1, 100);
+            var total = items.Count;
+            var totalPages = total == 0 ? 1 : (int)Math.Ceiling(total / (double)normalizedPageSize);
+            var pagedItems = items.Skip((normalizedPage - 1) * normalizedPageSize).Take(normalizedPageSize).ToArray();
+            return new StoreReviewModerationPage(normalizedPage, normalizedPageSize, total, totalPages, pagedItems);
+        }
+
+        private static StoreQuestionModerationPage BuildQuestionModerationPage(
+            IReadOnlyCollection<StoreModerationQuestion> items,
+            int page,
+            int pageSize)
+        {
+            var normalizedPage = Math.Max(1, page);
+            var normalizedPageSize = Math.Clamp(pageSize, 1, 100);
+            var total = items.Count;
+            var totalPages = total == 0 ? 1 : (int)Math.Ceiling(total / (double)normalizedPageSize);
+            var pagedItems = items.Skip((normalizedPage - 1) * normalizedPageSize).Take(normalizedPageSize).ToArray();
+            return new StoreQuestionModerationPage(normalizedPage, normalizedPageSize, total, totalPages, pagedItems);
+        }
+
+        private static StoreAnswerModerationPage BuildAnswerModerationPage(
+            IReadOnlyCollection<StoreModerationAnswer> items,
+            int page,
+            int pageSize)
+        {
+            var normalizedPage = Math.Max(1, page);
+            var normalizedPageSize = Math.Clamp(pageSize, 1, 100);
+            var total = items.Count;
+            var totalPages = total == 0 ? 1 : (int)Math.Ceiling(total / (double)normalizedPageSize);
+            var pagedItems = items.Skip((normalizedPage - 1) * normalizedPageSize).Take(normalizedPageSize).ToArray();
+            return new StoreAnswerModerationPage(normalizedPage, normalizedPageSize, total, totalPages, pagedItems);
+        }
+
+        private static StoreReviewReportPage BuildReviewReportPage(
+            IReadOnlyCollection<StoreReviewReport> items,
+            int page,
+            int pageSize)
+        {
+            var normalizedPage = Math.Max(1, page);
+            var normalizedPageSize = Math.Clamp(pageSize, 1, 100);
+            var total = items.Count;
+            var totalPages = total == 0 ? 1 : (int)Math.Ceiling(total / (double)normalizedPageSize);
+            var pagedItems = items.Skip((normalizedPage - 1) * normalizedPageSize).Take(normalizedPageSize).ToArray();
+            return new StoreReviewReportPage(normalizedPage, normalizedPageSize, total, totalPages, pagedItems);
+        }
+
+        private static string BuildCurrentDisplayName()
+        {
+            if (currentCustomer is null)
+            {
+                return "Guest";
+            }
+
+            var fullName = string.Join(
+                " ",
+                new[] { currentCustomer.FirstName, currentCustomer.LastName }.Where(value => !string.IsNullOrWhiteSpace(value)));
+            return string.IsNullOrWhiteSpace(fullName) ? currentCustomer.Email : fullName;
         }
 
         private static StorePaymentIntentDetails BuildPaymentIntentDetails(Guid paymentIntentId, Guid? orderId = null)
@@ -1621,6 +2349,94 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
                 DateTime.UtcNow);
         }
 
+        private static List<StoreProductReview> BuildReviews()
+        {
+            var product = Products.Single(item => string.Equals(item.Slug, "mechanical-keyboard", StringComparison.Ordinal));
+            var defaultVariant = product.Variants.OrderBy(variant => variant.Position).FirstOrDefault();
+
+            return
+            [
+                new StoreProductReview(
+                    Guid.Parse("cb26e2d0-f217-4c67-aa98-2b22ff9044ab"),
+                    product.Id,
+                    defaultVariant?.Id,
+                    "Jamie Carter",
+                    "Excellent keyboard",
+                    "Switches feel precise and the build quality is excellent.",
+                    5,
+                    "Approved",
+                    true,
+                    Guid.NewGuid(),
+                    DateTime.UtcNow.AddDays(-10),
+                    7,
+                    1,
+                    0,
+                    defaultVariant?.Name),
+                new StoreProductReview(
+                    Guid.Parse("e169ce98-a33f-4495-b0c8-7a457a70c55b"),
+                    product.Id,
+                    defaultVariant?.Id,
+                    "Morgan Lee",
+                    "Great for work",
+                    "Stable wireless connection and comfortable layout for long sessions.",
+                    4,
+                    "Approved",
+                    false,
+                    null,
+                    DateTime.UtcNow.AddDays(-4),
+                    3,
+                    0,
+                    0,
+                    defaultVariant?.Name),
+                new StoreProductReview(
+                    Guid.Parse("feff6626-625d-47ca-a0b1-f9858354ec49"),
+                    product.Id,
+                    defaultVariant?.Id,
+                    "Pending User",
+                    "Awaiting moderation",
+                    "This review should not appear publicly until approved.",
+                    5,
+                    "Pending",
+                    false,
+                    null,
+                    DateTime.UtcNow.AddDays(-1),
+                    0,
+                    0,
+                    0,
+                    defaultVariant?.Name),
+            ];
+        }
+
+        private static List<StoreProductQuestion> BuildQuestions()
+        {
+            var product = Products.Single(item => string.Equals(item.Slug, "mechanical-keyboard", StringComparison.Ordinal));
+            return
+            [
+                new StoreProductQuestion(
+                    Guid.Parse("3e56780d-8b13-4f99-b66e-f0bdc14ebfe0"),
+                    product.Id,
+                    Guid.NewGuid(),
+                    "Taylor Reed",
+                    "Does this keyboard support Mac shortcuts out of the box?",
+                    "Approved",
+                    DateTime.UtcNow.AddDays(-6),
+                    1,
+                    0,
+                    [
+                        new StoreProductAnswer(
+                            Guid.Parse("e0b1caec-3789-4216-b3ab-e0f3ad1195e1"),
+                            Guid.Parse("3e56780d-8b13-4f99-b66e-f0bdc14ebfe0"),
+                            null,
+                            "Support Team",
+                            "Yes. It ships with Mac legends and you can switch layout profiles in firmware.",
+                            "Approved",
+                            true,
+                            "Admin",
+                            DateTime.UtcNow.AddDays(-5)),
+                    ]),
+            ];
+        }
+
         private static IReadOnlyCollection<StoreProduct> BuildProducts()
         {
             var products = new List<StoreProduct>
@@ -1687,6 +2503,8 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
 
             return products;
         }
+
+        private sealed record ReviewVoteState(Guid ReviewId, string CustomerKey, string VoteType);
     }
 
     private sealed class FakeCmsHttpMessageHandler : HttpMessageHandler

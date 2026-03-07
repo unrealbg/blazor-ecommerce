@@ -64,6 +64,11 @@ namespace Cart.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AppliedCouponCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("applied_coupon_code");
+
                     b.Property<string>("CustomerId")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -89,8 +94,17 @@ namespace Cart.Infrastructure.Persistence.Migrations
                             b1.Property<Guid>("cart_id")
                                 .HasColumnType("uuid");
 
-                            b1.Property<Guid>("ProductId")
+                            b1.Property<Guid>("VariantId")
                                 .ValueGeneratedOnAdd()
+                                .HasColumnType("uuid")
+                                .HasColumnName("variant_id");
+
+                            b1.Property<string>("ImageUrl")
+                                .HasMaxLength(2000)
+                                .HasColumnType("character varying(2000)")
+                                .HasColumnName("image_url");
+
+                            b1.Property<Guid>("ProductId")
                                 .HasColumnType("uuid")
                                 .HasColumnName("product_id");
 
@@ -104,7 +118,22 @@ namespace Cart.Infrastructure.Persistence.Migrations
                                 .HasColumnType("integer")
                                 .HasColumnName("quantity");
 
-                            b1.HasKey("cart_id", "ProductId");
+                            b1.Property<string>("SelectedOptionsJson")
+                                .HasMaxLength(4000)
+                                .HasColumnType("character varying(4000)")
+                                .HasColumnName("selected_options_json");
+
+                            b1.Property<string>("Sku")
+                                .HasMaxLength(64)
+                                .HasColumnType("character varying(64)")
+                                .HasColumnName("sku");
+
+                            b1.Property<string>("VariantName")
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("variant_name");
+
+                            b1.HasKey("cart_id", "VariantId");
 
                             b1.ToTable("cart_lines", "cart");
 
@@ -116,7 +145,7 @@ namespace Cart.Infrastructure.Persistence.Migrations
                                     b2.Property<Guid>("CartLinecart_id")
                                         .HasColumnType("uuid");
 
-                                    b2.Property<Guid>("CartLineProductId")
+                                    b2.Property<Guid>("CartLineVariantId")
                                         .HasColumnType("uuid");
 
                                     b2.Property<decimal>("Amount")
@@ -130,12 +159,12 @@ namespace Cart.Infrastructure.Persistence.Migrations
                                         .HasColumnType("character varying(3)")
                                         .HasColumnName("unit_currency");
 
-                                    b2.HasKey("CartLinecart_id", "CartLineProductId");
+                                    b2.HasKey("CartLinecart_id", "CartLineVariantId");
 
                                     b2.ToTable("cart_lines", "cart");
 
                                     b2.WithOwner()
-                                        .HasForeignKey("CartLinecart_id", "CartLineProductId");
+                                        .HasForeignKey("CartLinecart_id", "CartLineVariantId");
                                 });
 
                             b1.Navigation("UnitPrice")

@@ -6,6 +6,22 @@ public interface IStoreApiClient
 
     Task<StoreProduct?> GetProductBySlugAsync(string slug, CancellationToken cancellationToken);
 
+    Task<StoreReviewSummary?> GetProductReviewSummaryAsync(Guid productId, CancellationToken cancellationToken);
+
+    Task<StoreReviewPage> GetProductReviewsAsync(
+        Guid productId,
+        int page,
+        int pageSize,
+        string? sort,
+        int? rating,
+        CancellationToken cancellationToken);
+
+    Task<StoreQuestionPage> GetProductQuestionsAsync(
+        Guid productId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken);
+
     Task<StoreSearchProductsResponse> SearchProductsAsync(
         StoreSearchProductsRequest request,
         CancellationToken cancellationToken);
@@ -49,6 +65,41 @@ public interface IStoreApiClient
     Task<bool> RemoveCouponAsync(
         string customerId,
         CancellationToken cancellationToken);
+
+    Task<Guid?> SubmitReviewAsync(
+        Guid productId,
+        StoreSubmitReviewRequest request,
+        CancellationToken cancellationToken);
+
+    Task<bool> UpdateMyReviewAsync(
+        Guid reviewId,
+        StoreSubmitReviewRequest request,
+        CancellationToken cancellationToken);
+
+    Task<StoreReviewVoteResult?> VoteReviewAsync(
+        Guid reviewId,
+        string voteType,
+        CancellationToken cancellationToken);
+
+    Task<Guid?> ReportReviewAsync(
+        Guid reviewId,
+        string reasonType,
+        string? message,
+        CancellationToken cancellationToken);
+
+    Task<Guid?> SubmitQuestionAsync(
+        Guid productId,
+        StoreSubmitQuestionRequest request,
+        CancellationToken cancellationToken);
+
+    Task<Guid?> SubmitAnswerAsync(
+        Guid questionId,
+        StoreSubmitAnswerRequest request,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<StoreMyReview>> GetMyReviewsAsync(CancellationToken cancellationToken);
+
+    Task<IReadOnlyCollection<StoreMyQuestion>> GetMyQuestionsAsync(CancellationToken cancellationToken);
 
     Task<Guid?> CheckoutAsync(string customerId, string idempotencyKey, CancellationToken cancellationToken);
 
@@ -291,4 +342,58 @@ public interface IStoreApiClient
         CancellationToken cancellationToken);
 
     Task<bool> DisableCouponAsync(Guid couponId, CancellationToken cancellationToken);
+
+    Task<StoreReviewModerationPage> GetAdminReviewsAsync(
+        string? status,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken);
+
+    Task<bool> ApproveReviewAsync(Guid reviewId, string? notes, CancellationToken cancellationToken);
+
+    Task<bool> RejectReviewAsync(Guid reviewId, string? notes, CancellationToken cancellationToken);
+
+    Task<bool> HideReviewAsync(Guid reviewId, string? notes, CancellationToken cancellationToken);
+
+    Task<StoreQuestionModerationPage> GetAdminQuestionsAsync(
+        string? status,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken);
+
+    Task<bool> ApproveQuestionAsync(Guid questionId, string? notes, CancellationToken cancellationToken);
+
+    Task<bool> RejectQuestionAsync(Guid questionId, string? notes, CancellationToken cancellationToken);
+
+    Task<bool> HideQuestionAsync(Guid questionId, string? notes, CancellationToken cancellationToken);
+
+    Task<Guid?> AddOfficialAnswerAsync(
+        Guid questionId,
+        string displayName,
+        string answerText,
+        CancellationToken cancellationToken);
+
+    Task<StoreAnswerModerationPage> GetAdminAnswersAsync(
+        string? status,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken);
+
+    Task<bool> ApproveAnswerAsync(Guid answerId, string? notes, CancellationToken cancellationToken);
+
+    Task<bool> RejectAnswerAsync(Guid answerId, string? notes, CancellationToken cancellationToken);
+
+    Task<bool> HideAnswerAsync(Guid answerId, string? notes, CancellationToken cancellationToken);
+
+    Task<StoreReviewReportPage> GetReviewReportsAsync(
+        string? status,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken);
+
+    Task<bool> ResolveReviewReportAsync(
+        Guid reportId,
+        bool dismiss,
+        string? notes,
+        CancellationToken cancellationToken);
 }

@@ -12,6 +12,7 @@ Production-oriented modular monolith starter with strict module boundaries and c
 - Inventory
 - Shipping
 - Customers
+- Reviews
 - Redirects
 - Search
 - Storefront.Web (SSR Blazor UI)
@@ -50,6 +51,7 @@ Production-oriented modular monolith starter with strict module boundaries and c
   - `shipping`
   - `pricing`
   - `payments`
+  - `reviews`
   - `customers`
   - `identity`
   - `redirects`
@@ -189,6 +191,32 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `POST /api/v1/shipping/shipments/{id}/cancel` (authorized)
 - `GET /api/v1/shipping/shipments/by-order/{orderId}` (authorized, order owner)
 - `POST /api/v1/shipping/webhooks/{provider}`
+- `GET /api/v1/reviews/products/{productId}/summary`
+- `GET /api/v1/reviews/products/{productId}?page=&pageSize=&sort=&rating=`
+- `GET /api/v1/reviews/products/{productId}/questions?page=&pageSize=`
+- `POST /api/v1/reviews/products/{productId}` (authenticated)
+- `PUT /api/v1/reviews/me/{reviewId}` (authenticated)
+- `POST /api/v1/reviews/{reviewId}/vote` (authenticated)
+- `POST /api/v1/reviews/{reviewId}/report` (authenticated)
+- `GET /api/v1/reviews/me` (authenticated)
+- `GET /api/v1/reviews/me/questions` (authenticated)
+- `POST /api/v1/reviews/products/{productId}/questions` (authenticated)
+- `POST /api/v1/reviews/questions/{questionId}/answers` (authenticated)
+- `GET /api/v1/reviews/admin/reviews?status=&page=&pageSize=` (authorized)
+- `POST /api/v1/reviews/admin/reviews/{id}/approve` (authorized)
+- `POST /api/v1/reviews/admin/reviews/{id}/reject` (authorized)
+- `POST /api/v1/reviews/admin/reviews/{id}/hide` (authorized)
+- `GET /api/v1/reviews/admin/questions?status=&page=&pageSize=` (authorized)
+- `POST /api/v1/reviews/admin/questions/{id}/approve` (authorized)
+- `POST /api/v1/reviews/admin/questions/{id}/reject` (authorized)
+- `POST /api/v1/reviews/admin/questions/{id}/hide` (authorized)
+- `POST /api/v1/reviews/admin/questions/{id}/official-answer` (authorized)
+- `GET /api/v1/reviews/admin/answers?status=&page=&pageSize=` (authorized)
+- `POST /api/v1/reviews/admin/answers/{id}/approve` (authorized)
+- `POST /api/v1/reviews/admin/answers/{id}/reject` (authorized)
+- `POST /api/v1/reviews/admin/answers/{id}/hide` (authorized)
+- `GET /api/v1/reviews/admin/reports?status=&page=&pageSize=` (authorized)
+- `POST /api/v1/reviews/admin/reports/{id}/resolve` (authorized)
 - `POST /api/webhooks/directus`
 
 ## Storefront Routes
@@ -211,6 +239,8 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `GET /account/orders` (interactive)
 - `GET /account/orders/{orderId}` (interactive)
 - `GET /account/addresses` (interactive)
+- `GET /account/reviews` (interactive)
+- `GET /account/questions` (interactive)
 - `GET /admin/redirects` (admin redirect management UI)
 - `GET /admin/inventory` (admin inventory dashboard)
 - `GET /admin/inventory/{productId}` (admin inventory details)
@@ -227,6 +257,9 @@ dotnet run --project src/Storefront/Storefront.Web/Storefront.Web.csproj
 - `GET /admin/pricing/variants` (admin variant prices)
 - `GET /admin/pricing/promotions` (admin promotions)
 - `GET /admin/pricing/coupons` (admin coupons)
+- `GET /admin/reviews` (admin review moderation)
+- `GET /admin/reviews/reports` (admin review reports)
+- `GET /admin/questions` (admin question moderation)
 - `GET /media/image?src=...&w=...&h=...&fit=max|cover|contain&format=auto|webp|avif|jpeg|png`
 - `GET /robots.txt`
 - `GET /sitemap.xml`
@@ -1182,6 +1215,180 @@ curl http://localhost:8080/api/v1/orders/my
 - `/account/addresses`
 - `/account/orders`
 
+## Reviews, Ratings & Q&A
+
+- New bounded context:
+  - `src/Modules/Reviews/Reviews.Domain`
+  - `src/Modules/Reviews/Reviews.Application`
+  - `src/Modules/Reviews/Reviews.Infrastructure`
+  - `src/Modules/Reviews/Reviews.Api`
+- Schema: `reviews`
+- Core persistence:
+  - `product_reviews`
+  - `review_votes`
+  - `review_reports`
+  - `product_questions`
+  - `product_answers`
+  - `review_aggregate_snapshots`
+
+### Review architecture
+
+- Reviews and product Q&A are separate moderated content types.
+- Only real customer-submitted content is rendered publicly.
+- Product rating totals are projected into `review_aggregate_snapshots`.
+- Public product summary, storefront widgets, and JSON-LD use only approved content.
+
+### Verified purchase rules
+
+- Verified purchase is system-derived from actual order history.
+- A review is marked verified when the authenticated customer has at least one qualifying paid/refunded order containing the reviewed product or variant.
+- The customer cannot set or edit `IsVerifiedPurchase`.
+- Optional stricter policy:
+
+```json
+{
+  "Reviews": {
+    "RestrictReviewsToPurchasersOnly": false
+  }
+}
+```
+
+- When `RestrictReviewsToPurchasersOnly=true`, non-purchasers receive a business error on submission.
+
+### Moderation workflow
+
+- Supported statuses:
+  - `Pending`
+  - `Approved`
+  - `Rejected`
+  - `Hidden`
+- Customer reviews, questions, and customer answers default to `Pending`.
+- Admin moderation endpoints can approve, reject, or hide content.
+- Official admin answers can auto-approve:
+
+```json
+{
+  "Reviews": {
+    "AutoApproveVerifiedPurchaseReviews": false,
+    "AutoApproveQuestions": false,
+    "AutoApproveOfficialAnswers": true
+  }
+}
+```
+
+### Public visibility rules
+
+- Storefront shows only:
+  - approved reviews
+  - approved questions
+  - approved answers
+- Pending, rejected, and hidden content is excluded from:
+  - public product pages
+  - rating aggregates
+  - schema.org rating markup
+- Customer account pages expose the customer’s own submissions and current moderation status.
+
+### Report / abuse handling
+
+- Authenticated customers can report reviews.
+- Reports are stored in `review_reports` and surfaced in admin moderation UI.
+- Default behavior is report-only, not auto-hide:
+
+```json
+{
+  "Reviews": {
+    "AutoHideReportThreshold": 999,
+    "PublicCacheSeconds": 60
+  }
+}
+```
+
+- Raising `AutoHideReportThreshold` above realistic values keeps abuse review manual while still counting reports.
+
+### Storefront UX
+
+- Product page SSR now renders:
+  - rating summary
+  - rating distribution
+  - approved reviews
+  - verified purchase badges
+  - helpful voting
+  - review submission form for authenticated customers
+  - approved Q&A list
+  - question submission and answer submission forms
+- Account pages:
+  - `/account/reviews`
+  - `/account/questions`
+
+### Admin moderation UI
+
+- `/admin/reviews`
+- `/admin/reviews/reports`
+- `/admin/questions`
+
+Capabilities:
+- moderate pending reviews
+- moderate pending questions and answers
+- add official answers
+- resolve abuse reports
+
+### Schema.org safety rules
+
+- Product JSON-LD includes `aggregateRating` only when approved review count is greater than zero.
+- Ratings from pending, rejected, or hidden reviews are never emitted.
+- No fake counts, fake averages, or synthetic authors are generated.
+- If there are no approved reviews, `aggregateRating` is omitted entirely.
+
+### Caching and read models
+
+- Product review summary and approved review/Q&A pages use short-lived cache.
+- Cache invalidation is version-based per product.
+- Moderation actions, approved answers, and vote/report changes bump the product review cache version.
+
+### Local dev examples
+
+```bash
+# Submit a review (authenticated cookie/session required)
+curl -X POST http://localhost:8080/api/v1/reviews/products/PUT_PRODUCT_ID_HERE \
+  -H "Content-Type: application/json" \
+  -d '{"variantId":"PUT_VARIANT_ID_HERE","title":"Great keyboard","body":"Very solid typing experience.","rating":5}'
+```
+
+```bash
+# Approve a pending review (authorized)
+curl -X POST http://localhost:8080/api/v1/reviews/admin/reviews/PUT_REVIEW_ID_HERE/approve \
+  -H "Content-Type: application/json" \
+  -d '{"notes":"Looks good"}'
+```
+
+```bash
+# Ask a product question (authenticated)
+curl -X POST http://localhost:8080/api/v1/reviews/products/PUT_PRODUCT_ID_HERE/questions \
+  -H "Content-Type: application/json" \
+  -d '{"questionText":"Does this work with macOS?"}'
+```
+
+```bash
+# Add official answer (authorized)
+curl -X POST http://localhost:8080/api/v1/reviews/admin/questions/PUT_QUESTION_ID_HERE/official-answer \
+  -H "Content-Type: application/json" \
+  -d '{"displayName":"Support Team","answerText":"Yes. It supports both Windows and macOS."}'
+```
+
+```bash
+# Read the public review summary after approval
+curl http://localhost:8080/api/v1/reviews/products/PUT_PRODUCT_ID_HERE/summary
+```
+
+### Future path
+
+- review photos/videos
+- merchant replies to reviews
+- purchaser-only invite links
+- anti-spam heuristics and moderation assistance
+- richer helpfulness ranking
+- per-variant review aggregate projections
+
 ## SEO-Safe Redirects and Slug History
 
 - Redirects are stored in `redirects.redirect_rules` and normalized to lowercase paths.
@@ -1398,6 +1605,16 @@ dotnet ef migrations add <MigrationName> \
   --project src/Modules/Shipping/Shipping.Infrastructure/Shipping.Infrastructure.csproj \
   --startup-project src/Modules/Shipping/Shipping.Infrastructure/Shipping.Infrastructure.csproj \
   --context Shipping.Infrastructure.Persistence.ShippingDbContext \
+  --output-dir Persistence/Migrations
+```
+
+### Reviews
+
+```bash
+dotnet ef migrations add <MigrationName> \
+  --project src/Modules/Reviews/Reviews.Infrastructure/Reviews.Infrastructure.csproj \
+  --startup-project src/Modules/Reviews/Reviews.Infrastructure/Reviews.Infrastructure.csproj \
+  --context Reviews.Infrastructure.Persistence.ReviewsDbContext \
   --output-dir Persistence/Migrations
 ```
 

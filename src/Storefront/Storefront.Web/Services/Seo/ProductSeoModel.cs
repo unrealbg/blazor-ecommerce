@@ -8,4 +8,6 @@ public sealed record ProductSeoModel(
     bool IsInStock,
     string? Sku,
     string? Brand,
-    string? ImageUrl);
+    IReadOnlyCollection<string> ImageUrls,
+    decimal? AverageRating,
+    int ApprovedReviewCount);

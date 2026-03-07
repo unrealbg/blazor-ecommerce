@@ -24,6 +24,8 @@ public static class ApplicationServiceCollectionExtensions
         services.TryAddScoped<IInventoryStockProvisioner, NullInventoryStockProvisioner>();
         services.TryAddScoped<IOrderPaymentService, NullOrderPaymentService>();
         services.TryAddScoped<IOrderPricingReader, NullOrderPricingReader>();
+        services.TryAddScoped<IOrderReviewVerifier, NullOrderReviewVerifier>();
+        services.TryAddScoped<IReviewSummaryReader, NullReviewSummaryReader>();
         services.TryAddScoped<IShippingQuoteService, NullShippingQuoteService>();
         services.TryAddScoped<IOrderFulfillmentService, NullOrderFulfillmentService>();
         services.TryAddScoped<IVariantPricingService, NullVariantPricingService>();

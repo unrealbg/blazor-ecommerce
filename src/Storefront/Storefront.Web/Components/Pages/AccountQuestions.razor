@@ -1,0 +1,74 @@
+@page "/account/questions"
+@layout Storefront.Web.Components.Layout.AccountLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>My Questions</PageTitle>
+
+<h1>Questions</h1>
+
+@if (isLoading)
+{
+    <p>Loading questions...</p>
+}
+else if (!isAuthenticated)
+{
+    <p>You need to sign in to access your questions.</p>
+    <p><a class="btn-link" href="/account/login">Go to login</a></p>
+}
+else if (questions.Count == 0)
+{
+    <p>No questions submitted yet.</p>
+}
+else
+{
+    <div class="order-list">
+        @foreach (var question in questions)
+        {
+            <article class="order-card">
+                <header>
+                    <strong><a href="/product/@question.ProductSlug">@question.ProductName</a></strong>
+                    <p>@question.CreatedAtUtc.ToString("yyyy-MM-dd")</p>
+                </header>
+                <p>Status: <strong>@question.Status</strong></p>
+                <p>@question.QuestionText</p>
+
+                @if (question.Answers.Count > 0)
+                {
+                    <ul>
+                        @foreach (var answer in question.Answers)
+                        {
+                            <li>
+                                <strong>@answer.DisplayName</strong>
+                                @if (answer.IsOfficialAnswer)
+                                {
+                                    <span class="status-message">Official answer</span>
+                                }
+                                <div>@answer.AnswerText</div>
+                                <div class="meta">Status: @answer.Status</div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </article>
+        }
+    </div>
+}
+
+@code {
+    private IReadOnlyCollection<StoreMyQuestion> questions = [];
+    private bool isLoading = true;
+    private bool isAuthenticated;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var customer = await StoreApiClient.GetCurrentCustomerAsync(CancellationToken.None);
+        isAuthenticated = customer is not null;
+        if (isAuthenticated)
+        {
+            questions = await StoreApiClient.GetMyQuestionsAsync(CancellationToken.None);
+        }
+
+        isLoading = false;
+    }
+}

@@ -1,0 +1,157 @@
+@page "/admin/questions"
+@page "/admin/questions/pending"
+@rendermode InteractiveServer
+@layout Storefront.Web.Components.Layout.AdminLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+@inject NavigationManager NavigationManager
+
+<PageTitle>Admin Questions</PageTitle>
+
+<h1>Questions and Answers</h1>
+
+<div class="inventory-panel">
+    <label>
+        Status
+        <select @bind="statusFilter">
+            <option value="">All</option>
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+            <option value="Hidden">Hidden</option>
+        </select>
+    </label>
+    <button class="btn-primary" type="button" @onclick="LoadAsync">Apply</button>
+</div>
+
+@if (isLoading)
+{
+    <p>Loading moderation queues...</p>
+}
+else
+{
+    <section class="admin-panel">
+        <h2>Questions</h2>
+        @if (questions.Items.Count == 0)
+        {
+            <p>No questions found.</p>
+        }
+        else
+        {
+            <div class="order-list">
+                @foreach (var question in questions.Items)
+                {
+                    <article class="order-card">
+                        <header>
+                            <strong><a href="/product/@question.ProductSlug">@question.ProductName</a></strong>
+                            <p>@question.CreatedAtUtc.ToString("yyyy-MM-dd")</p>
+                        </header>
+                        <p>Status: <strong>@question.Status</strong></p>
+                        <p>@question.QuestionText</p>
+                        <div class="cart-actions">
+                            <button class="btn-secondary" type="button" @onclick='() => ModerateQuestionAsync(question.Id, "approve")'>Approve</button>
+                            <button class="btn-secondary" type="button" @onclick='() => ModerateQuestionAsync(question.Id, "reject")'>Reject</button>
+                            <button class="btn-link danger" type="button" @onclick='() => ModerateQuestionAsync(question.Id, "hide")'>Hide</button>
+                            <button class="btn-secondary" type="button" @onclick="() => AddOfficialAnswerAsync(question.Id)">Official answer</button>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="admin-panel">
+        <h2>Answers</h2>
+        @if (answers.Items.Count == 0)
+        {
+            <p>No answers found.</p>
+        }
+        else
+        {
+            <div class="order-list">
+                @foreach (var answer in answers.Items)
+                {
+                    <article class="order-card">
+                        <header>
+                            <strong><a href="/product/@answer.ProductSlug">@answer.ProductName</a></strong>
+                            <p>@answer.CreatedAtUtc.ToString("yyyy-MM-dd")</p>
+                        </header>
+                        <p>Status: <strong>@answer.Status</strong></p>
+                        <p class="meta">Question: @answer.QuestionText</p>
+                        <p>@answer.AnswerText</p>
+                        <div class="cart-actions">
+                            <button class="btn-secondary" type="button" @onclick='() => ModerateAnswerAsync(answer.Id, "approve")'>Approve</button>
+                            <button class="btn-secondary" type="button" @onclick='() => ModerateAnswerAsync(answer.Id, "reject")'>Reject</button>
+                            <button class="btn-link danger" type="button" @onclick='() => ModerateAnswerAsync(answer.Id, "hide")'>Hide</button>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+}
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <p class="status-message">@message</p>
+}
+
+@code {
+    private StoreQuestionModerationPage questions = new(1, 20, 0, 1, []);
+    private StoreAnswerModerationPage answers = new(1, 20, 0, 1, []);
+    private bool isLoading = true;
+    private string? statusFilter;
+    private string? message;
+
+    protected override Task OnInitializedAsync()
+    {
+        statusFilter = NavigationManager.Uri.EndsWith("/pending", StringComparison.OrdinalIgnoreCase) ? "Pending" : null;
+        return LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        questions = await StoreApiClient.GetAdminQuestionsAsync(statusFilter, 1, 20, CancellationToken.None);
+        answers = await StoreApiClient.GetAdminAnswersAsync(statusFilter, 1, 20, CancellationToken.None);
+        isLoading = false;
+    }
+
+    private async Task ModerateQuestionAsync(Guid questionId, string action)
+    {
+        var success = action switch
+        {
+            "approve" => await StoreApiClient.ApproveQuestionAsync(questionId, null, CancellationToken.None),
+            "reject" => await StoreApiClient.RejectQuestionAsync(questionId, null, CancellationToken.None),
+            _ => await StoreApiClient.HideQuestionAsync(questionId, null, CancellationToken.None),
+        };
+
+        message = success ? $"Question {action}d." : $"Unable to {action} question.";
+        await LoadAsync();
+    }
+
+    private async Task AddOfficialAnswerAsync(Guid questionId)
+    {
+        var answerId = await StoreApiClient.AddOfficialAnswerAsync(
+            questionId,
+            "Support Team",
+            "Thanks for the question. We have reviewed it and added an official answer.",
+            CancellationToken.None);
+
+        message = answerId is null ? "Unable to add official answer." : "Official answer created.";
+        await LoadAsync();
+    }
+
+    private async Task ModerateAnswerAsync(Guid answerId, string action)
+    {
+        var success = action switch
+        {
+            "approve" => await StoreApiClient.ApproveAnswerAsync(answerId, null, CancellationToken.None),
+            "reject" => await StoreApiClient.RejectAnswerAsync(answerId, null, CancellationToken.None),
+            _ => await StoreApiClient.HideAnswerAsync(answerId, null, CancellationToken.None),
+        };
+
+        message = success ? $"Answer {action}d." : $"Unable to {action} answer.";
+        await LoadAsync();
+    }
+}

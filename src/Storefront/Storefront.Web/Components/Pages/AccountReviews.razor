@@ -1,0 +1,70 @@
+@page "/account/reviews"
+@layout Storefront.Web.Components.Layout.AccountLayout
+@using Storefront.Web.Services.Api
+@inject IStoreApiClient StoreApiClient
+
+<PageTitle>My Reviews</PageTitle>
+
+<h1>Reviews</h1>
+
+@if (isLoading)
+{
+    <p>Loading reviews...</p>
+}
+else if (!isAuthenticated)
+{
+    <p>You need to sign in to access your reviews.</p>
+    <p><a class="btn-link" href="/account/login">Go to login</a></p>
+}
+else if (reviews.Count == 0)
+{
+    <p>No reviews submitted yet.</p>
+}
+else
+{
+    <div class="order-list">
+        @foreach (var review in reviews)
+        {
+            <article class="order-card">
+                <header>
+                    <div>
+                        <strong><a href="/product/@review.ProductSlug">@review.ProductName</a></strong>
+                        @if (review.IsVerifiedPurchase)
+                        {
+                            <span class="status-message">Verified purchase</span>
+                        }
+                    </div>
+                    <p>@review.CreatedAtUtc.ToString("yyyy-MM-dd")</p>
+                </header>
+                <p>Status: <strong>@review.Status</strong></p>
+                <RatingStars Value="review.Rating" />
+                @if (!string.IsNullOrWhiteSpace(review.Title))
+                {
+                    <h3>@review.Title</h3>
+                }
+                @if (!string.IsNullOrWhiteSpace(review.Body))
+                {
+                    <p>@review.Body</p>
+                }
+            </article>
+        }
+    </div>
+}
+
+@code {
+    private IReadOnlyCollection<StoreMyReview> reviews = [];
+    private bool isLoading = true;
+    private bool isAuthenticated;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var customer = await StoreApiClient.GetCurrentCustomerAsync(CancellationToken.None);
+        isAuthenticated = customer is not null;
+        if (isAuthenticated)
+        {
+            reviews = await StoreApiClient.GetMyReviewsAsync(CancellationToken.None);
+        }
+
+        isLoading = false;
+    }
+}

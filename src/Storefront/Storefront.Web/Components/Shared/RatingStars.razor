@@ -1,0 +1,19 @@
+@if (StarCount > 0)
+{
+    <span class="rating-stars" aria-label="@($"{Value:0.0} out of {StarCount} stars")">
+        @for (var index = 1; index <= StarCount; index++)
+        {
+            <span class="@(index <= RoundedValue ? "star-filled" : "star-empty")">@(index <= RoundedValue ? "★" : "☆")</span>
+        }
+    </span>
+}
+
+@code {
+    [Parameter]
+    public decimal Value { get; set; }
+
+    [Parameter]
+    public int StarCount { get; set; } = 5;
+
+    private int RoundedValue => (int)Math.Round(Value, MidpointRounding.AwayFromZero);
+}

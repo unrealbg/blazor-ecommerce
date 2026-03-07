@@ -27,6 +27,7 @@ public sealed class OrdersInfrastructureInstaller : IModuleInfrastructureInstall
         services.AddScoped<ICartCheckoutAccessor, CartCheckoutAccessor>();
         services.AddScoped<IOrderPaymentService, OrderPaymentService>();
         services.AddScoped<IOrderPricingReader, OrderPricingReader>();
+        services.AddScoped<IOrderReviewVerifier, OrderReviewVerifier>();
         services.AddScoped<IOrderFulfillmentService, OrderFulfillmentService>();
         services.AddScoped<IOrdersUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<OrdersDbContext>());
     }

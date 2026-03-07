@@ -12,11 +12,13 @@
     <ProjectReference Include="..\Modules\Inventory\Inventory.Api\Inventory.Api.csproj" />
     <ProjectReference Include="..\Modules\Payments\Payments.Api\Payments.Api.csproj" />
     <ProjectReference Include="..\Modules\Pricing\Pricing.Api\Pricing.Api.csproj" />
+    <ProjectReference Include="..\Modules\Reviews\Reviews.Api\Reviews.Api.csproj" />
     <ProjectReference Include="..\Modules\Shipping\Shipping.Api\Shipping.Api.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
     <PackageReference Include="OpenTelemetry.Exporter.Console" />
@@ -39,6 +41,7 @@
     <InfrastructureProject Include="..\Modules\Inventory\Inventory.Infrastructure\Inventory.Infrastructure.csproj" />
     <InfrastructureProject Include="..\Modules\Payments\Payments.Infrastructure\Payments.Infrastructure.csproj" />
     <InfrastructureProject Include="..\Modules\Pricing\Pricing.Infrastructure\Pricing.Infrastructure.csproj" />
+    <InfrastructureProject Include="..\Modules\Reviews\Reviews.Infrastructure\Reviews.Infrastructure.csproj" />
     <InfrastructureProject Include="..\Modules\Shipping\Shipping.Infrastructure\Shipping.Infrastructure.csproj" />
   </ItemGroup>
 
@@ -50,40 +53,42 @@
 
   <Target Name="CopyInfrastructureAssemblies" AfterTargets="Build">
     <ItemGroup>
-      <InfrastructureOutputs Include="..\Modules\Catalog\Catalog.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Catalog.Infrastructure.*" />
-      <InfrastructureOutputs Include="..\Modules\Cart\Cart.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Cart.Infrastructure.*" />
-      <InfrastructureOutputs Include="..\Modules\Orders\Orders.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Orders.Infrastructure.*" />
-      <InfrastructureOutputs Include="..\Modules\Redirects\Redirects.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Redirects.Infrastructure.*" />
-      <InfrastructureOutputs Include="..\Modules\Search\Search.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Search.Infrastructure.*" />
-      <InfrastructureOutputs Include="..\Modules\Customers\Customers.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Customers.Infrastructure.*" />
-      <InfrastructureOutputs Include="..\Modules\Inventory\Inventory.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Inventory.Infrastructure.*" />
-      <InfrastructureOutputs Include="..\Modules\Payments\Payments.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Payments.Infrastructure.*" />
-      <InfrastructureOutputs Include="..\Modules\Pricing\Pricing.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Pricing.Infrastructure.*" />
-      <InfrastructureOutputs Include="..\Modules\Shipping\Shipping.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Shipping.Infrastructure.*" />
+      <InfrastructureOutputs Include="..\Modules\Catalog\Catalog.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Cart\Cart.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Orders\Orders.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Redirects\Redirects.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Search\Search.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Customers\Customers.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Inventory\Inventory.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Payments\Payments.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Pricing\Pricing.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Reviews\Reviews.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Shipping\Shipping.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
     </ItemGroup>
 
     <Copy SourceFiles="@(InfrastructureOutputs)"
-          DestinationFolder="$(OutDir)"
+          DestinationFiles="@(InfrastructureOutputs->'$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true"
           Condition="Exists('%(InfrastructureOutputs.Identity)')" />
   </Target>
 
   <Target Name="CopyInfrastructureAssembliesForPublish" AfterTargets="Publish">
     <ItemGroup>
-      <InfrastructureOutputs Include="..\Modules\Catalog\Catalog.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Catalog.Infrastructure.*" />
-      <InfrastructureOutputs Include="..\Modules\Cart\Cart.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Cart.Infrastructure.*" />
-      <InfrastructureOutputs Include="..\Modules\Orders\Orders.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Orders.Infrastructure.*" />
-      <InfrastructureOutputs Include="..\Modules\Redirects\Redirects.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Redirects.Infrastructure.*" />
-      <InfrastructureOutputs Include="..\Modules\Search\Search.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Search.Infrastructure.*" />
-      <InfrastructureOutputs Include="..\Modules\Customers\Customers.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Customers.Infrastructure.*" />
-      <InfrastructureOutputs Include="..\Modules\Inventory\Inventory.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Inventory.Infrastructure.*" />
-      <InfrastructureOutputs Include="..\Modules\Payments\Payments.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Payments.Infrastructure.*" />
-      <InfrastructureOutputs Include="..\Modules\Pricing\Pricing.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Pricing.Infrastructure.*" />
-      <InfrastructureOutputs Include="..\Modules\Shipping\Shipping.Infrastructure\bin\$(Configuration)\$(TargetFramework)\Shipping.Infrastructure.*" />
+      <InfrastructureOutputs Include="..\Modules\Catalog\Catalog.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Cart\Cart.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Orders\Orders.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Redirects\Redirects.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Search\Search.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Customers\Customers.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Inventory\Inventory.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Payments\Payments.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Pricing\Pricing.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Reviews\Reviews.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
+      <InfrastructureOutputs Include="..\Modules\Shipping\Shipping.Infrastructure\bin\$(Configuration)\$(TargetFramework)\**\*" />
     </ItemGroup>
 
     <Copy SourceFiles="@(InfrastructureOutputs)"
-          DestinationFolder="$(PublishDir)"
+          DestinationFiles="@(InfrastructureOutputs->'$(PublishDir)%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true"
           Condition="Exists('%(InfrastructureOutputs.Identity)')" />
   </Target>
