@@ -1,4 +1,6 @@
 using System.Net;
+using Microsoft.Extensions.DependencyInjection;
+using Storefront.Web.Services.Media;
 
 namespace Storefront.Tests;
 
@@ -59,6 +61,21 @@ public sealed class StorefrontMediaTests(StorefrontWebApplicationFactory factory
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("property=\"og:image\"", html, StringComparison.Ordinal);
         Assert.Contains("https://shop.example.com/media/image?src=", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void MediaResolver_Should_MapSiteRelativeImages_ToAbsoluteHttpUrls()
+    {
+        using var scope = factory.Services.CreateScope();
+        var mediaSourceResolver = scope.ServiceProvider.GetRequiredService<IMediaSourceResolver>();
+
+        var resolution = mediaSourceResolver.Resolve("/images/mechanical-keyboard.png", MediaSourceOrigin.Site);
+
+        Assert.True(resolution.IsSuccess);
+        Assert.NotNull(resolution.SourceUri);
+        Assert.Equal("https", resolution.SourceUri!.Scheme);
+        Assert.Equal("shop.example.com", resolution.SourceUri.Host);
+        Assert.Equal("/images/mechanical-keyboard.png", resolution.SourceUri.AbsolutePath);
     }
 
     [Fact]
