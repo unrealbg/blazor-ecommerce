@@ -22,10 +22,10 @@
     <section class="listing-intro-panel tech-listing-intro">
         <p class="tech-eyebrow">Collection</p>
         <h1>@categoryTitle</h1>
-        <p>Backend-powered category browsing with a calmer technology-brand layout, clearer filtering, and more visual room per product.</p>
+        <p>@ResolveCategoryDescription(Slug)</p>
         <div class="listing-intro-meta">
             <span>@response.Total product@(response.Total == 1 ? string.Empty : "s") available</span>
-            <span>@(selectedInStock is true ? "In-stock filter active" : "All availability")</span>
+            <span>@(selectedInStock is true ? "In-stock products only" : "All availability states")</span>
         </div>
     </section>
 
@@ -42,7 +42,13 @@
             MaxAvailable="@response.Facets.Price.MaxAvailable" />
 
         <div class="listing-main">
-            <SortDropdown Options="sortOptions" />
+            <div class="tech-listing-controls">
+                <div class="tech-listing-controls-copy">
+                    <p class="tech-eyebrow">Refine collection</p>
+                    <h2>Balance brand, price, and availability without crowding the grid.</h2>
+                </div>
+                <SortDropdown Options="sortOptions" />
+            </div>
 
             @if (!string.IsNullOrWhiteSpace(loadErrorMessage))
             {
@@ -50,7 +56,7 @@
                     <p class="tech-eyebrow">Collection unavailable</p>
                     <h2>We could not load this category right now.</h2>
                     <p>@loadErrorMessage</p>
-                    <a class="tech-button tech-button-primary" href="/search">Browse all products</a>
+                    <a class="tech-button tech-button-primary" href="/search">Browse all hardware</a>
                 </section>
             }
             else
@@ -83,7 +89,11 @@
                     <a href="@BuildPriceResetUrl()">Clear price</a>
                 </form>
 
-                <ProductGrid Items="response.Items" EmptyMessage="No products found in this category." />
+                <ProductGrid
+                    Items="response.Items"
+                    EmptyEyebrow="Collection empty"
+                    EmptyTitle="No products are available in this collection right now."
+                    EmptyMessage="Try another category or clear one of the active filters." />
 
                 <Pagination CurrentPage="@response.Page" TotalPages="@response.TotalPages" BuildUrl="BuildPageUrl" />
             }
@@ -447,6 +457,18 @@
             .Select(word => char.ToUpperInvariant(word[0]) + word[1..]);
 
         return string.Join(' ', words);
+    }
+
+    private static string ResolveCategoryDescription(string slug)
+    {
+        return slug.Trim().ToLowerInvariant() switch
+        {
+            "audio" => "Listening hardware selected for premium acoustics, quieter materials, and stronger daily comfort.",
+            "workspace" => "Desk systems, keyboards, docks, and displays presented as one coordinated performance environment.",
+            "accessories" => "Power, carry, and finishing pieces chosen to complete the setup without adding visual noise.",
+            "all-products" => "Browse the full premium collection with enough space for each product to carry its own weight.",
+            _ => "Browse this collection with calmer filtering, larger product moments, and clearer product hierarchy.",
+        };
     }
 
     private static int NormalizePage(int? page)

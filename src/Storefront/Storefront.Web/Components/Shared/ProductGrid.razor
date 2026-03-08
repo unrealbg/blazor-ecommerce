@@ -4,7 +4,11 @@
 <section class="product-grid">
     @if (Items.Count == 0)
     {
-        <p class="empty-state">@EmptyMessage</p>
+        <section class="tech-empty-panel tech-grid-empty">
+            <p class="tech-eyebrow">@EmptyEyebrow</p>
+            <h2>@EmptyTitle</h2>
+            <p>@EmptyMessage</p>
+        </section>
     }
     else
     {
@@ -21,6 +25,12 @@
 
     [Parameter]
     public string EmptyMessage { get; set; } = "No products found.";
+
+    [Parameter]
+    public string EmptyEyebrow { get; set; } = "No results";
+
+    [Parameter]
+    public string EmptyTitle { get; set; } = "No matching products right now.";
 
     [Parameter]
     public MediaImagePreset Preset { get; set; } = MediaImagePreset.ProductCard;

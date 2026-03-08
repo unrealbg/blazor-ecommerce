@@ -1,8 +1,14 @@
 <aside class="facet-sidebar" aria-label="Filters">
+    <div class="facet-sidebar-header">
+        <p class="tech-eyebrow">Refine</p>
+        <h2>Filter the collection</h2>
+        <p>Brand, availability, and price.</p>
+    </div>
+
     @if (BrandOptions.Count != 0)
     {
-        <section>
-            <h2>Brand</h2>
+        <section class="facet-sidebar-section">
+            <h3>Brand</h3>
             <ul class="facet-list">
                 @foreach (var brand in BrandOptions)
                 {
@@ -19,8 +25,8 @@
 
     @if (CategoryOptions.Count != 0)
     {
-        <section>
-            <h2>Category</h2>
+        <section class="facet-sidebar-section">
+            <h3>Category</h3>
             <ul class="facet-list">
                 @foreach (var category in CategoryOptions)
                 {
@@ -35,16 +41,16 @@
         </section>
     }
 
-    <section>
-        <h2>Stock</h2>
+    <section class="facet-sidebar-section">
+        <h3>Stock</h3>
         <a class="@(InStockSelected ? "active" : string.Empty)" href="@InStockUrl">
             In stock only
             <span>@InStockCount</span>
         </a>
     </section>
 
-    <section class="price-range">
-        <h2>Price range</h2>
+    <section class="facet-sidebar-section price-range">
+        <h3>Price range</h3>
         <p>
             @if (MinAvailable is not null && MaxAvailable is not null)
             {

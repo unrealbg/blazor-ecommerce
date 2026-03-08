@@ -2,20 +2,45 @@
 
 <PageTitle>Payment Success</PageTitle>
 
-<h1>Payment successful</h1>
-<p>Your order has been paid and is now being processed.</p>
+<div class="tech-checkout-page tech-flow-page">
+    <section class="tech-page-intro">
+        <p class="tech-eyebrow">Order confirmed</p>
+        <h1>Payment received and your order is now in motion.</h1>
+        <p>We have sent the order into fulfilment and will keep you updated by email.</p>
+    </section>
 
-@if (OrderId is not null)
-{
-    <p>Order: <strong>@OrderId</strong></p>
-}
+    <CheckoutProgressHeader CurrentStep="4" Steps="checkoutSteps" />
 
-@if (PaymentIntentId is not null)
-{
-    <p>Payment intent: <strong>@PaymentIntentId</strong></p>
-}
+    <section class="tech-detail-card tech-flow-card tech-flow-card-success">
+        <div class="tech-detail-card-header">
+            <p class="tech-eyebrow">Confirmation</p>
+            <h2>Everything is confirmed.</h2>
+        </div>
 
-<p><a class="btn-primary" href="/account/orders">View order history</a></p>
+        <div class="tech-summary-list">
+            @if (OrderId is not null)
+            {
+                <div class="tech-summary-row">
+                    <span>Order reference</span>
+                    <strong>@OrderId</strong>
+                </div>
+            }
+
+            @if (PaymentIntentId is not null)
+            {
+                <div class="tech-summary-row">
+                    <span>Payment intent</span>
+                    <strong>@PaymentIntentId</strong>
+                </div>
+            }
+        </div>
+
+        <div class="tech-flow-actions">
+            <a class="tech-button tech-button-primary" href="/account/orders">View order history</a>
+            <a class="tech-button tech-button-ghost" href="/search">Continue shopping</a>
+        </div>
+    </section>
+</div>
 
 @code {
     [SupplyParameterFromQuery]
@@ -23,4 +48,6 @@
 
     [SupplyParameterFromQuery]
     public Guid? PaymentIntentId { get; set; }
+
+    private readonly IReadOnlyList<string> checkoutSteps = ["Bag", "Shipping", "Payment", "Review"];
 }

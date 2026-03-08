@@ -3,12 +3,15 @@
     <section class="active-filters" aria-label="Active filters">
         @foreach (var chip in Chips)
         {
-            <a class="filter-chip" href="@chip.RemoveUrl">@chip.Label x</a>
+            <a class="filter-chip" href="@chip.RemoveUrl">
+                <span>@chip.Label</span>
+                <span class="filter-chip-remove" aria-hidden="true">Clear</span>
+            </a>
         }
 
         @if (!string.IsNullOrWhiteSpace(ClearAllUrl))
         {
-            <a class="filter-chip reset" href="@ClearAllUrl">Clear all</a>
+            <a class="filter-chip reset" href="@ClearAllUrl">Reset filters</a>
         }
     </section>
 }

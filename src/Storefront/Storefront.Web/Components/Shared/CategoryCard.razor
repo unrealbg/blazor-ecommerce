@@ -7,13 +7,13 @@
             }
         </div>
         <div class="category-card-copy">
-            <p class="category-card-kicker">Collection</p>
+            <p class="category-card-kicker">@Eyebrow</p>
             <h3>@Name</h3>
             @if (!string.IsNullOrWhiteSpace(Description))
             {
                 <p>@Description</p>
             }
-            <span class="category-card-cta">Explore collection</span>
+            <span class="category-card-cta">@CtaLabel</span>
         </div>
     </a>
 </article>
@@ -30,4 +30,10 @@
 
     [Parameter]
     public string Href { get; set; } = "/search";
+
+    [Parameter]
+    public string Eyebrow { get; set; } = "Collection";
+
+    [Parameter]
+    public string CtaLabel { get; set; } = "Explore collection";
 }

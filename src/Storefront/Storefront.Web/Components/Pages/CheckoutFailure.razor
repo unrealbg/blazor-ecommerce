@@ -2,19 +2,48 @@
 
 <PageTitle>Payment Failed</PageTitle>
 
-<h1>Payment failed</h1>
-<p>We could not complete your payment. You can retry from the payment step.</p>
+<div class="tech-checkout-page tech-flow-page">
+    <section class="tech-page-intro">
+        <p class="tech-eyebrow">Payment issue</p>
+        <h1>We could not complete the payment.</h1>
+        <p>You can return to the payment step, review the order, and try again.</p>
+    </section>
 
-@if (OrderId is not null)
-{
-    <p>Order: <strong>@OrderId</strong></p>
-    <p><a class="btn-primary" href="@($"/checkout/payment?orderId={OrderId:D}")">Retry payment</a></p>
-}
+    <CheckoutProgressHeader CurrentStep="3" Steps="checkoutSteps" />
 
-@if (PaymentIntentId is not null)
-{
-    <p>Payment intent: <strong>@PaymentIntentId</strong></p>
-}
+    <section class="tech-detail-card tech-flow-card tech-flow-card-danger">
+        <div class="tech-detail-card-header">
+            <p class="tech-eyebrow">Payment status</p>
+            <h2>The payment attempt did not complete.</h2>
+        </div>
+
+        <div class="tech-summary-list">
+            @if (OrderId is not null)
+            {
+                <div class="tech-summary-row">
+                    <span>Order reference</span>
+                    <strong>@OrderId</strong>
+                </div>
+            }
+
+            @if (PaymentIntentId is not null)
+            {
+                <div class="tech-summary-row">
+                    <span>Payment intent</span>
+                    <strong>@PaymentIntentId</strong>
+                </div>
+            }
+        </div>
+
+        <div class="tech-flow-actions">
+            @if (OrderId is not null)
+            {
+                <a class="tech-button tech-button-primary" href="@($"/checkout/payment?orderId={OrderId:D}")">Retry payment</a>
+            }
+            <a class="tech-button tech-button-ghost" href="/checkout">Return to checkout</a>
+        </div>
+    </section>
+</div>
 
 @code {
     [SupplyParameterFromQuery]
@@ -22,4 +51,6 @@
 
     [SupplyParameterFromQuery]
     public Guid? PaymentIntentId { get; set; }
+
+    private readonly IReadOnlyList<string> checkoutSteps = ["Bag", "Shipping", "Payment", "Review"];
 }

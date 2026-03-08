@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using Storefront.Web.Services.Api
 @inject IStoreApiClient StoreApiClient
+@inject ILogger<Checkout> Logger
 @inject Storefront.Web.Services.Customer.ICustomerContext CustomerContext
 @inject Storefront.Web.Services.CartState CartState
 @inject NavigationManager Navigation
@@ -11,8 +12,8 @@
 <div class="tech-checkout-page">
     <section class="tech-page-intro">
         <p class="tech-eyebrow">Checkout</p>
-        <h1>Complete the order with clear shipping and payment readiness.</h1>
-        <p>The backend checkout flow remains the same; the presentation now follows the premium hardware launch system.</p>
+        <h1>Complete the order with clear delivery details and secure payment readiness.</h1>
+        <p>Everything is arranged to keep totals, shipping, and customer details easy to verify at a glance.</p>
     </section>
 
     <CheckoutProgressHeader CurrentStep="2" Steps="checkoutSteps" />
@@ -23,6 +24,15 @@
             <p class="tech-eyebrow">Loading</p>
             <h2>Preparing checkout</h2>
             <p>We are loading your cart, customer profile, and shipping options.</p>
+        </section>
+    }
+    else if (!string.IsNullOrWhiteSpace(loadErrorMessage))
+    {
+        <section class="tech-empty-panel">
+            <p class="tech-eyebrow">Checkout unavailable</p>
+            <h2>We could not prepare checkout right now.</h2>
+            <p>@loadErrorMessage</p>
+            <a class="tech-button tech-button-primary" href="/cart">Return to bag</a>
         </section>
     }
     else if (cart is null || cart.Lines.Count == 0)
@@ -55,6 +65,8 @@
                             <h2>Customer contact details</h2>
                         </div>
 
+                        <p class="tech-inline-meta">We only use this for order updates, shipping coordination, and payment communication.</p>
+
                         <div class="form-grid tech-form-grid">
                             <label class="tech-field tech-field-full">
                                 <span>Email</span>
@@ -68,6 +80,8 @@
                             <p class="tech-eyebrow">Shipping</p>
                             <h2>Delivery address</h2>
                         </div>
+
+                        <p class="tech-inline-meta">Use the destination where the order should be delivered and signed for.</p>
 
                         <div class="form-grid tech-form-grid">
                             <label class="tech-field">
@@ -107,6 +121,8 @@
                             <h2>Billing address</h2>
                         </div>
 
+                        <p class="tech-inline-meta">Enter the address used for invoicing and payment verification.</p>
+
                         <div class="form-grid tech-form-grid">
                             <label class="tech-field">
                                 <span>First name</span>
@@ -144,6 +160,8 @@
                             <p class="tech-eyebrow">Delivery method</p>
                             <h2>Select shipping</h2>
                         </div>
+
+                        <p class="tech-inline-meta">Choose the service level that matches the destination and timing you need.</p>
 
                         @if (isLoadingQuotes)
                         {
@@ -206,8 +224,8 @@
                         Items="BuildMiniCartItems()"
                         Subtotal="@subtotalAmount"
                         Currency="@currency"
-                        Eyebrow="Checkout cart"
-                        Title="Order contents"
+                        Eyebrow="At a glance"
+                        Title="Order overview"
                         ShowPrimaryAction="false"
                         ShowSecondaryAction="false" />
 
@@ -257,7 +275,9 @@
                             </div>
                         </div>
 
-                        <button class="btn-primary tech-button-block" type="submit" disabled="@isSubmitting">Place order</button>
+                        <p class="tech-inline-meta tech-summary-note">Payment confirmation begins after the order is created and shipping is locked in.</p>
+
+                        <button class="tech-button tech-button-primary tech-button-block" type="submit" disabled="@isSubmitting">Place order</button>
                     </section>
                 </aside>
             </div>
@@ -278,33 +298,43 @@
     private decimal subtotalAmount;
     private decimal selectedShippingAmount;
     private string currency = "EUR";
+    private string? loadErrorMessage;
 
     protected override async Task OnInitializedAsync()
     {
         isLoading = true;
-        var customerId = CustomerContext.GetCustomerId();
-        cart = await StoreApiClient.GetCartAsync(customerId, CancellationToken.None);
-        subtotalAmount = cart?.GrandTotalAmount ?? 0m;
-        currency = cart?.Currency ?? "EUR";
-
-        var profile = await StoreApiClient.GetCurrentCustomerAsync(CancellationToken.None);
-        if (profile is null)
+        try
         {
+            var customerId = CustomerContext.GetCustomerId();
+            cart = await StoreApiClient.GetCartAsync(customerId, CancellationToken.None);
+            subtotalAmount = cart?.GrandTotalAmount ?? 0m;
+            currency = cart?.Currency ?? "EUR";
+
+            var profile = await StoreApiClient.GetCurrentCustomerAsync(CancellationToken.None);
+            if (profile is not null)
+            {
+                model.Email = profile.Email;
+                model.ShippingFirstName = profile.FirstName ?? string.Empty;
+                model.ShippingLastName = profile.LastName ?? string.Empty;
+                model.BillingFirstName = model.ShippingFirstName;
+                model.BillingLastName = model.ShippingLastName;
+                model.ShippingPhone = profile.PhoneNumber;
+                model.BillingPhone = profile.PhoneNumber;
+            }
+
             await LoadShippingQuotesAsync();
-            isLoading = false;
-            return;
+            loadErrorMessage = null;
         }
-
-        model.Email = profile.Email;
-        model.ShippingFirstName = profile.FirstName ?? string.Empty;
-        model.ShippingLastName = profile.LastName ?? string.Empty;
-        model.BillingFirstName = model.ShippingFirstName;
-        model.BillingLastName = model.ShippingLastName;
-        model.ShippingPhone = profile.PhoneNumber;
-        model.BillingPhone = profile.PhoneNumber;
-
-        await LoadShippingQuotesAsync();
-        isLoading = false;
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Failed to initialize checkout.");
+            cart = null;
+            loadErrorMessage = "Checkout could not be prepared. Please refresh or return to the bag.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private async Task SubmitAsync()
