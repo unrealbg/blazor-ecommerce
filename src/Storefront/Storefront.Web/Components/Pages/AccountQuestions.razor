@@ -5,47 +5,68 @@
 
 <PageTitle>My Questions</PageTitle>
 
-<h1>Questions</h1>
+<section class="tech-panel account-page-intro">
+    <p class="tech-eyebrow">Questions</p>
+    <h1>Keep product questions, replies, and official answers in the same private client area.</h1>
+    <p class="tech-copy">Questions asked before or after purchase remain visible without dropping into a support-dashboard experience.</p>
+</section>
 
 @if (isLoading)
 {
-    <p>Loading questions...</p>
+    <section class="tech-detail-card account-state-card">
+        <p class="tech-eyebrow">Loading</p>
+        <h2>Preparing your questions</h2>
+        <p>We are fetching submitted questions and available answers.</p>
+    </section>
 }
 else if (!isAuthenticated)
 {
-    <p>You need to sign in to access your questions.</p>
-    <p><a class="btn-link" href="/account/login">Go to login</a></p>
+    <section class="tech-detail-card account-state-card">
+        <p class="tech-eyebrow">Sign in required</p>
+        <h2>Access your product questions</h2>
+        <p>Sign in to view answers and moderation status for previous questions.</p>
+        <a class="tech-button tech-button-primary" href="/account/login">Sign in</a>
+    </section>
 }
 else if (questions.Count == 0)
 {
-    <p>No questions submitted yet.</p>
+    <section class="tech-detail-card account-state-card">
+        <p class="tech-eyebrow">No questions yet</p>
+        <h2>Your submitted questions will appear here.</h2>
+        <p>Once you ask about a product, replies and official answers will stay available in this view.</p>
+    </section>
 }
 else
 {
     <div class="order-list">
         @foreach (var question in questions)
         {
-            <article class="order-card">
-                <header>
-                    <strong><a href="/product/@question.ProductSlug">@question.ProductName</a></strong>
-                    <p>@question.CreatedAtUtc.ToString("yyyy-MM-dd")</p>
+            <article class="order-card account-order-card">
+                <header class="account-card-header">
+                    <div>
+                        <p class="tech-eyebrow">Product question</p>
+                        <h2><a href="/product/@question.ProductSlug">@question.ProductName</a></h2>
+                    </div>
+                    <span class="tech-chip tech-chip-muted account-status-chip">@question.Status</span>
                 </header>
-                <p>Status: <strong>@question.Status</strong></p>
+                <p class="tech-inline-meta">@question.CreatedAtUtc.ToString("yyyy-MM-dd")</p>
                 <p>@question.QuestionText</p>
 
                 @if (question.Answers.Count > 0)
                 {
-                    <ul>
+                    <ul class="account-answer-list">
                         @foreach (var answer in question.Answers)
                         {
-                            <li>
-                                <strong>@answer.DisplayName</strong>
+                            <li class="account-answer-item">
+                                <div class="account-card-meta">
+                                    <strong>@answer.DisplayName</strong>
                                 @if (answer.IsOfficialAnswer)
                                 {
-                                    <span class="status-message">Official answer</span>
+                                        <span class="tech-chip tech-chip-accent">Official answer</span>
                                 }
-                                <div>@answer.AnswerText</div>
-                                <div class="meta">Status: @answer.Status</div>
+                                </div>
+                                <p>@answer.AnswerText</p>
+                                <p class="tech-inline-meta">Status: @answer.Status</p>
                             </li>
                         }
                     </ul>

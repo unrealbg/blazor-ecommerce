@@ -4,33 +4,39 @@
 
 <PageTitle>Account Login</PageTitle>
 
-<h1>Sign in</h1>
-<p>Access your profile, addresses, and order history.</p>
+<div class="account-auth-shell">
+    <section class="tech-panel account-auth-card">
+        <p class="tech-eyebrow">Client sign in</p>
+        <h1>Access orders, saved details, and support from one private account area.</h1>
+        <p class="tech-copy">Sign in to keep delivery details ready, revisit previous purchases, and move through checkout with less friction.</p>
 
-<EditForm Model="model" OnValidSubmit="SubmitAsync">
-    <div class="form-grid">
-        <label>
-            Email
-            <InputText @bind-Value="model.Email" />
-        </label>
-        <label>
-            Password
-            <InputText @bind-Value="model.Password" Type="password" />
-        </label>
-        <label class="checkbox-row">
-            <InputCheckbox @bind-Value="model.RememberMe" />
-            <span>Remember me</span>
-        </label>
-    </div>
-    <button class="btn-primary" type="submit" disabled="@isSubmitting">Login</button>
-</EditForm>
+        <EditForm Model="model" OnValidSubmit="SubmitAsync">
+            <div class="form-grid tech-form-grid">
+                <label class="tech-field tech-field-full">
+                    <span>Email</span>
+                    <InputText @bind-Value="model.Email" />
+                </label>
+                <label class="tech-field tech-field-full">
+                    <span>Password</span>
+                    <InputText @bind-Value="model.Password" Type="password" />
+                </label>
+                <label class="checkbox-row account-checkbox-row">
+                    <InputCheckbox @bind-Value="model.RememberMe" />
+                    <span>Keep me signed in on this device</span>
+                </label>
+            </div>
+            <div class="account-inline-actions">
+                <button class="tech-button tech-button-primary" type="submit" disabled="@isSubmitting">Sign in</button>
+                <a class="tech-inline-link" href="/account/register">Create account →</a>
+            </div>
+        </EditForm>
 
-@if (!string.IsNullOrWhiteSpace(message))
-{
-    <p class="status-message">@message</p>
-}
-
-<p><a class="btn-link" href="/account/register">Create account</a></p>
+        @if (!string.IsNullOrWhiteSpace(message))
+        {
+            <p class="status-message">@message</p>
+        }
+    </section>
+</div>
 
 @code {
     private readonly LoginModel model = new();

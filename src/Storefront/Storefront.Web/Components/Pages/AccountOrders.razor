@@ -5,35 +5,70 @@
 
 <PageTitle>My Orders</PageTitle>
 
-<h1>Orders</h1>
+<section class="tech-panel account-page-intro">
+    <p class="tech-eyebrow">Orders</p>
+    <h1>Review every purchase, payment update, and fulfilment step from one calm order history.</h1>
+    <p class="tech-copy">Totals, shipment progress, and line items stay visible in the same premium language as the storefront.</p>
+</section>
 
 @if (isLoading)
 {
-    <p>Loading orders...</p>
+    <section class="tech-detail-card account-state-card">
+        <p class="tech-eyebrow">Loading</p>
+        <h2>Preparing your order history</h2>
+        <p>We are fetching recent purchases and fulfilment updates.</p>
+    </section>
 }
 else if (!isAuthenticated)
 {
-    <p>You need to sign in to view order history.</p>
-    <p><a class="btn-link" href="/account/login">Go to login</a></p>
+    <section class="tech-detail-card account-state-card">
+        <p class="tech-eyebrow">Sign in required</p>
+        <h2>Review your previous purchases</h2>
+        <p>Sign in to view totals, payment status, and shipment progress.</p>
+        <a class="tech-button tech-button-primary" href="/account/login">Sign in</a>
+    </section>
 }
 else if (orders.Count == 0)
 {
-    <p>No orders yet.</p>
+    <section class="tech-detail-card account-state-card">
+        <p class="tech-eyebrow">No orders yet</p>
+        <h2>Your order history will appear here.</h2>
+        <p>Once you place an order, payment details and shipment progress will be available in this area.</p>
+        <a class="tech-button tech-button-primary" href="/search">Browse hardware</a>
+    </section>
 }
 else
 {
     <div class="order-list">
         @foreach (var order in orders)
         {
-            <article class="order-card">
-                <header>
-                    <h2>Order @order.Id</h2>
-                    <p>@order.PlacedAtUtc.ToString("u")</p>
+            <article class="order-card account-order-card">
+                <header class="account-card-header">
+                    <div>
+                        <p class="tech-eyebrow">Order overview</p>
+                        <h2>Order @order.Id</h2>
+                    </div>
+                    <span class="tech-chip tech-chip-muted account-status-chip">@order.Status</span>
                 </header>
-                <p>Status: <strong>@order.Status</strong></p>
-                <p>Total: <strong>@FormatPrice(order.TotalAmount, order.Currency)</strong></p>
-                <p><a class="btn-secondary" href="@($"/account/orders/{order.Id:D}")">Payment details</a></p>
-                <ul>
+                <div class="account-detail-grid">
+                    <div>
+                        <span>Placed</span>
+                        <strong>@order.PlacedAtUtc.ToString("yyyy-MM-dd HH:mm")</strong>
+                    </div>
+                    <div>
+                        <span>Total</span>
+                        <strong>@FormatPrice(order.TotalAmount, order.Currency)</strong>
+                    </div>
+                    <div>
+                        <span>Items</span>
+                        <strong>@order.Lines.Count line@(order.Lines.Count == 1 ? string.Empty : "s")</strong>
+                    </div>
+                </div>
+                <div class="account-card-actions">
+                    <a class="tech-button tech-button-primary" href="@($"/account/orders/{order.Id:D}")">Open order</a>
+                    <a class="tech-inline-link" href="/search">Continue shopping →</a>
+                </div>
+                <ul class="account-order-lines">
                     @foreach (var line in order.Lines)
                     {
                         <li>@line.Name × @line.Quantity</li>

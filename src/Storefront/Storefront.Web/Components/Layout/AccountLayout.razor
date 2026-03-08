@@ -3,16 +3,24 @@
 @inject NavigationManager NavigationManager
 
 <div class="account-shell">
-    <aside class="account-sidebar">
-        <h2>My account</h2>
-        <nav class="account-nav">
-            <a href="/account/profile">Profile</a>
-            <a href="/account/addresses">Addresses</a>
-            <a href="/account/orders">Orders</a>
-            <a href="/account/reviews">Reviews</a>
-            <a href="/account/questions">Questions</a>
-            <button type="button" class="btn-link danger" @onclick="LogoutAsync">Logout</button>
+    <aside class="account-sidebar tech-panel">
+        <div class="account-sidebar-copy">
+            <p class="tech-eyebrow">Private client area</p>
+            <h2>Your profile, delivery details, and purchase history in one quiet client area.</h2>
+            <p>Everything you need after checkout stays inside the same calm product language as the storefront itself.</p>
+        </div>
+        <nav class="account-nav" aria-label="Account navigation">
+            <a class="@GetNavClass("/account/profile")" href="/account/profile">Profile</a>
+            <a class="@GetNavClass("/account/addresses")" href="/account/addresses">Addresses</a>
+            <a class="@GetNavClass("/account/orders")" href="/account/orders">Orders</a>
+            <a class="@GetNavClass("/account/reviews")" href="/account/reviews">Reviews</a>
+            <a class="@GetNavClass("/account/questions")" href="/account/questions">Questions</a>
+            <button type="button" class="account-nav-button account-nav-button-danger" @onclick="LogoutAsync">Sign out</button>
         </nav>
+        <div class="account-sidebar-note">
+            <strong>Client care</strong>
+            <p>Delivery records, saved details, and support context stay readable, minimal, and consistent with the rest of the product.</p>
+        </div>
     </aside>
     <section class="account-content">
         @Body
@@ -24,5 +32,21 @@
     {
         await StoreApiClient.LogoutAsync(CancellationToken.None);
         NavigationManager.NavigateTo("/account/login", forceLoad: true);
+    }
+
+    private string GetNavClass(string href)
+    {
+        var currentPath = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        var normalizedCurrentPath = $"/{currentPath}".TrimEnd('/');
+        var normalizedHref = href.TrimEnd('/');
+        if (string.Equals(normalizedCurrentPath, "/account", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(normalizedHref, "/account/profile", StringComparison.OrdinalIgnoreCase))
+        {
+            return "account-nav-link active";
+        }
+
+        return string.Equals(normalizedCurrentPath, normalizedHref, StringComparison.OrdinalIgnoreCase)
+            ? "account-nav-link active"
+            : "account-nav-link";
     }
 }

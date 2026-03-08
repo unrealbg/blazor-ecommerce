@@ -227,11 +227,22 @@
                     {
                         <article class="product-card">
                             <a class="product-card-media" href="/product/@related.Slug">
-                                <ResponsiveImage
-                                    Source="@related.ImageUrl"
-                                    Alt="@related.Name"
-                                    Preset="MediaImagePreset.ProductCard"
-                                    CssClass="product-card-image" />
+                                @if (!string.IsNullOrWhiteSpace(related.ImageUrl))
+                                {
+                                    <div class="product-card-image-frame">
+                                        <div class="product-card-image product-card-placeholder" aria-hidden="true"></div>
+                                        <ResponsiveImage
+                                            Source="@related.ImageUrl"
+                                            Alt="@related.Name"
+                                            Preset="MediaImagePreset.ProductCard"
+                                            CssClass="product-card-image product-card-image-live"
+                                            HideOnError="true" />
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="product-card-image product-card-placeholder" aria-hidden="true"></div>
+                                }
                             </a>
                             <div class="product-card-copy">
                                 <p class="product-card-kicker">Recommended pairing</p>
