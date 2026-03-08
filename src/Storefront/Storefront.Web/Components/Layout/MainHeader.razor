@@ -1,0 +1,58 @@
+@code {
+    private static readonly InteractiveServerRenderMode NonPrerenderedInteractive = new(prerender: false);
+}
+
+<header class="main-header">
+    <div class="shell-container main-header-inner">
+        <div class="main-header-brand-row">
+            <a class="brand-mark" href="/" aria-label="Astra Flux home">
+                ASTRA<span>/FLUX</span>
+            </a>
+
+            <nav class="desktop-nav" aria-label="Primary navigation">
+                <a href="/">Flagship</a>
+                <a href="/category/all-products">Audio</a>
+                <a href="/search?q=workspace">Workspace</a>
+                <a href="/search?q=wearable">Wearables</a>
+                <a href="/search?q=accessories">Accessories</a>
+                <a href="/blog">Journal</a>
+            </nav>
+        </div>
+
+        <div class="main-header-search">
+            <SearchBox Placeholder="Search products, systems, accessories..." AriaLabel="Search products" @rendermode="NonPrerenderedInteractive" />
+        </div>
+
+        <div class="main-header-actions">
+            <a class="header-pill muted" href="/account/profile">Account</a>
+            <a class="header-pill muted" href="/account/orders">Orders</a>
+            <a class="header-pill cart-pill" href="/cart">
+                <span>Bag</span>
+                <CartCountBadge @rendermode="NonPrerenderedInteractive" />
+            </a>
+        </div>
+
+        <details class="mobile-menu-shell">
+            <summary aria-label="Open navigation menu">
+                <span class="brand-mark mobile">ASTRA<span>/FLUX</span></span>
+                <span class="mobile-menu-icon" aria-hidden="true">Menu</span>
+            </summary>
+            <div class="mobile-menu-panel">
+                <div class="mobile-menu-search">
+                    <SearchBox Placeholder="Search the collection" AriaLabel="Search the storefront" @rendermode="NonPrerenderedInteractive" />
+                </div>
+                <nav class="mobile-nav" aria-label="Mobile navigation">
+                    <a href="/">Flagship</a>
+                    <a href="/category/all-products">Audio</a>
+                    <a href="/search?q=workspace">Workspace</a>
+                    <a href="/search?q=wearable">Wearables</a>
+                    <a href="/search?q=accessories">Accessories</a>
+                    <a href="/blog">Journal</a>
+                    <a href="/search">Search</a>
+                    <a href="/account/profile">Account</a>
+                    <a href="/cart">Bag</a>
+                </nav>
+            </div>
+        </details>
+    </div>
+</header>

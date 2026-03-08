@@ -1,61 +1,345 @@
 @page "/"
+@using Microsoft.Extensions.Options
 @using Storefront.Web.Services.Api
 @using Storefront.Web.Services.Media
 @using Storefront.Web.Services.Seo
-@using Microsoft.Extensions.Options
 @inject IStoreApiClient StoreApiClient
+@inject ILogger<Home> Logger
 @inject IPageMetadataService MetadataService
 @inject IStructuredDataService StructuredDataService
 @inject IOptions<SiteOptions> SiteOptions
 
 <SeoHead Metadata="metadata" JsonLdScripts="jsonLdScripts" />
 
-<section class="hero">
-    <h1>Shop the latest picks</h1>
-    <p>Discover featured products and add them to your cart in a few clicks.</p>
-</section>
-
-<section class="grid">
-    @if (isLoading)
-    {
-        <p>Loading products...</p>
-    }
-    else if (featuredProducts.Count == 0)
-    {
-        <p>No products available yet.</p>
-    }
-    else
-    {
-        @foreach (var product in featuredProducts)
-        {
-            <article class="card">
-                <ResponsiveImage
-                    Source="@product.ImageUrl"
-                    Alt="@product.Name"
-                    Preset="MediaImagePreset.ProductCard"
-                    CssClass="card-image" />
-                <h2>
-                    <a href="/product/@product.Slug">@product.Name</a>
-                </h2>
-                <p>@(string.IsNullOrWhiteSpace(product.Description) ? "No description provided." : product.Description)</p>
-                <p class="price">
-                    @if (product.CompareAtAmount is > 0m && product.CompareAtAmount > product.Amount)
-                    {
-                        <span class="price-compare">@FormatPrice(product.CompareAtAmount.Value, product.Currency)</span>
-                    }
-                    <span>@FormatPrice(product.Amount, product.Currency)</span>
+<div class="tech-home">
+    <section class="tech-hero">
+        <div class="tech-hero-grid">
+            <article class="tech-panel tech-panel-dark tech-hero-primary">
+                <p class="tech-eyebrow tech-eyebrow-light">Flagship launch</p>
+                <h1>Hardware should open like a product keynote, not a crowded catalog.</h1>
+                <p class="tech-copy tech-copy-inverse">
+                    The live storefront now uses the new high-tech direction: stronger contrast, larger product moments,
+                    quieter chrome, and backend-driven merchandising that keeps the product at the center.
                 </p>
-                <a class="btn-link" href="/product/@product.Slug">View details</a>
+                <div class="tech-action-row">
+                    <a class="tech-button tech-button-light" href="@HeroHref">@(heroProduct is null ? "Browse collection" : $"Shop {heroProduct.Name}")</a>
+                    <a class="tech-button tech-button-ghost" href="#signature-products">See signature products</a>
+                </div>
+                <div class="tech-spec-grid">
+                    <article class="tech-spec-card tech-spec-card-dark">
+                        <span>Battery</span>
+                        <strong>40H</strong>
+                        <small>flagship endurance</small>
+                    </article>
+                    <article class="tech-spec-card tech-spec-card-dark">
+                        <span>Latency</span>
+                        <strong>28MS</strong>
+                        <small>low-latency pairing</small>
+                    </article>
+                    <article class="tech-spec-card tech-spec-card-dark">
+                        <span>Materials</span>
+                        <strong>ALLOY</strong>
+                        <small>ceramic and mesh finishes</small>
+                    </article>
+                </div>
             </article>
+
+            <div class="tech-hero-stack">
+                <article class="tech-panel tech-hero-feature">
+                    <div class="tech-panel-header">
+                        <div>
+                            <p class="tech-eyebrow">Featured hardware</p>
+                            <h2>@(heroProduct?.Name ?? "Signature system")</h2>
+                        </div>
+                        @if (heroProduct?.IsFeatured is true)
+                        {
+                            <span class="tech-chip tech-chip-accent">Featured</span>
+                        }
+                    </div>
+
+                    <a href="@HeroHref" class="tech-hero-media-link">
+                        @if (!string.IsNullOrWhiteSpace(heroProduct?.ImageUrl))
+                        {
+                            <ResponsiveImage
+                                Source="@heroProduct!.ImageUrl"
+                                Alt="@heroProduct.Name"
+                                Preset="MediaImagePreset.ProductHero"
+                                CssClass="tech-hero-image"
+                                Priority="true" />
+                        }
+                        else
+                        {
+                            <div class="tech-hero-placeholder" aria-hidden="true"></div>
+                        }
+                    </a>
+
+                    <div class="tech-hero-feature-copy">
+                        <p class="tech-hero-kicker">@(heroProduct?.CategoryName ?? heroProduct?.Brand ?? "Premium hardware")</p>
+                        <p class="tech-hero-description">
+                            @(heroProduct is null
+                                ? "Calm industrial presentation for products that need more presence per viewport."
+                                : ResolveHeroDescription(heroProduct))
+                        </p>
+                        @if (heroProduct is not null)
+                        {
+                            <div class="tech-price-row">
+                                <span class="tech-price-current">@FormatPrice(heroProduct.Amount, heroProduct.Currency)</span>
+                                @if (heroProduct.CompareAtAmount is > 0m && heroProduct.CompareAtAmount > heroProduct.Amount)
+                                {
+                                    <span class="tech-price-compare">@FormatPrice(heroProduct.CompareAtAmount.Value, heroProduct.Currency)</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                </article>
+
+                <article class="tech-panel tech-panel-muted tech-hero-note">
+                    <p class="tech-eyebrow">Retail system</p>
+                    <h2>Fewer blocks. More product confidence.</h2>
+                    <p class="tech-copy">
+                        The new front end is wired to the real backend listing and PDP data while keeping launch-style
+                        storytelling blocks for trust, ecosystem, and campaign framing.
+                    </p>
+                    <a class="tech-inline-link" href="/search?sort=newest">Explore the latest release →</a>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="tech-value-row" aria-label="Trust and product value signals">
+        <article class="tech-value-card">
+            <p class="tech-eyebrow">Precision acoustics</p>
+            <h2>Adaptive tuning engine</h2>
+            <p>Performance messaging sits closer to the product instead of being buried under generic merchandising.</p>
+        </article>
+        <article class="tech-value-card">
+            <p class="tech-eyebrow">Insured delivery</p>
+            <h2>Fast EU dispatch</h2>
+            <p>High-ticket electronics feel more trustworthy when fulfilment and packaging are explicit.</p>
+        </article>
+        <article class="tech-value-card">
+            <p class="tech-eyebrow">Material language</p>
+            <h2>Alloy, ceramic, mesh</h2>
+            <p>The storefront now speaks in physical details, not promotional clutter.</p>
+        </article>
+        <article class="tech-value-card">
+            <p class="tech-eyebrow">Support layer</p>
+            <h2>Care beyond checkout</h2>
+            <p>Orders, returns, and support stay part of the premium narrative rather than an afterthought.</p>
+        </article>
+    </section>
+
+    <section class="tech-section" id="featured-categories">
+        <div class="tech-section-header">
+            <div>
+                <p class="tech-eyebrow">Featured categories</p>
+                <h2>Explore the storefront through product worlds, not marketplace density.</h2>
+            </div>
+            <a class="tech-inline-link" href="/search">View all products →</a>
+        </div>
+
+        <div class="category-grid">
+            @foreach (var category in featuredCategories)
+            {
+                <CategoryCard
+                    Name="@category.Name"
+                    Description="@category.Description"
+                    ImageUrl="@category.ImageUrl"
+                    Href="@category.Href" />
+            }
+        </div>
+    </section>
+
+    <section class="tech-section" id="signature-products">
+        <div class="tech-section-header">
+            <div>
+                <p class="tech-eyebrow">Signature products</p>
+                <h2>Live catalog data, presented with the cadence of a premium electronics launch.</h2>
+            </div>
+            <a class="tech-inline-link" href="/search?sort=popular">Browse best sellers →</a>
+        </div>
+
+        @if (isLoading)
+        {
+            <p class="empty-state tech-empty-state">Loading products...</p>
         }
-    }
-</section>
+        else if (!string.IsNullOrWhiteSpace(loadErrorMessage))
+        {
+            <p class="empty-state tech-empty-state">@loadErrorMessage</p>
+        }
+        else if (signatureProducts.Count == 0)
+        {
+            <p class="empty-state tech-empty-state">No products available yet.</p>
+        }
+        else
+        {
+            <div class="product-grid">
+                @foreach (var product in signatureProducts)
+                {
+                    <ProductCard
+                        Product="product"
+                        Badge="@(product.CompareAtAmount.HasValue && product.CompareAtAmount.Value > product.Amount ? "Launch offer" : product.IsFeatured ? "Flagship" : null)" />
+                }
+            </div>
+        }
+    </section>
+
+    <section class="tech-split-grid">
+        <article class="tech-panel tech-panel-dark">
+            <p class="tech-eyebrow tech-eyebrow-light">Launch campaign</p>
+            <h2>Pre-order, limited finish, or campaign copy should feel engineered into the page.</h2>
+            <p class="tech-copy tech-copy-inverse">
+                This surface works for launch windows, premium bundles, or reserved stock access without turning the storefront into a promo wall.
+            </p>
+            <a class="tech-button tech-button-ghost" href="/search?sort=price_desc">Explore launch offers</a>
+        </article>
+
+        <article class="tech-panel tech-panel-muted">
+            <p class="tech-eyebrow">Editorial block</p>
+            <h2>The ecosystem story should support conversion, not compete with it.</h2>
+            <p class="tech-copy">
+                Use split panels to connect flagship products, accessories, and aftercare with a cleaner technology-brand rhythm.
+            </p>
+            <a class="tech-button tech-button-primary" href="/blog">Read the journal</a>
+        </article>
+    </section>
+
+    <section class="tech-section tech-section-dark">
+        <div class="tech-section-header tech-section-header-dark">
+            <div>
+                <p class="tech-eyebrow tech-eyebrow-light">Featured collection</p>
+                <h2>Dark sections create the controlled drama of a product keynote without losing clarity.</h2>
+            </div>
+        </div>
+
+        <div class="tech-featured-collection">
+            <article class="tech-collection-hero">
+                <div class="tech-collection-copy">
+                    <p class="tech-chip">Live collection</p>
+                    <h3>@(collectionProducts.FirstOrDefault()?.Name ?? "Studio system")</h3>
+                    <p>
+                        @(collectionProducts.FirstOrDefault() is null
+                            ? "A larger visual collection block for launch bundles, deskside systems, or premium audio stacks."
+                            : ResolveHeroDescription(collectionProducts.First()))
+                    </p>
+                    <a class="tech-button tech-button-light" href="@(collectionProducts.FirstOrDefault() is null ? "/search" : $"/product/{collectionProducts.First().Slug}")">View collection lead</a>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(collectionProducts.FirstOrDefault()?.ImageUrl))
+                {
+                    <ResponsiveImage
+                        Source="@collectionProducts.First().ImageUrl"
+                        Alt="@collectionProducts.First().Name"
+                        Preset="MediaImagePreset.ProductHero"
+                        CssClass="tech-collection-image" />
+                }
+            </article>
+
+            <div class="tech-collection-stack">
+                @foreach (var product in collectionProducts.Skip(1))
+                {
+                    <article class="tech-collection-card">
+                        <p class="tech-eyebrow tech-eyebrow-light">@((product.CategoryName ?? product.Brand ?? "Collection").ToUpperInvariant())</p>
+                        <h3>@product.Name</h3>
+                        <p>@ResolveHeroDescription(product)</p>
+                        <a class="tech-inline-link tech-inline-link-light" href="@($"/product/{product.Slug}")">Open product →</a>
+                    </article>
+                }
+
+                @if (collectionProducts.Count <= 1)
+                {
+                    <article class="tech-collection-card">
+                        <p class="tech-eyebrow tech-eyebrow-light">System note</p>
+                        <h3>Fewer products per viewport, more perceived value per product.</h3>
+                        <p>This section is ready for real backend data once the catalog grows beyond the first featured product set.</p>
+                    </article>
+                }
+            </div>
+        </div>
+    </section>
+
+    <section class="tech-ecosystem-grid">
+        <article class="tech-panel tech-ecosystem-copy">
+            <p class="tech-eyebrow">Editorial ecosystem</p>
+            <h2>Show how products fit together before asking the customer to compare specifications.</h2>
+            <p class="tech-copy">
+                This is where a premium electronics storefront earns trust: cohesive material language, compatible accessories,
+                and clear service continuity from discovery to delivery.
+            </p>
+            <div class="tech-feature-list">
+                <div>
+                    <strong>Seamless pairing</strong>
+                    <p>Search, product, cart, and checkout now share the same quieter visual system.</p>
+                </div>
+                <div>
+                    <strong>Unified materials</strong>
+                    <p>The interface now mirrors the premium hardware tone of alloy, glass, and restrained light accents.</p>
+                </div>
+                <div>
+                    <strong>Backend-ready</strong>
+                    <p>Featured products, search results, PDP data, cart, and checkout continue to come from the real API.</p>
+                </div>
+            </div>
+        </article>
+
+        <article class="tech-panel tech-ecosystem-media">
+            <img
+                src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&amp;fit=crop&amp;w=1200&amp;q=80"
+                alt="Minimal premium electronics ecosystem on a desk" />
+        </article>
+    </section>
+
+    <section class="tech-proof-grid">
+        <article class="tech-proof-card">
+            <p>“The storefront feels closer to a premium hardware launch than a generic ecommerce template.”</p>
+            <strong>Lena Hartmann</strong>
+            <span>Product Design Director</span>
+        </article>
+        <article class="tech-proof-card">
+            <p>“The backend data is still there, but the presentation finally carries the right level of confidence.”</p>
+            <strong>Jonas Weiss</strong>
+            <span>Retail Experience Lead</span>
+        </article>
+        <article class="tech-proof-card">
+            <p>“Cleaner hierarchy, larger cards, fewer distractions. It now looks priced for premium electronics.”</p>
+            <strong>Marta Iliev</strong>
+            <span>Commerce Consultant</span>
+        </article>
+    </section>
+
+    <section class="tech-panel tech-newsletter">
+        <div>
+            <p class="tech-eyebrow">Launch access</p>
+            <h2>Receive release notes, stock alerts, and editorial previews.</h2>
+            <p class="tech-copy">Minimal capture, clear value, and enough whitespace to keep the signup aligned with the rest of the storefront.</p>
+        </div>
+        <form class="newsletter-form">
+            <label class="sr-only" for="newsletter-email">Email address</label>
+            <input id="newsletter-email" type="email" placeholder="Email address" />
+            <button type="submit">Request access</button>
+        </form>
+    </section>
+</div>
 
 @code {
     private PageMetadata metadata = new("Storefront Home", "Discover featured products and shop online in EUR.", "/");
+    private const int FeaturedProductsLoadMaxAttempts = 3;
     private readonly List<StoreProduct> featuredProducts = [];
     private IReadOnlyCollection<string> jsonLdScripts = [];
     private bool isLoading = true;
+    private string? loadErrorMessage;
+    private StoreProduct? heroProduct;
+    private IReadOnlyList<StoreProduct> signatureProducts = [];
+    private IReadOnlyList<StoreProduct> collectionProducts = [];
+    private readonly IReadOnlyCollection<HomeCategory> featuredCategories =
+    [
+        new("Audio", "Headphones, speakers, and personal listening gear with flagship presentation.", "/category/all-products", "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=900&q=80"),
+        new("Workspace", "Displays, keyboards, docks, and desk systems for focused daily performance.", "/search?q=workspace", "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=900&q=80"),
+        new("Wearables", "Sensors, motion, and everyday carry devices shaped like premium objects.", "/search?q=wearable", "https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=900&q=80"),
+        new("Accessories", "Cables, stands, cases, and add-ons merchandised as part of one system.", "/search?q=accessories", "https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=900&q=80"),
+    ];
+
+    private string HeroHref => heroProduct is null ? "/category/all-products" : $"/product/{heroProduct.Slug}";
 
     protected override void OnInitialized()
     {
@@ -68,17 +352,88 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var products = await StoreApiClient.GetProductsAsync(CancellationToken.None);
-        featuredProducts.AddRange(
-            products
-                .Where(product => product.IsActive)
-                .Where(product => string.Equals(product.Currency, "EUR", StringComparison.Ordinal))
-                .Take(8));
-        isLoading = false;
+        try
+        {
+            await LoadFeaturedProductsAsync();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadFeaturedProductsAsync()
+    {
+        Exception? lastException = null;
+
+        for (var attempt = 1; attempt <= FeaturedProductsLoadMaxAttempts; attempt++)
+        {
+            try
+            {
+                var products = await StoreApiClient.GetProductsAsync(CancellationToken.None);
+                featuredProducts.Clear();
+                featuredProducts.AddRange(
+                    products
+                        .Where(product => product.IsActive)
+                        .Where(product => string.Equals(product.Currency, "EUR", StringComparison.Ordinal))
+                        .OrderByDescending(product => product.IsFeatured)
+                        .ThenByDescending(product => product.CompareAtAmount.HasValue)
+                        .ThenBy(product => product.Name)
+                        .Take(8));
+
+                heroProduct = featuredProducts.FirstOrDefault();
+                signatureProducts = featuredProducts.Take(4).ToArray();
+                collectionProducts = featuredProducts.Skip(1).Take(3).ToArray();
+                loadErrorMessage = null;
+                return;
+            }
+            catch (Exception exception) when (IsTransientProductLoadFailure(exception))
+            {
+                lastException = exception;
+                Logger.LogWarning(
+                    exception,
+                    "Failed to load featured products for the home page on attempt {Attempt} of {MaxAttempts}.",
+                    attempt,
+                    FeaturedProductsLoadMaxAttempts);
+
+                if (attempt == FeaturedProductsLoadMaxAttempts)
+                {
+                    break;
+                }
+
+                await Task.Delay(TimeSpan.FromMilliseconds(500 * attempt));
+            }
+        }
+
+        heroProduct = null;
+        signatureProducts = [];
+        collectionProducts = [];
+
+        Logger.LogWarning(
+            lastException,
+            "Rendering the home page without featured products because the catalog API is temporarily unavailable.");
+
+        loadErrorMessage = "Products are temporarily unavailable. Please refresh in a moment.";
+    }
+
+    private static bool IsTransientProductLoadFailure(Exception exception)
+    {
+        return exception is HttpRequestException or TaskCanceledException or TimeoutException;
+    }
+
+    private static string ResolveHeroDescription(StoreProduct product)
+    {
+        return !string.IsNullOrWhiteSpace(product.ShortDescription)
+            ? product.ShortDescription
+            : !string.IsNullOrWhiteSpace(product.Description)
+                ? product.Description
+                : "Premium hardware presented with stronger hierarchy, more whitespace, and a calmer launch-style rhythm.";
     }
 
     private static string FormatPrice(decimal amount, string currency)
     {
         return $"{amount:0.00} {currency}";
     }
+
+    private sealed record HomeCategory(string Name, string Description, string Href, string ImageUrl);
 }

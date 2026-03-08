@@ -1,10 +1,10 @@
 @using Storefront.Web.Services.Api
 @using Storefront.Web.Services.Media
 
-<section class="grid">
+<section class="product-grid">
     @if (Items.Count == 0)
     {
-        <p>@EmptyMessage</p>
+        <p class="empty-state">@EmptyMessage</p>
     }
     else
     {

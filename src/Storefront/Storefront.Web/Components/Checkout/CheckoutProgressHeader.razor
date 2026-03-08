@@ -1,0 +1,23 @@
+<div class="checkout-progress-shell" aria-label="Checkout progress">
+    @for (var step = 1; step <= Steps.Count; step++)
+    {
+        var isActive = step == CurrentStep;
+        var isComplete = step < CurrentStep;
+        <div class="checkout-progress-item @(isActive ? "active" : isComplete ? "complete" : string.Empty)">
+            <span>@step</span>
+            <strong>@Steps[step - 1]</strong>
+        </div>
+        @if (step < Steps.Count)
+        {
+            <span class="checkout-progress-separator" aria-hidden="true">—</span>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int CurrentStep { get; set; } = 1;
+
+    [Parameter]
+    public IReadOnlyList<string> Steps { get; set; } = ["Cart", "Shipping", "Payment", "Review"];
+}

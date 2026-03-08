@@ -3,11 +3,11 @@
 @inject Storefront.Web.Services.CartState CartState
 
 <div class="add-to-cart">
-    <label>
-        Qty
+    <label class="add-to-cart-quantity">
+        <span>Quantity</span>
         <input type="number" min="1" @bind="quantity" />
     </label>
-    <button type="button" class="btn-primary" @onclick="AddToCartAsync" disabled="@Disabled">Add to Cart</button>
+    <button type="button" class="btn-primary" @onclick="AddToCartAsync" disabled="@Disabled">Add to bag</button>
 </div>
 
 @if (!string.IsNullOrWhiteSpace(message))

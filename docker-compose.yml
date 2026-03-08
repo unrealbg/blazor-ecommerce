@@ -37,10 +37,10 @@ services:
     image: directus/directus:11.14.0
     container_name: blazor-ecommerce-directus
     environment:
-      KEY: ${DIRECTUS_KEY}
-      SECRET: ${DIRECTUS_SECRET}
-      ADMIN_EMAIL: ${ADMIN_EMAIL}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      KEY: ${DIRECTUS_KEY:-local-dev-directus-key}
+      SECRET: ${DIRECTUS_SECRET:-local-dev-directus-secret}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-ChangeMe123!}
       DB_CLIENT: pg
       DB_HOST: directus-db
       DB_PORT: 5432
@@ -74,7 +74,7 @@ services:
       dockerfile: src/AppHost/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_HTTP_PORTS: 8080
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=blazor_ecommerce;Username=postgres;Password=postgres
       ConnectionStrings__Redis: redis:6379
       Build__ApplicationName: blazor-ecommerce-app
@@ -104,6 +104,8 @@ services:
       Retention__SweepIntervalMinutes: 60
     ports:
       - "8080:8080"
+    volumes:
+      - ./.docker/data-protection/app:/home/app/.aspnet/DataProtection-Keys
     depends_on:
       postgres:
         condition: service_healthy
@@ -117,7 +119,7 @@ services:
       dockerfile: src/Storefront/Storefront.Web/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: http://+:5100
+      ASPNETCORE_HTTP_PORTS: 5100
       Api__BaseUrl: http://app:8080
       Cms__BaseUrl: http://directus:8055
       Cms__ApiToken: ""
@@ -131,15 +133,18 @@ services:
       Caching__SearchPageSeconds: 15
       Caching__ContentPageSeconds: 300
       FeatureFlags__EnableReviews: "true"
-      FeatureFlags__EnableCmsContent: "true"
+      FeatureFlags__EnableCmsContent: "false"
       FeatureFlags__EnableSearchSuggestions: "true"
       FeatureFlags__EnableWarmup: "true"
       Warmup__Enabled: "true"
       Warmup__TimeoutSeconds: 20
+      Warmup__WarmContent: "false"
       ConnectionStrings__Redis: redis:6379
       Site__BaseUrl: http://localhost:5100
     ports:
       - "5100:5100"
+    volumes:
+      - ./.docker/data-protection/storefront:/home/app/.aspnet/DataProtection-Keys
     depends_on:
       app:
         condition: service_started

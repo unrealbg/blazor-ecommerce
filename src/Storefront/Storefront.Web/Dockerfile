@@ -11,7 +11,7 @@ WORKDIR /app
 
 COPY --from=build --chown=$APP_UID:$APP_UID /app/publish .
 
-ENV ASPNETCORE_URLS=http://+:5100
+ENV ASPNETCORE_HTTP_PORTS=5100
 EXPOSE 5100
 
 USER $APP_UID

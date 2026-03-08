@@ -1,0 +1,105 @@
+<aside class="mini-cart-drawer" aria-labelledby="mini-cart-title">
+    <header>
+        <div>
+            <p class="section-eyebrow accent">@Eyebrow</p>
+            <h2 id="mini-cart-title">@Title</h2>
+        </div>
+        @if (ShowCloseButton)
+        {
+            <button type="button" aria-label="@CloseButtonLabel">@CloseButtonText</button>
+        }
+    </header>
+
+    <div class="mini-cart-items">
+        @if (Items.Count == 0)
+        {
+            <p class="empty-state">Your cart is currently empty.</p>
+        }
+        else
+        {
+            @foreach (var item in Items)
+            {
+                <article class="mini-cart-item">
+                    <div class="mini-cart-thumb">
+                        @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+                        {
+                            <img src="@item.ImageUrl" alt="@item.Name" loading="lazy" decoding="async" />
+                        }
+                    </div>
+                    <div>
+                        <h3>@item.Name</h3>
+                        <p>@item.Meta</p>
+                        <strong>@FormatPrice(item.Amount, item.Currency)</strong>
+                    </div>
+                </article>
+            }
+        }
+    </div>
+
+    <footer>
+        <div class="mini-cart-total-row">
+            <span>Subtotal</span>
+            <strong>@FormatPrice(Subtotal, Currency)</strong>
+        </div>
+        @if (ShowPrimaryAction)
+        {
+            <a class="hero-button dark full-width" href="@PrimaryActionHref">@PrimaryActionLabel</a>
+        }
+
+        @if (ShowSecondaryAction)
+        {
+            <a class="hero-button secondary full-width" href="@SecondaryActionHref">@SecondaryActionLabel</a>
+        }
+    </footer>
+</aside>
+
+@code {
+    [Parameter]
+    public IReadOnlyCollection<MiniCartLine> Items { get; set; } = [];
+
+    [Parameter]
+    public decimal Subtotal { get; set; }
+
+    [Parameter]
+    public string Currency { get; set; } = "EUR";
+
+    [Parameter]
+    public string Eyebrow { get; set; } = "Mini cart";
+
+    [Parameter]
+    public string Title { get; set; } = "Your cart";
+
+    [Parameter]
+    public bool ShowCloseButton { get; set; }
+
+    [Parameter]
+    public string CloseButtonLabel { get; set; } = "Close mini cart";
+
+    [Parameter]
+    public string CloseButtonText { get; set; } = "Close";
+
+    [Parameter]
+    public bool ShowPrimaryAction { get; set; } = true;
+
+    [Parameter]
+    public string PrimaryActionHref { get; set; } = "/checkout";
+
+    [Parameter]
+    public string PrimaryActionLabel { get; set; } = "Checkout";
+
+    [Parameter]
+    public bool ShowSecondaryAction { get; set; } = true;
+
+    [Parameter]
+    public string SecondaryActionHref { get; set; } = "/cart";
+
+    [Parameter]
+    public string SecondaryActionLabel { get; set; } = "View cart";
+
+    public sealed record MiniCartLine(string Name, string Meta, decimal Amount, string Currency, string? ImageUrl);
+
+    private static string FormatPrice(decimal amount, string currency)
+    {
+        return $"{amount:0.00} {currency}";
+    }
+}

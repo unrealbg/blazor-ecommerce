@@ -1,0 +1,48 @@
+<footer class="main-footer">
+    <div class="shell-container main-footer-grid">
+        <div class="main-footer-brand">
+            <a class="brand-mark footer" href="/">ASTRA<span>/FLUX</span></a>
+            <p>Premium technology storefront for Blazor commerce teams that want sharper product hierarchy, cleaner launch storytelling, and a more confident first impression.</p>
+        </div>
+
+        <section>
+            <h2>Shop</h2>
+            <ul>
+                <li><a href="/">Flagship</a></li>
+                <li><a href="/category/all-products">Audio</a></li>
+                <li><a href="/search?q=workspace">Workspace</a></li>
+                <li><a href="/search?q=accessories">Accessories</a></li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Support</h2>
+            <ul>
+                <li><a href="/account/orders">Orders</a></li>
+                <li><a href="/checkout">Shipping</a></li>
+                <li><a href="/account/profile">Returns</a></li>
+                <li><a href="/account/profile">Client support</a></li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Company</h2>
+            <ul>
+                <li><a href="/blog">Journal</a></li>
+                <li><a href="/p/about">About</a></li>
+                <li><a href="/p/privacy">Privacy</a></li>
+                <li><a href="/p/terms">Terms</a></li>
+            </ul>
+        </section>
+    </div>
+
+    <div class="shell-container main-footer-meta">
+        <p>English storefront. EUR pricing. EU fulfilment.</p>
+        <p>Build: @BuildLabel</p>
+    </div>
+</footer>
+
+@code {
+    [Parameter]
+    public string BuildLabel { get; set; } = "dev";
+}

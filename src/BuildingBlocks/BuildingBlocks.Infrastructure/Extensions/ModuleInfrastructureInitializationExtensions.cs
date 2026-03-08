@@ -14,4 +14,16 @@ public static class ModuleInfrastructureInitializationExtensions
             await installer.InitializeAsync(serviceProvider, cancellationToken);
         }
     }
+
+    public static async Task SeedModulesAsync(
+        this IEnumerable<IModuleInfrastructureInstaller> installers,
+        IServiceProvider serviceProvider,
+        string seedMode,
+        CancellationToken cancellationToken)
+    {
+        foreach (var installer in installers.OfType<IModuleInfrastructureSeeder>())
+        {
+            await installer.SeedAsync(serviceProvider, seedMode, cancellationToken);
+        }
+    }
 }

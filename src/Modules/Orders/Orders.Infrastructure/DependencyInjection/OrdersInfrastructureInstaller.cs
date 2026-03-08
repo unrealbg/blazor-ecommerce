@@ -13,6 +13,8 @@ public sealed class OrdersInfrastructureInstaller : IModuleInfrastructureInstall
 {
     public string ModuleName => "Orders";
 
+    public IReadOnlyCollection<string> DependsOnModules => ["Catalog"];
+
     public void AddInfrastructure(IServiceCollection services, IConfiguration configuration)
     {
         var connectionString = configuration.GetConnectionString("Postgres")

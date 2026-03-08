@@ -73,6 +73,11 @@ internal sealed class OperationalSnapshotBackgroundService(
             .OrderBy(message => message.OccurredOnUtc)
             .Select(message => (DateTime?)message.OccurredOnUtc)
             .FirstOrDefaultAsync(cancellationToken);
+        var lowStockVariants = await inventoryDbContext.StockItems.CountAsync(
+            item => item.IsTracked
+                && item.OnHandQuantity > item.ReservedQuantity
+                && item.OnHandQuantity - item.ReservedQuantity <= 5,
+            cancellationToken);
 
         return new OperationalSnapshot(
             PendingOutboxMessages: await outboxDbContext.OutboxMessages.CountAsync(message => message.ProcessedOnUtc == null, cancellationToken),
@@ -83,7 +88,7 @@ internal sealed class OperationalSnapshotBackgroundService(
             FailedPaymentWebhooks: await paymentsDbContext.WebhookInboxMessages.CountAsync(message => message.ProcessingStatus == WebhookInboxProcessingStatus.Failed, cancellationToken),
             PendingShippingWebhooks: await shippingDbContext.CarrierWebhookInboxMessages.CountAsync(message => message.ProcessingStatus == CarrierWebhookInboxProcessingStatus.Received, cancellationToken),
             FailedShippingWebhooks: await shippingDbContext.CarrierWebhookInboxMessages.CountAsync(message => message.ProcessingStatus == CarrierWebhookInboxProcessingStatus.Failed, cancellationToken),
-            LowStockVariants: await inventoryDbContext.StockItems.CountAsync(item => item.IsTracked && item.AvailableQuantity > 0 && item.AvailableQuantity <= 5, cancellationToken),
+            LowStockVariants: lowStockVariants,
             ActiveInventoryReservations: await inventoryDbContext.StockReservations.CountAsync(reservation => reservation.Status == StockReservationStatus.Active, cancellationToken),
             PendingReviewModeration: await reviewsDbContext.ProductReviews.CountAsync(review => review.Status == ModerationStatus.Pending, cancellationToken),
             LastUpdatedAtUtc: DateTime.UtcNow);
