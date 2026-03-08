@@ -77,8 +77,16 @@ public sealed class MediaSourceResolver(
 
         if (Uri.TryCreate(normalizedSource, UriKind.Absolute, out var absoluteUri))
         {
-            sourceUri = absoluteUri;
-            return true;
+            if (IsHttpOrHttps(absoluteUri))
+            {
+                sourceUri = absoluteUri;
+                return true;
+            }
+
+            if (normalizedSource.Contains("://", StringComparison.Ordinal))
+            {
+                return false;
+            }
         }
 
         var relativePath = NormalizeRelativePath(normalizedSource);
@@ -89,13 +97,38 @@ public sealed class MediaSourceResolver(
             _ => ResolveAutoBaseUri(relativePath),
         };
 
-        if (!Uri.TryCreate(baseUri, relativePath, out var combined))
+        if (!TryBuildAbsoluteHttpUri(baseUri, relativePath, out var combined))
         {
             return false;
         }
 
         sourceUri = combined;
         return true;
+    }
+
+    private static bool TryBuildAbsoluteHttpUri(Uri baseUri, string relativePath, out Uri combined)
+    {
+        combined = baseUri;
+
+        var normalizedPath = NormalizeRelativePath(relativePath);
+        if (Uri.TryCreate(baseUri, normalizedPath, out var directCombined) &&
+            directCombined is not null &&
+            IsHttpOrHttps(directCombined))
+        {
+            combined = directCombined;
+            return true;
+        }
+
+        var authorityRoot = $"{baseUri.Scheme}://{baseUri.Authority}";
+        if (Uri.TryCreate($"{authorityRoot}{normalizedPath}", UriKind.Absolute, out var authorityCombined) &&
+            authorityCombined is not null &&
+            IsHttpOrHttps(authorityCombined))
+        {
+            combined = authorityCombined;
+            return true;
+        }
+
+        return false;
     }
 
     private Uri ResolveAutoBaseUri(string relativePath)
@@ -193,6 +226,12 @@ public sealed class MediaSourceResolver(
         }
 
         return uri;
+    }
+
+    private static bool IsHttpOrHttps(Uri uri)
+    {
+        return string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsPrivateOrLoopback(Uri uri)
