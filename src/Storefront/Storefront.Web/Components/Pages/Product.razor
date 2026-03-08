@@ -6,6 +6,7 @@
 @using Storefront.Web.Services.Media
 @using Storefront.Web.Services.Seo
 @inject IStoreApiClient StoreApiClient
+@inject ILogger<Product> Logger
 @inject IPageMetadataService MetadataService
 @inject IStructuredDataService StructuredDataService
 @inject IMediaUrlService MediaUrlService
@@ -29,7 +30,7 @@
         <section class="tech-empty-panel">
             <p class="tech-eyebrow">Unavailable</p>
             <h1>Product not found</h1>
-            <p>The requested product could not be loaded from the live catalog.</p>
+            <p>The requested product is currently unavailable or no longer part of the live collection.</p>
             <a class="tech-button tech-button-primary" href="/search">Browse the collection</a>
         </section>
     }
@@ -89,7 +90,10 @@
                         }
                         @if (reviewSummary is not null && reviewSummary.ApprovedReviewCount > 0)
                         {
-                            <span>@reviewSummary.AverageRating.ToString("0.0")/5 from @reviewSummary.ApprovedReviewCount review(s)</span>
+                            <span class="tech-review-meta">
+                                <RatingStars Value="reviewSummary.AverageRating" />
+                                <span>@reviewSummary.ApprovedReviewCount approved review(s)</span>
+                            </span>
                         }
                     </div>
                 </div>
@@ -100,16 +104,36 @@
                         : product.Description)
                 </p>
 
-                <div class="tech-price-stack">
-                    <div class="tech-price-row">
-                        <span class="tech-price-current">@FormatPrice(selectedAmount, selectedCurrency)</span>
-                        @if (selectedCompareAtAmount is > 0m && selectedCompareAtAmount > selectedAmount)
-                        {
-                            <span class="tech-price-compare">@FormatPrice(selectedCompareAtAmount.Value, selectedCurrency)</span>
-                        }
+                <section class="tech-detail-card tech-purchase-panel">
+                    <div class="tech-price-stack">
+                        <div class="tech-price-row">
+                            <span class="tech-price-current">@FormatPrice(selectedAmount, selectedCurrency)</span>
+                            @if (selectedCompareAtAmount is > 0m && selectedCompareAtAmount > selectedAmount)
+                            {
+                                <span class="tech-price-compare">@FormatPrice(selectedCompareAtAmount.Value, selectedCurrency)</span>
+                            }
+                        </div>
+                        <p class="tech-inline-meta">@GetAvailabilityDescription()</p>
                     </div>
-                    <p class="tech-inline-meta">@GetAvailabilityDescription()</p>
-                </div>
+
+                    @if (!string.IsNullOrWhiteSpace(selectionMessage))
+                    {
+                        <p class="status-message warning">@selectionMessage</p>
+                    }
+
+                    <AddToCartButton
+                        ProductId="product.Id"
+                        VariantId="@(selectedVariant?.Id ?? product.DefaultVariantId)"
+                        Disabled="@IsAddToCartDisabled()"
+                        DisabledMessage="This product is currently out of stock."
+                        @rendermode="InteractiveServer" />
+
+                    <div class="tech-purchase-notes">
+                        <span>Insured EU shipping</span>
+                        <span>30-day returns</span>
+                        <span>Secure checkout</span>
+                    </div>
+                </section>
 
                 <div class="tech-spec-row">
                     <article class="tech-spec-item">
@@ -153,18 +177,6 @@
                         </div>
                     </section>
                 }
-
-                @if (!string.IsNullOrWhiteSpace(selectionMessage))
-                {
-                    <p class="status-message warning">@selectionMessage</p>
-                }
-
-                <AddToCartButton
-                    ProductId="product.Id"
-                    VariantId="@(selectedVariant?.Id ?? product.DefaultVariantId)"
-                    Disabled="@IsAddToCartDisabled()"
-                    DisabledMessage="This product is currently out of stock."
-                    @rendermode="InteractiveServer" />
             </div>
         </article>
 
@@ -222,12 +234,12 @@
                                     CssClass="product-card-image" />
                             </a>
                             <div class="product-card-copy">
-                                <p class="product-card-kicker">Related product</p>
+                                <p class="product-card-kicker">Recommended pairing</p>
                                 <h3 class="product-card-title"><a href="/product/@related.Slug">@related.Name</a></h3>
                                 <p class="product-card-description">Designed to complement the primary setup without adding visual clutter.</p>
                                 <div class="product-card-meta-row">
                                     <span class="product-card-price">@FormatPrice(related.Amount, related.Currency)</span>
-                                    <a class="product-card-cta" href="/product/@related.Slug">Open product</a>
+                                    <a class="product-card-cta" href="/product/@related.Slug">View details</a>
                                 </div>
                             </div>
                         </article>
@@ -554,6 +566,7 @@
     {
         isLoading = true;
         reviewsEnabled = FeatureFlags.Value.EnableReviews;
+        Logger.LogDebug("Loading product page for slug {Slug}.", Slug);
 
         product = await StoreApiClient.GetProductBySlugAsync(Slug, CancellationToken.None);
         currentCustomer = reviewsEnabled

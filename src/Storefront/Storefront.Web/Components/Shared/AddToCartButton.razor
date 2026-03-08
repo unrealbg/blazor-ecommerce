@@ -7,7 +7,7 @@
         <span>Quantity</span>
         <input type="number" min="1" @bind="quantity" />
     </label>
-    <button type="button" class="btn-primary" @onclick="AddToCartAsync" disabled="@Disabled">Add to bag</button>
+    <button type="button" class="tech-button tech-button-primary tech-add-to-cart-button" @onclick="AddToCartAsync" disabled="@Disabled">Add to bag</button>
 </div>
 
 @if (!string.IsNullOrWhiteSpace(message))

@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using Storefront.Web.Services.Api
 @inject IStoreApiClient StoreApiClient
+@inject ILogger<Cart> Logger
 @inject Storefront.Web.Services.Customer.ICustomerContext CustomerContext
 @inject Storefront.Web.Services.CartState CartState
 
@@ -10,8 +11,8 @@
 <div class="tech-cart-page">
     <section class="tech-page-intro">
         <p class="tech-eyebrow">Bag</p>
-        <h1>Your selected hardware, prepared for checkout.</h1>
-        <p>Live cart data from the backend, presented with a cleaner premium electronics layout.</p>
+        <h1>Your selected hardware, ready for a calm checkout.</h1>
+        <p>Review quantities, pricing, and access codes before moving to secure payment.</p>
     </section>
 
     <CheckoutProgressHeader CurrentStep="1" Steps="checkoutSteps" />
@@ -24,13 +25,22 @@
             <p>We are syncing your latest cart state.</p>
         </section>
     }
+    else if (!string.IsNullOrWhiteSpace(loadErrorMessage))
+    {
+        <section class="tech-empty-panel">
+            <p class="tech-eyebrow">Bag unavailable</p>
+            <h2>We could not load your bag right now.</h2>
+            <p>@loadErrorMessage</p>
+            <a class="tech-button tech-button-primary" href="/search">Browse the collection</a>
+        </section>
+    }
     else if (cart is null || cart.Lines.Count == 0)
     {
         <section class="tech-empty-panel">
             <p class="tech-eyebrow">Empty bag</p>
             <h2>Your bag is currently empty.</h2>
-            <p>Add a product from the live catalog to continue to checkout.</p>
-            <a class="tech-button tech-button-primary" href="/search">Browse products</a>
+            <p>Add a product from the collection to continue to checkout.</p>
+            <a class="tech-button tech-button-primary" href="/search">Browse hardware</a>
         </section>
     }
     else
@@ -53,8 +63,10 @@
                 <section class="tech-detail-card tech-cart-coupon">
                     <div class="tech-detail-card-header">
                         <p class="tech-eyebrow">Promotion</p>
-                        <h2>Apply a launch or loyalty code</h2>
+                        <h2>Apply a private access or loyalty code</h2>
                     </div>
+
+                    <p class="tech-inline-meta">Promotions stay secondary so the order summary remains clear and easy to scan.</p>
 
                     <div class="form-grid tech-form-grid">
                         <label class="tech-field">
@@ -184,15 +196,17 @@
                         </ul>
                     }
 
-                    <a class="tech-button tech-button-primary tech-button-block" href="/checkout">Proceed to checkout</a>
+                    <p class="tech-inline-meta tech-summary-note">Insured EU shipping, secure checkout, and order confirmation after purchase.</p>
+
+                    <a class="tech-button tech-button-primary tech-button-block" href="/checkout">Continue to secure checkout</a>
                 </section>
 
                 <MiniCartDrawer
                     Items="BuildMiniCartItems()"
                     Subtotal="@totalAmount"
                     Currency="@cart.Currency"
-                    Eyebrow="Mini cart"
-                    Title="Compact order view"
+                    Eyebrow="At a glance"
+                    Title="Order overview"
                     PrimaryActionHref="/checkout"
                     PrimaryActionLabel="Continue to checkout"
                     ShowSecondaryAction="false" />
@@ -209,6 +223,7 @@
     private string customerId = string.Empty;
     private Dictionary<Guid, int> quantities = [];
     private string couponCode = string.Empty;
+    private string? loadErrorMessage;
     private readonly IReadOnlyList<string> checkoutSteps = ["Bag", "Shipping", "Payment", "Review"];
 
     protected override async Task OnInitializedAsync()
@@ -265,12 +280,27 @@
     private async Task ReloadCartAsync()
     {
         isLoading = true;
-        cart = await StoreApiClient.GetCartAsync(customerId, CancellationToken.None);
-        quantities = cart?.Lines.ToDictionary(line => line.VariantId, line => line.Quantity) ?? [];
-        totalAmount = cart?.GrandTotalAmount ?? 0m;
-        couponCode = cart?.AppliedCouponCode ?? couponCode;
-        CartState.SetItemCount(cart?.Lines.Sum(line => line.Quantity) ?? 0);
-        isLoading = false;
+        try
+        {
+            cart = await StoreApiClient.GetCartAsync(customerId, CancellationToken.None);
+            quantities = cart?.Lines.ToDictionary(line => line.VariantId, line => line.Quantity) ?? [];
+            totalAmount = cart?.GrandTotalAmount ?? 0m;
+            couponCode = cart?.AppliedCouponCode ?? couponCode;
+            CartState.SetItemCount(cart?.Lines.Sum(line => line.Quantity) ?? 0);
+            loadErrorMessage = null;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(exception, "Failed to load cart for customer {CustomerId}.", customerId);
+            cart = null;
+            quantities = [];
+            totalAmount = 0m;
+            loadErrorMessage = "Your latest cart state is temporarily unavailable. Please refresh in a moment.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private void UpdateLocalQuantity(Guid variantId, string? rawValue)

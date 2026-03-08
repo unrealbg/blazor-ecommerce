@@ -21,20 +21,20 @@
 
     <section class="listing-intro-panel tech-listing-intro">
         <p class="tech-eyebrow">Search</p>
-        <h1>Search results</h1>
+        <h1>@(string.IsNullOrWhiteSpace(displayQuery) ? "Browse the collection" : "Search results")</h1>
         <p>
             @if (string.IsNullOrWhiteSpace(displayQuery))
             {
-                <span>Showing the full premium collection.</span>
+                <span>Explore premium audio, workspace systems, and accessories with calmer filtering and stronger product focus.</span>
             }
             else
             {
-                <span>Results for <strong>@displayQuery</strong> with live filters and search facets from the backend.</span>
+                <span>Results for <strong>@displayQuery</strong> across flagship audio, workspace systems, and accessories.</span>
             }
         </p>
         <div class="listing-intro-meta">
             <span>@response.Total product@(response.Total == 1 ? string.Empty : "s") found</span>
-            <span>@(string.IsNullOrWhiteSpace(selectedCategorySlug) ? "All categories" : $"Category: {selectedCategorySlug}")</span>
+            <span>@(string.IsNullOrWhiteSpace(selectedCategorySlug) ? "All product worlds" : $"Filtered to {SlugToTitle(selectedCategorySlug)}")</span>
         </div>
     </section>
 
@@ -51,7 +51,13 @@
             MaxAvailable="@response.Facets.Price.MaxAvailable" />
 
         <div class="listing-main">
-            <SortDropdown Options="sortOptions" />
+            <div class="tech-listing-controls">
+                <div class="tech-listing-controls-copy">
+                    <p class="tech-eyebrow">Refine results</p>
+                    <h2>Adjust sort, price, and availability without losing the product view.</h2>
+                </div>
+                <SortDropdown Options="sortOptions" />
+            </div>
 
             @if (!string.IsNullOrWhiteSpace(loadErrorMessage))
             {
@@ -59,7 +65,7 @@
                     <p class="tech-eyebrow">Search unavailable</p>
                     <h2>We could not load search results right now.</h2>
                     <p>@loadErrorMessage</p>
-                    <a class="tech-button tech-button-primary" href="/search">Try again</a>
+                    <a class="tech-button tech-button-primary" href="/search">Browse all hardware</a>
                 </section>
             }
             else
@@ -102,7 +108,11 @@
                     <a href="@BuildPriceResetUrl()">Clear price</a>
                 </form>
 
-                <ProductGrid Items="response.Items" EmptyMessage="No products matched your filters." />
+                <ProductGrid
+                    Items="response.Items"
+                    EmptyEyebrow="No results"
+                    EmptyTitle="No products matched your filters."
+                    EmptyMessage="Try a broader query or clear one of the active filters." />
 
                 <Pagination CurrentPage="@response.Page" TotalPages="@response.TotalPages" BuildUrl="BuildPageUrl" />
             }
@@ -526,6 +536,20 @@
     {
         var normalizedDefault = string.IsNullOrWhiteSpace(query) ? "popular" : "relevance";
         return string.Equals(sort, normalizedDefault, StringComparison.Ordinal);
+    }
+
+    private static string SlugToTitle(string slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            return "Category";
+        }
+
+        return string.Join(
+            ' ',
+            slug
+                .Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(word => char.ToUpperInvariant(word[0]) + word[1..]));
     }
 
     private static StoreSearchProductsResponse EmptyResponse()

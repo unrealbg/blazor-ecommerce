@@ -1,12 +1,12 @@
 <aside class="mini-cart-drawer" aria-labelledby="mini-cart-title">
-    <header>
+    <header class="mini-cart-header">
         <div>
             <p class="section-eyebrow accent">@Eyebrow</p>
             <h2 id="mini-cart-title">@Title</h2>
         </div>
         @if (ShowCloseButton)
         {
-            <button type="button" aria-label="@CloseButtonLabel">@CloseButtonText</button>
+            <button class="mini-cart-close" type="button" aria-label="@CloseButtonLabel">@CloseButtonText</button>
         }
     </header>
 
@@ -26,9 +26,9 @@
                             <img src="@item.ImageUrl" alt="@item.Name" loading="lazy" decoding="async" />
                         }
                     </div>
-                    <div>
+                    <div class="mini-cart-item-copy">
                         <h3>@item.Name</h3>
-                        <p>@item.Meta</p>
+                        <p class="tech-inline-meta">@item.Meta</p>
                         <strong>@FormatPrice(item.Amount, item.Currency)</strong>
                     </div>
                 </article>
@@ -36,19 +36,20 @@
         }
     </div>
 
-    <footer>
+    <footer class="mini-cart-footer">
         <div class="mini-cart-total-row">
             <span>Subtotal</span>
             <strong>@FormatPrice(Subtotal, Currency)</strong>
         </div>
+        <p class="mini-cart-note">Taxes and shipping are calculated at checkout.</p>
         @if (ShowPrimaryAction)
         {
-            <a class="hero-button dark full-width" href="@PrimaryActionHref">@PrimaryActionLabel</a>
+            <a class="tech-button tech-button-primary tech-button-block" href="@PrimaryActionHref">@PrimaryActionLabel</a>
         }
 
         @if (ShowSecondaryAction)
         {
-            <a class="hero-button secondary full-width" href="@SecondaryActionHref">@SecondaryActionLabel</a>
+            <a class="tech-button tech-button-ghost tech-button-block" href="@SecondaryActionHref">@SecondaryActionLabel</a>
         }
     </footer>
 </aside>

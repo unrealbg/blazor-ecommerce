@@ -12,6 +12,7 @@
             value="@searchText"
             placeholder="@Placeholder"
             aria-label="@AriaLabel"
+            autocomplete="off"
             @oninput="OnInputAsync"
             @onfocus="OnFocus"
             @onblur="OnBlurAsync" />
@@ -20,20 +21,23 @@
 
     @if (isOpen && suggestions.Count != 0)
     {
-        <ul class="search-suggestions" role="listbox" aria-label="Product suggestions">
-            @foreach (var suggestion in suggestions)
-            {
-                <li>
-                    <a
-                        href="/product/@suggestion.Slug"
-                        @onclick="() => OnSuggestionClickAsync(suggestion)"
-                        @onclick:preventDefault="true">
-                        <span>@suggestion.Name</span>
-                        <small>@($"{suggestion.PriceAmount:0.00} {suggestion.Currency}")</small>
-                    </a>
-                </li>
-            }
-        </ul>
+        <div class="search-suggestions" aria-live="polite">
+            <p class="search-suggestions-title">Suggested products</p>
+            <ul class="search-suggestions-list" role="listbox" aria-label="Product suggestions">
+                @foreach (var suggestion in suggestions)
+                {
+                    <li>
+                        <a
+                            href="/product/@suggestion.Slug"
+                            @onclick="() => OnSuggestionClickAsync(suggestion)"
+                            @onclick:preventDefault="true">
+                            <span class="search-suggestion-name">@suggestion.Name</span>
+                            <small class="search-suggestion-price">@($"{suggestion.PriceAmount:0.00} {suggestion.Currency}")</small>
+                        </a>
+                    </li>
+                }
+            </ul>
+        </div>
     }
 </div>
 

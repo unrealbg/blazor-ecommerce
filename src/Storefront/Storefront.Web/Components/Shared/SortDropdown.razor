@@ -1,5 +1,5 @@
-<div class="sort-dropdown">
-    <span>Sort:</span>
+<nav class="sort-dropdown" aria-label="Sort results">
+    <span class="sort-dropdown-label">Sort by</span>
     <ul>
         @foreach (var option in Options)
         {
@@ -8,7 +8,7 @@
             </li>
         }
     </ul>
-</div>
+</nav>
 
 @code {
     [Parameter]
