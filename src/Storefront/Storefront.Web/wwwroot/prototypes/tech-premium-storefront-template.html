@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Astra Flux | Premium Tech Storefront</title>
+  <meta
+    name="description"
+    content="High-tech premium storefront starter for a modern Blazor e-commerce application."
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          container: {
+            center: true,
+            padding: {
+              DEFAULT: "1.25rem",
+              lg: "2rem",
+              xl: "2.5rem",
+              "2xl": "3rem"
+            }
+          },
+          colors: {
+            tech: {
+              paper: "#f4f7fb",
+              frost: "#e7edf5",
+              mist: "#cdd6e2",
+              silver: "#aeb8c6",
+              steel: "#5d6674",
+              blue: "#7a93ff",
+              blueSoft: "#dfe6ff",
+              slate: "#252b35",
+              graphite: "#161b22",
+              ink: "#0a0d12",
+              panel: "#11161d",
+              panelSoft: "#1a212b"
+            }
+          },
+          fontFamily: {
+            sans: ["Manrope", "ui-sans-serif", "system-ui", "sans-serif"],
+            display: ["Sora", "ui-sans-serif", "system-ui", "sans-serif"]
+          },
+          boxShadow: {
+            aura: "0 24px 70px rgba(10, 13, 18, 0.14)",
+            float: "0 20px 48px rgba(10, 13, 18, 0.12)"
+          },
+          borderRadius: {
+            "4xl": "2rem"
+          },
+          letterSpacing: {
+            ui: "0.2em"
+          }
+        }
+      }
+    };
+  </script>
+  <style type="text/tailwindcss">
+    @layer base {
+      body {
+        @apply bg-tech-paper font-sans text-tech-ink antialiased;
+      }
+    }
+
+    @layer components {
+      .shell {
+        @apply container;
+      }
+
+      .section-space {
+        @apply py-16 lg:py-24;
+      }
+
+      .eyebrow {
+        @apply text-[11px] font-semibold uppercase tracking-ui text-tech-steel;
+      }
+
+      .eyebrow-dark {
+        @apply text-[11px] font-semibold uppercase tracking-ui text-white/[0.55];
+      }
+
+      .section-title {
+        @apply font-display text-3xl font-semibold tracking-tight text-tech-ink sm:text-4xl lg:text-5xl;
+      }
+
+      .section-title-dark {
+        @apply font-display text-3xl font-semibold tracking-tight text-white sm:text-4xl lg:text-5xl;
+      }
+
+      .section-copy {
+        @apply mt-4 max-w-2xl text-base leading-8 text-tech-steel lg:text-lg;
+      }
+
+      .section-copy-dark {
+        @apply mt-4 max-w-2xl text-base leading-8 text-white/70 lg:text-lg;
+      }
+
+      .section-link {
+        @apply inline-flex items-center gap-2 text-sm font-semibold text-tech-ink transition hover:text-tech-blue;
+      }
+
+      .tech-card {
+        @apply rounded-4xl border border-white/70 bg-white/80 shadow-aura backdrop-blur;
+      }
+
+      .tech-card-dark {
+        @apply rounded-4xl border border-white/10 bg-tech-panel shadow-aura;
+      }
+
+      .tech-glass {
+        @apply rounded-4xl border border-white/10 bg-white/[0.08] backdrop-blur-xl;
+      }
+
+      .cta-primary {
+        @apply inline-flex items-center justify-center rounded-full bg-tech-ink px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-tech-slate focus:outline-none focus:ring-2 focus:ring-tech-blue/40;
+      }
+
+      .cta-secondary {
+        @apply inline-flex items-center justify-center rounded-full border border-tech-mist bg-white/70 px-6 py-3.5 text-sm font-semibold text-tech-ink transition hover:border-tech-blue hover:text-tech-blue focus:outline-none focus:ring-2 focus:ring-tech-blue/25;
+      }
+
+      .cta-ghost {
+        @apply inline-flex items-center justify-center rounded-full border border-white/15 px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/20;
+      }
+
+      .chip {
+        @apply inline-flex items-center rounded-full border border-tech-mist bg-white/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-tech-steel;
+      }
+
+      .chip-dark {
+        @apply inline-flex items-center rounded-full border border-white/10 bg-white/[0.08] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60;
+      }
+
+      .input-tech {
+        @apply h-12 w-full rounded-full border border-tech-mist bg-white px-5 text-sm text-tech-ink outline-none transition placeholder:text-tech-silver focus:border-tech-blue focus:ring-2 focus:ring-tech-blue/15;
+      }
+
+      .spec-tile {
+        @apply rounded-3xl border border-tech-mist bg-white/80 p-5 shadow-float;
+      }
+
+      .spec-tile-dark {
+        @apply rounded-3xl border border-white/10 bg-white/[0.06] p-5;
+      }
+
+      .product-card {
+        @apply tech-card overflow-hidden p-5;
+      }
+
+      .category-card {
+        @apply tech-card overflow-hidden;
+      }
+    }
+  </style>
+</head>
+<body class="selection:bg-tech-blueSoft selection:text-tech-ink">
+  <a
+    href="#content"
+    class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[80] focus:rounded-full focus:bg-tech-ink focus:px-4 focus:py-2 focus:text-sm focus:text-white"
+  >
+    Skip to content
+  </a>
+
+  <div class="relative overflow-x-hidden">
+    <div class="absolute inset-x-0 top-0 -z-10 h-[36rem] bg-[radial-gradient(circle_at_top,_rgba(122,147,255,0.18),_transparent_55%)]"></div>
+
+    <div class="border-b border-tech-mist/70 bg-white/70 backdrop-blur">
+      <div class="shell flex items-center justify-between gap-4 py-3 text-xs font-semibold uppercase tracking-ui text-tech-steel">
+        <p>Complimentary insured delivery on flagship orders over €300</p>
+        <div class="hidden items-center gap-6 md:flex">
+          <a href="#" class="transition hover:text-tech-ink">Launch Calendar</a>
+          <a href="#" class="transition hover:text-tech-ink">Support</a>
+          <a href="#" class="transition hover:text-tech-ink">Studio Stores</a>
+        </div>
+      </div>
+    </div>
+
+    <header class="sticky top-0 z-50 border-b border-tech-mist/60 bg-tech-paper/85 backdrop-blur-xl">
+      <div class="shell">
+        <div class="flex items-center justify-between gap-4 py-5">
+          <div class="flex items-center gap-10">
+            <a href="#" class="font-display text-2xl font-semibold tracking-[0.14em] text-tech-ink">
+              ASTRA<span class="text-tech-blue">/</span>FLUX
+            </a>
+
+            <nav aria-label="Primary" class="hidden items-center gap-8 text-sm font-medium text-tech-steel lg:flex">
+              <a href="#" class="transition hover:text-tech-ink">Flagship</a>
+              <a href="#" class="transition hover:text-tech-ink">Audio</a>
+              <a href="#" class="transition hover:text-tech-ink">Wearables</a>
+              <a href="#" class="transition hover:text-tech-ink">Workspace</a>
+              <a href="#" class="transition hover:text-tech-ink">Accessories</a>
+              <a href="#" class="transition hover:text-tech-ink">Journal</a>
+            </nav>
+          </div>
+
+          <div class="hidden max-w-md flex-1 lg:flex">
+            <label class="relative w-full">
+              <span class="sr-only">Search products</span>
+              <input class="input-tech pr-12" type="search" placeholder="Search products, systems, accessories" />
+              <span aria-hidden="true" class="absolute right-5 top-1/2 -translate-y-1/2 text-tech-steel">⌕</span>
+            </label>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <a href="#" class="hidden text-sm font-medium text-tech-steel transition hover:text-tech-ink sm:inline-flex">Account</a>
+            <a href="#" class="hidden text-sm font-medium text-tech-steel transition hover:text-tech-ink sm:inline-flex">Support</a>
+            <a
+              href="#mini-cart"
+              class="inline-flex items-center gap-2 rounded-full border border-tech-mist bg-white/80 px-4 py-2.5 text-sm font-semibold text-tech-ink transition hover:border-tech-blue"
+            >
+              Bag
+              <span class="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-tech-ink px-2 text-[11px] font-semibold text-white">3</span>
+            </a>
+            <details class="relative lg:hidden">
+              <summary class="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-full border border-tech-mist bg-white/80 text-tech-ink">
+                <span class="sr-only">Open mobile menu</span>
+                <span aria-hidden="true">☰</span>
+              </summary>
+              <div class="absolute right-0 top-14 w-72 rounded-3xl border border-tech-mist bg-white p-5 shadow-aura">
+                <div class="space-y-4 text-sm font-medium text-tech-ink">
+                  <a href="#" class="block">Flagship</a>
+                  <a href="#" class="block">Audio</a>
+                  <a href="#" class="block">Wearables</a>
+                  <a href="#" class="block">Workspace</a>
+                  <a href="#" class="block">Accessories</a>
+                  <a href="#" class="block">Journal</a>
+                </div>
+                <div class="mt-5 border-t border-tech-mist pt-5">
+                  <label class="block">
+                    <span class="sr-only">Search in mobile menu</span>
+                    <input class="input-tech" type="search" placeholder="Search collection" />
+                  </label>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main id="content">
+      <section class="shell section-space pt-8 lg:pt-12">
+        <div class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <article class="tech-card-dark relative overflow-hidden px-7 py-8 sm:px-9 sm:py-10 lg:px-12 lg:py-14">
+            <div class="absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_top_right,_rgba(122,147,255,0.28),_transparent_55%)]"></div>
+            <div class="relative z-10 grid gap-10 xl:grid-cols-[0.95fr_1.05fr] xl:items-end">
+              <div class="max-w-xl">
+                <span class="chip-dark">Flagship launch 2026</span>
+                <p class="mt-6 font-display text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-[4.6rem] lg:leading-[0.98]">
+                  Astra One builds silence, speed, and precision into one form.
+                </p>
+                <p class="mt-6 max-w-lg text-base leading-8 text-white/72 lg:text-lg">
+                  A product-first storefront starter for premium electronics brands that need the opening fold to feel like a keynote launch, not a grid of stock cards.
+                </p>
+                <div class="mt-8 flex flex-wrap gap-3">
+                  <a href="#" class="cta-primary !bg-white !text-tech-ink hover:!bg-tech-blueSoft">Shop Astra One</a>
+                  <a href="#" class="cta-ghost">Watch the reveal</a>
+                </div>
+                <dl class="mt-10 grid gap-4 sm:grid-cols-3">
+                  <div class="spec-tile-dark">
+                    <dt class="text-[11px] uppercase tracking-ui text-white/[0.45]">Battery</dt>
+                    <dd class="mt-2 font-display text-2xl font-semibold text-white">40h</dd>
+                  </div>
+                  <div class="spec-tile-dark">
+                    <dt class="text-[11px] uppercase tracking-ui text-white/[0.45]">Latency</dt>
+                    <dd class="mt-2 font-display text-2xl font-semibold text-white">28ms</dd>
+                  </div>
+                  <div class="spec-tile-dark">
+                    <dt class="text-[11px] uppercase tracking-ui text-white/[0.45]">Weight</dt>
+                    <dd class="mt-2 font-display text-2xl font-semibold text-white">214g</dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div class="relative">
+                <div class="absolute inset-8 rounded-full bg-[radial-gradient(circle,_rgba(122,147,255,0.32),_transparent_62%)] blur-2xl"></div>
+                <img
+                  src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1200&q=80"
+                  alt="Astra One flagship headphones in matte graphite"
+                  class="relative mx-auto aspect-[4/4.6] w-full max-w-[30rem] rounded-[2.5rem] object-cover object-center shadow-aura"
+                />
+              </div>
+            </div>
+          </article>
+
+          <div class="grid gap-6">
+            <article class="tech-card p-7 sm:p-8">
+              <span class="chip">Studio calibrated</span>
+              <h2 class="mt-5 font-display text-2xl font-semibold tracking-tight text-tech-ink sm:text-3xl">
+                Industrial minimalism with detail that holds up at close range.
+              </h2>
+              <p class="mt-4 text-sm leading-7 text-tech-steel sm:text-base">
+                Use this panel for launch editions, limited finishes, or a short premium ecosystem message that supports the hero without crowding it.
+              </p>
+              <div class="mt-6 aspect-[5/3.4] rounded-[1.75rem] bg-gradient-to-br from-tech-frost via-white to-tech-blueSoft p-5">
+                <div class="flex h-full items-end rounded-[1.4rem] border border-white/80 bg-white/55 p-5 backdrop-blur">
+                  <p class="max-w-xs text-sm font-medium text-tech-slate">Refined materials. Quiet UI. Premium hardware cues.</p>
+                </div>
+              </div>
+            </article>
+
+            <article class="tech-card-dark p-7 sm:p-8">
+              <span class="chip-dark">Performance system</span>
+              <h2 class="mt-5 font-display text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                A storefront rhythm built for fewer, better, larger moments.
+              </h2>
+              <p class="mt-4 text-sm leading-7 text-white/70 sm:text-base">
+                Strong visual hierarchy, generous spacing, and restrained chrome keep the product at the center of the brand story.
+              </p>
+              <a href="#" class="mt-6 inline-flex text-sm font-semibold text-white transition hover:text-tech-blueSoft">Discover the system →</a>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="shell pb-16 lg:pb-24">
+        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <article class="spec-tile">
+            <p class="eyebrow">Precision acoustics</p>
+            <h2 class="mt-3 text-lg font-semibold text-tech-ink">Adaptive tuning engine</h2>
+            <p class="mt-2 text-sm leading-7 text-tech-steel">Profiles shift to the room and listening mode without adding UI clutter.</p>
+          </article>
+          <article class="spec-tile">
+            <p class="eyebrow">Trusted delivery</p>
+            <h2 class="mt-3 text-lg font-semibold text-tech-ink">Insured 48 hour dispatch</h2>
+            <p class="mt-2 text-sm leading-7 text-tech-steel">High-value orders ship with premium packaging, tracking, and concierge support.</p>
+          </article>
+          <article class="spec-tile">
+            <p class="eyebrow">Material system</p>
+            <h2 class="mt-3 text-lg font-semibold text-tech-ink">Ceramic, anodized alloy, knit mesh</h2>
+            <p class="mt-2 text-sm leading-7 text-tech-steel">Introduce the tactile language of the brand with a concise specs-driven row.</p>
+          </article>
+          <article class="spec-tile">
+            <p class="eyebrow">Service layer</p>
+            <h2 class="mt-3 text-lg font-semibold text-tech-ink">Two year care coverage</h2>
+            <p class="mt-2 text-sm leading-7 text-tech-steel">A premium storefront feels more credible when performance and support are both explicit.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="shell pb-16 lg:pb-24">
+        <div class="flex items-end justify-between gap-6">
+          <div>
+            <p class="eyebrow">Featured categories</p>
+            <h2 class="section-title mt-3 max-w-3xl">Explore the collection through product worlds, not crowded shelves.</h2>
+          </div>
+          <a href="#" class="section-link hidden lg:inline-flex">View all categories →</a>
+        </div>
+
+        <div class="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <article class="category-card group">
+            <img
+              src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1200&q=80"
+              alt="Minimal premium desktop setup with display and keyboard"
+              class="h-80 w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+            />
+            <div class="p-7">
+              <p class="eyebrow">Workspace</p>
+              <h3 class="mt-3 font-display text-2xl font-semibold tracking-tight text-tech-ink">Focused hardware for deep work.</h3>
+              <p class="mt-3 text-sm leading-7 text-tech-steel">Displays, keyboards, docks, and desk systems with clean industrial restraint.</p>
+              <a href="#" class="mt-5 inline-flex text-sm font-semibold text-tech-ink transition group-hover:text-tech-blue">Discover workspace →</a>
+            </div>
+          </article>
+
+          <article class="category-card group">
+            <img
+              src="https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=1200&q=80"
+              alt="Premium wireless earbuds on a dark product surface"
+              class="h-80 w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+            />
+            <div class="p-7">
+              <p class="eyebrow">Personal audio</p>
+              <h3 class="mt-3 font-display text-2xl font-semibold tracking-tight text-tech-ink">Portable sound with flagship detailing.</h3>
+              <p class="mt-3 text-sm leading-7 text-tech-steel">Earbuds, speakers, and listening gear framed with calmer, more premium density.</p>
+              <a href="#" class="mt-5 inline-flex text-sm font-semibold text-tech-ink transition group-hover:text-tech-blue">Discover audio →</a>
+            </div>
+          </article>
+
+          <article class="category-card group md:col-span-2 xl:col-span-1">
+            <img
+              src="https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=1200&q=80"
+              alt="Premium smart wearable watch photographed against a clean background"
+              class="h-80 w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+            />
+            <div class="p-7">
+              <p class="eyebrow">Wearables</p>
+              <h3 class="mt-3 font-display text-2xl font-semibold tracking-tight text-tech-ink">Sensors and form designed to disappear into the day.</h3>
+              <p class="mt-3 text-sm leading-7 text-tech-steel">Health, motion, and notification products styled like premium objects rather than gadgets.</p>
+              <a href="#" class="mt-5 inline-flex text-sm font-semibold text-tech-ink transition group-hover:text-tech-blue">Discover wearables →</a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="shell pb-16 lg:pb-24">
+        <div class="flex items-end justify-between gap-6">
+          <div>
+            <p class="eyebrow">Signature products</p>
+            <h2 class="section-title mt-3 max-w-3xl">Reusable product cards designed to feel like premium hardware panels.</h2>
+          </div>
+          <a href="#" class="section-link hidden lg:inline-flex">Shop all products →</a>
+        </div>
+
+        <div class="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+          <article class="product-card">
+            <div class="relative overflow-hidden rounded-[1.75rem] bg-tech-frost">
+              <img
+                src="https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&w=900&q=80"
+                alt="Astra One headphones in matte black finish"
+                class="h-80 w-full object-cover"
+              />
+              <span class="absolute left-4 top-4 chip bg-white/92 text-tech-ink">New</span>
+            </div>
+            <div class="mt-5">
+              <p class="eyebrow">Audio</p>
+              <h3 class="mt-2 font-display text-xl font-semibold tracking-tight text-tech-ink">Astra One Headphones</h3>
+              <p class="mt-2 text-sm text-tech-steel">Reference-grade tuning with spatial audio and quiet adaptive ANC.</p>
+              <div class="mt-4 flex items-center justify-between gap-3">
+                <span class="text-xl font-semibold text-tech-ink">€429</span>
+                <span class="text-sm text-tech-steel">4.9 / 5</span>
+              </div>
+              <button class="cta-primary mt-5 w-full">Add to bag</button>
+            </div>
+          </article>
+
+          <article class="product-card">
+            <div class="relative overflow-hidden rounded-[1.75rem] bg-tech-frost">
+              <img
+                src="https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?auto=format&fit=crop&w=900&q=80"
+                alt="Premium in-ear audio device in silver finish"
+                class="h-80 w-full object-cover"
+              />
+              <span class="absolute left-4 top-4 chip">Studio edit</span>
+            </div>
+            <div class="mt-5">
+              <p class="eyebrow">Portable audio</p>
+              <h3 class="mt-2 font-display text-xl font-semibold tracking-tight text-tech-ink">Flux Buds Pro</h3>
+              <p class="mt-2 text-sm text-tech-steel">Minimal shell, low-latency pairing, tuned for commuting and calls.</p>
+              <div class="mt-4 flex items-center justify-between gap-3">
+                <span class="text-xl font-semibold text-tech-ink">€249</span>
+                <span class="text-sm text-tech-steel">4.8 / 5</span>
+              </div>
+              <button class="cta-secondary mt-5 w-full">View details</button>
+            </div>
+          </article>
+
+          <article class="product-card">
+            <div class="relative overflow-hidden rounded-[1.75rem] bg-tech-frost">
+              <img
+                src="https://images.unsplash.com/photo-1541807084-5c52b6b3adef?auto=format&fit=crop&w=900&q=80"
+                alt="Minimal premium keyboard photographed from above"
+                class="h-80 w-full object-cover"
+              />
+              <span class="absolute left-4 top-4 chip bg-tech-blueSoft text-tech-ink">Bestseller</span>
+            </div>
+            <div class="mt-5">
+              <p class="eyebrow">Workspace</p>
+              <h3 class="mt-2 font-display text-xl font-semibold tracking-tight text-tech-ink">Vector Mechanical Board</h3>
+              <p class="mt-2 text-sm text-tech-steel">Low-profile aluminum frame with damped tactile switches and wireless sync.</p>
+              <div class="mt-4 flex items-center justify-between gap-3">
+                <span class="text-xl font-semibold text-tech-ink">€219</span>
+                <span class="text-sm text-tech-steel">4.8 / 5</span>
+              </div>
+              <button class="cta-primary mt-5 w-full">Add to bag</button>
+            </div>
+          </article>
+
+          <article class="product-card">
+            <div class="relative overflow-hidden rounded-[1.75rem] bg-tech-frost">
+              <img
+                src="https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=900&q=80"
+                alt="Premium smartwatch with graphite case"
+                class="h-80 w-full object-cover"
+              />
+              <span class="absolute left-4 top-4 chip">Limited finish</span>
+            </div>
+            <div class="mt-5">
+              <p class="eyebrow">Wearables</p>
+              <h3 class="mt-2 font-display text-xl font-semibold tracking-tight text-tech-ink">Pulse Watch X</h3>
+              <p class="mt-2 text-sm text-tech-steel">Graphite titanium case with performance metrics and week-long battery life.</p>
+              <div class="mt-4 flex items-center justify-between gap-3">
+                <span class="text-xl font-semibold text-tech-ink">€379</span>
+                <span class="text-sm text-tech-steel">4.7 / 5</span>
+              </div>
+              <button class="cta-primary mt-5 w-full">Add to bag</button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="shell pb-16 lg:pb-24">
+        <div class="grid gap-6 lg:grid-cols-2">
+          <article class="tech-card-dark relative overflow-hidden px-8 py-10 lg:px-10 lg:py-12">
+            <div class="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_right,_rgba(122,147,255,0.24),_transparent_62%)]"></div>
+            <div class="relative z-10 max-w-xl">
+              <p class="eyebrow-dark">Launch campaign</p>
+              <h2 class="section-title-dark mt-3">The premium pre-order block should feel as considered as the hardware.</h2>
+              <p class="section-copy-dark">
+                Reserve this surface for launch windows, exclusive finishes, or a short conversion-focused narrative with a high-contrast call to action.
+              </p>
+              <a href="#" class="cta-ghost mt-8">Reserve launch edition</a>
+            </div>
+          </article>
+
+          <article class="tech-card px-8 py-10 lg:px-10 lg:py-12">
+            <p class="eyebrow">Editorial promo</p>
+            <h2 class="section-title mt-3 text-3xl lg:text-4xl">Use split panels to balance product commerce with quieter brand storytelling.</h2>
+            <p class="section-copy">
+              This is effective for a premium electronics brand because it avoids promo-strip noise while still giving marketing, bundles, and campaigns enough presence.
+            </p>
+            <div class="mt-8 flex flex-wrap gap-3">
+              <a href="#" class="cta-primary">Explore bundles</a>
+              <a href="#" class="cta-secondary">Read the product story</a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="bg-tech-ink py-16 lg:py-24">
+        <div class="shell">
+          <div class="flex items-end justify-between gap-6">
+            <div>
+              <p class="eyebrow-dark">Featured collection</p>
+              <h2 class="section-title-dark mt-3 max-w-3xl">A dark collection block gives the storefront the controlled drama of a product keynote.</h2>
+            </div>
+            <a href="#" class="hidden text-sm font-semibold text-white transition hover:text-tech-blueSoft lg:inline-flex">View collection →</a>
+          </div>
+
+          <div class="mt-8 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+            <article class="rounded-[2rem] border border-white/10 bg-white/[0.06] p-7 lg:p-8">
+              <div class="grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
+                <div>
+                  <span class="chip-dark">Home studio collection</span>
+                  <h3 class="mt-5 font-display text-3xl font-semibold tracking-tight text-white lg:text-4xl">Hardware that makes the desk feel quieter and more exact.</h3>
+                  <p class="mt-4 max-w-lg text-base leading-8 text-white/70">
+                    Combine desk audio, monitor light, keyboard, and docking accessories into one larger visual merchandising moment.
+                  </p>
+                  <div class="mt-8 flex flex-wrap gap-3">
+                    <a href="#" class="cta-primary !bg-white !text-tech-ink hover:!bg-tech-blueSoft">Shop the setup</a>
+                    <a href="#" class="cta-ghost">See the parts list</a>
+                  </div>
+                </div>
+                <img
+                  src="https://images.unsplash.com/photo-1496171367470-9ed9a91ea931?auto=format&fit=crop&w=1400&q=80"
+                  alt="Dark premium home office setup with display, keyboard, and speakers"
+                  class="aspect-[4/3.4] w-full rounded-[1.75rem] object-cover"
+                />
+              </div>
+            </article>
+
+            <div class="grid gap-6">
+              <article class="rounded-[2rem] border border-white/10 bg-tech-panelSoft p-7">
+                <p class="eyebrow-dark">Materials</p>
+                <h3 class="mt-3 font-display text-2xl font-semibold tracking-tight text-white">Anodized metal, smoked glass, woven acoustic mesh.</h3>
+                <p class="mt-3 text-sm leading-7 text-white/65">Keep feature language concise and physical. Premium tech sells better when it sounds engineered, not hyped.</p>
+              </article>
+              <article class="rounded-[2rem] border border-white/10 bg-tech-panelSoft p-7">
+                <p class="eyebrow-dark">Performance</p>
+                <h3 class="mt-3 font-display text-2xl font-semibold tracking-tight text-white">Fast pairing, stable sync, and long-life battery architecture.</h3>
+                <p class="mt-3 text-sm leading-7 text-white/65">Use stacked dark panels for secondary proof points without weakening the flagship collection moment.</p>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="shell section-space">
+        <div class="grid gap-8 xl:grid-cols-[0.92fr_1.08fr] xl:items-center">
+          <article class="tech-card overflow-hidden">
+            <img
+              src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80"
+              alt="Minimal premium electronics ecosystem laid out on a light surface"
+              class="h-full min-h-[24rem] w-full object-cover"
+            />
+          </article>
+
+          <div>
+            <p class="eyebrow">Editorial ecosystem</p>
+            <h2 class="section-title mt-3">Show how the products work together before asking the customer to compare specifications.</h2>
+            <p class="section-copy">
+              This section is ideal for an ecosystem story, a founder editorial, or a system-level merchandising narrative that connects flagship, accessories, and aftercare.
+            </p>
+            <div class="mt-8 grid gap-4 sm:grid-cols-3">
+              <article class="spec-tile">
+                <p class="text-sm font-semibold text-tech-ink">Seamless pairing</p>
+                <p class="mt-2 text-sm leading-7 text-tech-steel">Products remember context and move between work, travel, and home.</p>
+              </article>
+              <article class="spec-tile">
+                <p class="text-sm font-semibold text-tech-ink">Unified materials</p>
+                <p class="mt-2 text-sm leading-7 text-tech-steel">A consistent finish language makes bundles feel premium instead of promotional.</p>
+              </article>
+              <article class="spec-tile">
+                <p class="text-sm font-semibold text-tech-ink">Service continuity</p>
+                <p class="mt-2 text-sm leading-7 text-tech-steel">Support, warranty, and setup guidance live in one coherent brand system.</p>
+              </article>
+            </div>
+            <div class="mt-8 flex flex-wrap gap-3">
+              <a href="#" class="cta-primary">Read the ecosystem story</a>
+              <a href="#" class="cta-secondary">Explore accessories</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="shell pb-16 lg:pb-24">
+        <div class="grid gap-6 lg:grid-cols-3">
+          <article class="tech-card p-7">
+            <p class="text-sm leading-8 text-tech-steel">“It feels closer to a launch page from a premium hardware brand than a standard ecommerce theme.”</p>
+            <div class="mt-6 flex items-center justify-between gap-4">
+              <div>
+                <p class="font-semibold text-tech-ink">Lena Hartmann</p>
+                <p class="mt-1 text-sm text-tech-steel">Product Design Director</p>
+              </div>
+              <span class="chip">5.0 / 5</span>
+            </div>
+          </article>
+          <article class="tech-card p-7">
+            <p class="text-sm leading-8 text-tech-steel">“The structure leaves enough whitespace for a flagship launch while still supporting listing and PDP needs.”</p>
+            <div class="mt-6 flex items-center justify-between gap-4">
+              <div>
+                <p class="font-semibold text-tech-ink">Jonas Weiss</p>
+                <p class="mt-1 text-sm text-tech-steel">Retail Experience Lead</p>
+              </div>
+              <span class="chip">4.9 / 5</span>
+            </div>
+          </article>
+          <article class="tech-card p-7">
+            <p class="text-sm leading-8 text-tech-steel">“Serious, product-first, and polished enough to feel trustworthy for premium price points.”</p>
+            <div class="mt-6 flex items-center justify-between gap-4">
+              <div>
+                <p class="font-semibold text-tech-ink">Marta Iliev</p>
+                <p class="mt-1 text-sm text-tech-steel">Commerce Consultant</p>
+              </div>
+              <span class="chip">4.9 / 5</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="shell pb-16 lg:pb-24">
+        <article class="tech-card-dark px-8 py-10 lg:px-12 lg:py-12">
+          <div class="grid gap-8 xl:grid-cols-[1fr_auto] xl:items-center">
+            <div>
+              <p class="eyebrow-dark">Launch access</p>
+              <h2 class="section-title-dark mt-3 max-w-3xl">Join the product release list for launch windows, stock alerts, and editorial previews.</h2>
+              <p class="section-copy-dark">Minimal form design, clear value, and a strong background surface keep newsletter capture aligned with the premium brand language.</p>
+            </div>
+            <form class="flex w-full max-w-xl flex-col gap-3 sm:flex-row" action="#" method="post">
+              <label class="flex-1">
+                <span class="sr-only">Email address</span>
+                <input class="input-tech h-12 border-white/10 bg-white/95" type="email" placeholder="Email address" />
+              </label>
+              <button class="cta-primary h-12 whitespace-nowrap bg-white text-tech-ink hover:bg-tech-blueSoft" type="submit">Request access</button>
+            </form>
+          </div>
+        </article>
+      </section>
+
+      <section class="shell pb-16 lg:pb-24">
+        <div class="mb-8">
+          <p class="eyebrow">Product listing template</p>
+          <h2 class="section-title mt-3">Category pages should feel curated, filterable, and still visually expensive.</h2>
+        </div>
+
+        <div class="grid gap-8 xl:grid-cols-[18rem_1fr]">
+          <aside class="tech-card p-6" aria-labelledby="listing-filters-title">
+            <div class="flex items-center justify-between gap-4">
+              <h3 id="listing-filters-title" class="font-display text-2xl font-semibold tracking-tight text-tech-ink">Filters</h3>
+              <button class="text-sm font-semibold text-tech-blue">Reset</button>
+            </div>
+
+            <form class="mt-6 space-y-6 text-sm text-tech-steel">
+              <fieldset>
+                <legend class="font-semibold text-tech-ink">Product type</legend>
+                <div class="mt-3 space-y-3">
+                  <label class="flex items-center gap-3"><input class="h-4 w-4 rounded border-tech-mist text-tech-blue focus:ring-tech-blue" type="checkbox" checked /> Headphones</label>
+                  <label class="flex items-center gap-3"><input class="h-4 w-4 rounded border-tech-mist text-tech-blue focus:ring-tech-blue" type="checkbox" /> Speakers</label>
+                  <label class="flex items-center gap-3"><input class="h-4 w-4 rounded border-tech-mist text-tech-blue focus:ring-tech-blue" type="checkbox" /> Accessories</label>
+                </div>
+              </fieldset>
+
+              <fieldset>
+                <legend class="font-semibold text-tech-ink">Price</legend>
+                <div class="mt-3 grid grid-cols-2 gap-3">
+                  <label>
+                    <span class="sr-only">Minimum price</span>
+                    <input class="input-tech h-11" type="text" placeholder="Min €" />
+                  </label>
+                  <label>
+                    <span class="sr-only">Maximum price</span>
+                    <input class="input-tech h-11" type="text" placeholder="Max €" />
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset>
+                <legend class="font-semibold text-tech-ink">Finish</legend>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button class="chip" type="button">Graphite</button>
+                  <button class="chip" type="button">Silver</button>
+                  <button class="chip" type="button">Mist Blue</button>
+                </div>
+              </fieldset>
+            </form>
+          </aside>
+
+          <div>
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p class="text-sm text-tech-steel">Collection / Audio</p>
+                <h3 class="mt-2 font-display text-3xl font-semibold tracking-tight text-tech-ink">Premium audio</h3>
+              </div>
+              <label class="sm:w-60">
+                <span class="sr-only">Sort products</span>
+                <select class="input-tech h-11 bg-white">
+                  <option>Featured</option>
+                  <option>Newest</option>
+                  <option>Price: low to high</option>
+                  <option>Price: high to low</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              <article class="product-card">
+                <div class="overflow-hidden rounded-[1.75rem] bg-tech-frost">
+                  <img
+                    src="https://images.unsplash.com/photo-1484704849700-f032a568e944?auto=format&fit=crop&w=900&q=80"
+                    alt="Premium over-ear headphones"
+                    class="h-72 w-full object-cover"
+                  />
+                </div>
+                <p class="eyebrow mt-5">Flagship audio</p>
+                <h4 class="mt-2 font-display text-xl font-semibold tracking-tight text-tech-ink">Astra One</h4>
+                <div class="mt-4 flex items-center justify-between">
+                  <span class="text-lg font-semibold text-tech-ink">€429</span>
+                  <span class="chip">Available now</span>
+                </div>
+              </article>
+              <article class="product-card">
+                <div class="overflow-hidden rounded-[1.75rem] bg-tech-frost">
+                  <img
+                    src="https://images.unsplash.com/photo-1507878866276-a947ef722fee?auto=format&fit=crop&w=900&q=80"
+                    alt="Minimal premium desk speaker"
+                    class="h-72 w-full object-cover"
+                  />
+                </div>
+                <p class="eyebrow mt-5">Home studio</p>
+                <h4 class="mt-2 font-display text-xl font-semibold tracking-tight text-tech-ink">Vector Speaker</h4>
+                <div class="mt-4 flex items-center justify-between">
+                  <span class="text-lg font-semibold text-tech-ink">€319</span>
+                  <span class="chip">Editor pick</span>
+                </div>
+              </article>
+              <article class="product-card">
+                <div class="overflow-hidden rounded-[1.75rem] bg-tech-frost">
+                  <img
+                    src="https://images.unsplash.com/photo-1487215078519-e21cc028cb29?auto=format&fit=crop&w=900&q=80"
+                    alt="Modern wireless earbuds case on a clean surface"
+                    class="h-72 w-full object-cover"
+                  />
+                </div>
+                <p class="eyebrow mt-5">Travel audio</p>
+                <h4 class="mt-2 font-display text-xl font-semibold tracking-tight text-tech-ink">Flux Buds Pro</h4>
+                <div class="mt-4 flex items-center justify-between">
+                  <span class="text-lg font-semibold text-tech-ink">€249</span>
+                  <span class="chip">Low stock</span>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="shell pb-16 lg:pb-24">
+        <div class="mb-8">
+          <p class="eyebrow">Product details template</p>
+          <h2 class="section-title mt-3">A premium PDP should feel like a product launch page that still converts cleanly.</h2>
+        </div>
+
+        <div class="grid gap-8 xl:grid-cols-[1.05fr_0.95fr]">
+          <div class="grid gap-4 sm:grid-cols-[6.5rem_1fr]">
+            <div class="order-2 flex gap-3 sm:order-1 sm:flex-col">
+              <img
+                src="https://images.unsplash.com/photo-1487215078519-e21cc028cb29?auto=format&fit=crop&w=400&q=80"
+                alt="Astra One side angle"
+                class="h-24 w-full rounded-[1.25rem] border border-tech-mist object-cover sm:w-24"
+              />
+              <img
+                src="https://images.unsplash.com/photo-1524678606370-a47ad25cb82a?auto=format&fit=crop&w=400&q=80"
+                alt="Astra One folded case detail"
+                class="h-24 w-full rounded-[1.25rem] border border-tech-mist object-cover sm:w-24"
+              />
+              <img
+                src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=400&q=80"
+                alt="Astra One front profile"
+                class="h-24 w-full rounded-[1.25rem] border border-tech-mist object-cover sm:w-24"
+              />
+            </div>
+            <article class="order-1 tech-card overflow-hidden p-4 sm:order-2">
+              <img
+                src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1200&q=80"
+                alt="Astra One product detail hero"
+                class="h-full min-h-[34rem] w-full rounded-[1.75rem] object-cover"
+              />
+            </article>
+          </div>
+
+          <article class="tech-card p-7 lg:p-8">
+            <p class="eyebrow">Audio / Flagship</p>
+            <h3 class="mt-3 font-display text-4xl font-semibold tracking-tight text-tech-ink lg:text-5xl">Astra One</h3>
+            <div class="mt-4 flex flex-wrap items-center gap-3 text-sm text-tech-steel">
+              <span>4.9 based on 382 reviews</span>
+              <span aria-hidden="true">•</span>
+              <span>SKU AST-ONE-26</span>
+            </div>
+            <div class="mt-6 flex items-center gap-3">
+              <span class="text-3xl font-semibold text-tech-ink">€429</span>
+              <span class="chip bg-tech-blueSoft text-tech-ink">Ships in 48h</span>
+            </div>
+            <p class="mt-6 text-base leading-8 text-tech-steel">
+              Lightweight reference headphones with adaptive ANC, spatial audio, low-latency wireless, and a sculpted graphite finish designed to feel precise in the hand.
+            </p>
+
+            <div class="mt-8">
+              <p class="text-sm font-semibold text-tech-ink">Finish</p>
+              <div class="mt-3 flex gap-3">
+                <button class="flex h-11 w-11 items-center justify-center rounded-full border-2 border-tech-ink bg-tech-slate" type="button">
+                  <span class="sr-only">Graphite finish selected</span>
+                </button>
+                <button class="flex h-11 w-11 items-center justify-center rounded-full border border-tech-mist bg-[#d9dde6]" type="button">
+                  <span class="sr-only">Silver finish</span>
+                </button>
+                <button class="flex h-11 w-11 items-center justify-center rounded-full border border-tech-mist bg-[#bcc8e8]" type="button">
+                  <span class="sr-only">Mist blue finish</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-8 grid gap-4 sm:grid-cols-3">
+              <article class="spec-tile">
+                <p class="text-[11px] uppercase tracking-ui text-tech-steel">Playback</p>
+                <p class="mt-2 text-lg font-semibold text-tech-ink">40 hours</p>
+              </article>
+              <article class="spec-tile">
+                <p class="text-[11px] uppercase tracking-ui text-tech-steel">Drivers</p>
+                <p class="mt-2 text-lg font-semibold text-tech-ink">42 mm custom</p>
+              </article>
+              <article class="spec-tile">
+                <p class="text-[11px] uppercase tracking-ui text-tech-steel">Charging</p>
+                <p class="mt-2 text-lg font-semibold text-tech-ink">USB-C fast charge</p>
+              </article>
+            </div>
+
+            <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+              <div class="inline-flex items-center justify-between rounded-full border border-tech-mist bg-white px-3 py-2.5 sm:w-40">
+                <button class="h-9 w-9 rounded-full text-lg text-tech-steel transition hover:bg-tech-frost" type="button">-</button>
+                <span class="text-sm font-semibold text-tech-ink">1</span>
+                <button class="h-9 w-9 rounded-full text-lg text-tech-steel transition hover:bg-tech-frost" type="button">+</button>
+              </div>
+              <button class="cta-primary flex-1">Add to bag</button>
+            </div>
+
+            <dl class="mt-8 divide-y divide-tech-mist rounded-[1.5rem] border border-tech-mist bg-white/70">
+              <div class="grid gap-3 px-5 py-4 sm:grid-cols-[10rem_1fr]">
+                <dt class="text-sm font-semibold text-tech-ink">In the box</dt>
+                <dd class="text-sm leading-7 text-tech-steel">Headphones, protective case, USB-C cable, 3.5 mm cable, quick start guide.</dd>
+              </div>
+              <div class="grid gap-3 px-5 py-4 sm:grid-cols-[10rem_1fr]">
+                <dt class="text-sm font-semibold text-tech-ink">Delivery</dt>
+                <dd class="text-sm leading-7 text-tech-steel">Insured express delivery, premium packaging, and 30 day returns.</dd>
+              </div>
+            </dl>
+          </article>
+        </div>
+      </section>
+
+      <section class="shell pb-16 lg:pb-24">
+        <div class="mb-8">
+          <p class="eyebrow">Checkout progress</p>
+          <h2 class="section-title mt-3">A clean progress header makes checkout feel structured, secure, and premium.</h2>
+        </div>
+
+        <article class="tech-card p-6 lg:p-8">
+          <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p class="eyebrow">Secure checkout</p>
+              <h3 class="mt-2 font-display text-2xl font-semibold tracking-tight text-tech-ink">Shipping and payment</h3>
+            </div>
+            <ol class="grid gap-4 text-sm font-semibold text-tech-steel sm:grid-cols-4">
+              <li class="flex items-center gap-3">
+                <span class="flex h-9 w-9 items-center justify-center rounded-full bg-tech-ink text-white">1</span>
+                Bag
+              </li>
+              <li class="flex items-center gap-3">
+                <span class="flex h-9 w-9 items-center justify-center rounded-full bg-tech-ink text-white">2</span>
+                Shipping
+              </li>
+              <li class="flex items-center gap-3">
+                <span class="flex h-9 w-9 items-center justify-center rounded-full border border-tech-mist bg-white text-tech-ink">3</span>
+                Payment
+              </li>
+              <li class="flex items-center gap-3">
+                <span class="flex h-9 w-9 items-center justify-center rounded-full border border-tech-mist bg-white text-tech-ink">4</span>
+                Review
+              </li>
+            </ol>
+          </div>
+        </article>
+      </section>
+
+      <section class="shell pb-20 lg:pb-24">
+        <div class="mb-8">
+          <p class="eyebrow">Design system</p>
+          <h2 class="section-title mt-3">A compact style guide section makes migration into Razor components significantly easier.</h2>
+        </div>
+
+        <div class="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+          <article class="tech-card p-7">
+            <p class="eyebrow">Buttons and chips</p>
+            <div class="mt-5 flex flex-wrap gap-3">
+              <button class="cta-primary" type="button">Primary CTA</button>
+              <button class="cta-secondary" type="button">Secondary CTA</button>
+              <button class="chip" type="button">Neutral chip</button>
+              <button class="chip bg-tech-blueSoft text-tech-ink" type="button">Accent chip</button>
+            </div>
+
+            <p class="eyebrow mt-8">Inputs</p>
+            <div class="mt-4 grid gap-3">
+              <input class="input-tech" type="text" placeholder="Email address" />
+              <select class="input-tech bg-white">
+                <option>Sort by featured</option>
+              </select>
+            </div>
+          </article>
+
+          <article class="tech-card-dark p-7">
+            <p class="eyebrow-dark">Type, color, spacing</p>
+            <div class="mt-5 grid gap-6 md:grid-cols-2">
+              <div>
+                <p class="text-sm font-semibold text-white">Display heading</p>
+                <p class="mt-3 font-display text-4xl font-semibold tracking-tight text-white">Future hardware, quietly presented.</p>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-white">Body copy</p>
+                <p class="mt-3 text-sm leading-8 text-white/70">Use short, high-confidence lines with generous line height. Keep metadata readable and feature language physically grounded.</p>
+              </div>
+            </div>
+            <div class="mt-8 grid gap-3 sm:grid-cols-4">
+              <div class="rounded-[1.25rem] border border-white/10 bg-white/[0.08] p-4">
+                <div class="h-12 rounded-xl bg-tech-paper"></div>
+                <p class="mt-3 text-xs uppercase tracking-ui text-white/[0.55]">Paper</p>
+              </div>
+              <div class="rounded-[1.25rem] border border-white/10 bg-white/[0.08] p-4">
+                <div class="h-12 rounded-xl bg-tech-panelSoft"></div>
+                <p class="mt-3 text-xs uppercase tracking-ui text-white/[0.55]">Panel</p>
+              </div>
+              <div class="rounded-[1.25rem] border border-white/10 bg-white/[0.08] p-4">
+                <div class="h-12 rounded-xl bg-tech-blue"></div>
+                <p class="mt-3 text-xs uppercase tracking-ui text-white/[0.55]">Accent</p>
+              </div>
+              <div class="rounded-[1.25rem] border border-white/10 bg-white/[0.08] p-4">
+                <div class="h-12 rounded-xl bg-[#d9dde6]"></div>
+                <p class="mt-3 text-xs uppercase tracking-ui text-white/[0.55]">Silver</p>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <aside
+      id="mini-cart"
+      aria-labelledby="mini-cart-title"
+      class="pointer-events-none fixed right-4 top-24 z-40 hidden w-full max-w-sm 2xl:block"
+    >
+      <div class="pointer-events-auto tech-card p-6">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="eyebrow">Mini cart drawer</p>
+            <h2 id="mini-cart-title" class="mt-2 font-display text-2xl font-semibold tracking-tight text-tech-ink">Bag summary</h2>
+          </div>
+          <button class="rounded-full border border-tech-mist px-3 py-1.5 text-sm font-semibold text-tech-steel" type="button">Close</button>
+        </div>
+
+        <div class="mt-6 space-y-4">
+          <article class="flex gap-4 rounded-[1.5rem] border border-tech-mist bg-white/80 p-4">
+            <img
+              src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=320&q=80"
+              alt="Astra One product thumbnail"
+              class="h-20 w-20 rounded-[1rem] object-cover"
+            />
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold text-tech-ink">Astra One</p>
+              <p class="mt-1 text-sm text-tech-steel">Graphite / Qty 1</p>
+              <p class="mt-3 text-sm font-semibold text-tech-ink">€429</p>
+            </div>
+          </article>
+          <article class="flex gap-4 rounded-[1.5rem] border border-tech-mist bg-white/80 p-4">
+            <img
+              src="https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=320&q=80"
+              alt="Pulse Watch X product thumbnail"
+              class="h-20 w-20 rounded-[1rem] object-cover"
+            />
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold text-tech-ink">Pulse Watch X</p>
+              <p class="mt-1 text-sm text-tech-steel">Silver / Qty 1</p>
+              <p class="mt-3 text-sm font-semibold text-tech-ink">€379</p>
+            </div>
+          </article>
+        </div>
+
+        <dl class="mt-6 space-y-3 text-sm text-tech-steel">
+          <div class="flex items-center justify-between gap-4">
+            <dt>Subtotal</dt>
+            <dd class="font-semibold text-tech-ink">€808</dd>
+          </div>
+          <div class="flex items-center justify-between gap-4">
+            <dt>Insured shipping</dt>
+            <dd class="font-semibold text-tech-ink">Included</dd>
+          </div>
+        </dl>
+
+        <div class="mt-6 grid gap-3">
+          <a href="#" class="cta-primary">Checkout</a>
+          <a href="#" class="cta-secondary">View full bag</a>
+        </div>
+      </div>
+    </aside>
+
+    <footer class="border-t border-tech-mist bg-white/70">
+      <div class="shell py-12 lg:py-16">
+        <div class="grid gap-10 md:grid-cols-2 xl:grid-cols-5">
+          <div class="xl:col-span-2">
+            <a href="#" class="font-display text-2xl font-semibold tracking-[0.14em] text-tech-ink">
+              ASTRA<span class="text-tech-blue">/</span>FLUX
+            </a>
+            <p class="mt-4 max-w-md text-sm leading-8 text-tech-steel">
+              Premium high-tech storefront starter for Blazor commerce teams that want a sharper first impression, stronger whitespace, and more confident product presentation.
+            </p>
+          </div>
+
+          <nav aria-label="Shop">
+            <p class="eyebrow">Shop</p>
+            <ul class="mt-4 space-y-3 text-sm text-tech-steel">
+              <li><a href="#" class="transition hover:text-tech-ink">Flagship</a></li>
+              <li><a href="#" class="transition hover:text-tech-ink">Audio</a></li>
+              <li><a href="#" class="transition hover:text-tech-ink">Workspace</a></li>
+            </ul>
+          </nav>
+
+          <nav aria-label="Services">
+            <p class="eyebrow">Services</p>
+            <ul class="mt-4 space-y-3 text-sm text-tech-steel">
+              <li><a href="#" class="transition hover:text-tech-ink">Delivery</a></li>
+              <li><a href="#" class="transition hover:text-tech-ink">Returns</a></li>
+              <li><a href="#" class="transition hover:text-tech-ink">Warranty</a></li>
+            </ul>
+          </nav>
+
+          <nav aria-label="Company">
+            <p class="eyebrow">Company</p>
+            <ul class="mt-4 space-y-3 text-sm text-tech-steel">
+              <li><a href="#" class="transition hover:text-tech-ink">Journal</a></li>
+              <li><a href="#" class="transition hover:text-tech-ink">About</a></li>
+              <li><a href="#" class="transition hover:text-tech-ink">Privacy</a></li>
+            </ul>
+          </nav>
+        </div>
+
+        <div class="mt-10 border-t border-tech-mist pt-6 text-sm text-tech-steel sm:flex sm:items-center sm:justify-between">
+          <p>© 2026 Astra Flux. All rights reserved.</p>
+          <p>English · EUR · EU shipping</p>
+        </div>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

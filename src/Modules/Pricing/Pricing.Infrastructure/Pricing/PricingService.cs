@@ -89,16 +89,17 @@ internal sealed class PricingService(
             return new Dictionary<Guid, VariantPricingSnapshot>();
         }
 
-        var tasks = normalizedVariantIds.Select(async variantId => new
+        var results = new Dictionary<Guid, VariantPricingSnapshot>(normalizedVariantIds.Length);
+        foreach (var variantId in normalizedVariantIds)
         {
-            VariantId = variantId,
-            Snapshot = await GetVariantPricingAsync(variantId, cancellationToken),
-        });
+            var snapshot = await GetVariantPricingAsync(variantId, cancellationToken);
+            if (snapshot is not null)
+            {
+                results[variantId] = snapshot;
+            }
+        }
 
-        var results = await Task.WhenAll(tasks);
-        return results
-            .Where(result => result.Snapshot is not null)
-            .ToDictionary(result => result.VariantId, result => result.Snapshot!);
+        return results;
     }
 
     public async Task<Result<CartPricingResult>> PriceAsync(CartPricingRequest request, CancellationToken cancellationToken)

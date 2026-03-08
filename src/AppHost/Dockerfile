@@ -11,10 +11,9 @@ WORKDIR /app
 
 COPY --from=build --chown=$APP_UID:$APP_UID /app/publish .
 
-ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
 
 USER $APP_UID
 
 ENTRYPOINT ["dotnet", "AppHost.dll"]
-

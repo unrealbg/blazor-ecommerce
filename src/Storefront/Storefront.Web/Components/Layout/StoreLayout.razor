@@ -1,32 +1,13 @@
 @inherits LayoutComponentBase
 @inject Storefront.Web.Services.Runtime.StorefrontBuildInfo BuildInfo
 
-@code {
-    private static readonly InteractiveServerRenderMode NonPrerenderedInteractive = new(prerender: false);
-}
+<div class="page premium-page-shell">
+    <AnnouncementBar />
+    <MainHeader />
 
-<div class="page">
-    <header class="site-header">
-        <div class="site-header-inner">
-            <div class="header-brand">
-                <a class="logo" href="/">Blazor Commerce</a>
-                <a class="nav-link" href="/blog">Blog</a>
-                <a class="nav-link" href="/account/profile">Account</a>
-            </div>
-            <SearchBox @rendermode="NonPrerenderedInteractive" />
-            <a class="cart-link" href="/cart">
-                Cart
-                <CartCountBadge @rendermode="NonPrerenderedInteractive" />
-            </a>
-        </div>
-    </header>
-
-    <main class="content">
+    <main class="content storefront-shell" id="main-content">
         @Body
     </main>
 
-    <footer class="site-footer">
-        <p>All prices are in EUR.</p>
-        <p>Build: @BuildInfo.ShortVersionLabel</p>
-    </footer>
+    <MainFooter BuildLabel="@BuildInfo.ShortVersionLabel" />
 </div>

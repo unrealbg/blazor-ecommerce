@@ -11,6 +11,8 @@ public sealed class CartInfrastructureInstaller : IModuleInfrastructureInstaller
 {
     public string ModuleName => "Cart";
 
+    public IReadOnlyCollection<string> DependsOnModules => ["Catalog"];
+
     public void AddInfrastructure(IServiceCollection services, IConfiguration configuration)
     {
         var connectionString = configuration.GetConnectionString("Postgres")

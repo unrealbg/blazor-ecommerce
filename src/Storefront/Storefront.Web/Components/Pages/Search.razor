@@ -5,6 +5,7 @@
 @using Storefront.Web.Services.Api
 @using Storefront.Web.Services.Seo
 @inject IStoreApiClient StoreApiClient
+@inject ILogger<Search> Logger
 @inject IPageMetadataService MetadataService
 @inject ICanonicalUrlService CanonicalUrlService
 @inject IStructuredDataService StructuredDataService
@@ -15,80 +16,99 @@
     NextUrl="@canonicalUrls?.NextUrl"
     JsonLdScripts="jsonLdScripts" />
 
-<Breadcrumbs Items="breadcrumbs" />
+<div class="tech-listing-page">
+    <Breadcrumbs Items="breadcrumbs" />
 
-<section>
-    <h1>Search results</h1>
-    <p>
-        @if (string.IsNullOrWhiteSpace(displayQuery))
-        {
-            <span>Showing all products.</span>
-        }
-        else
-        {
-            <span>Query: <strong>@displayQuery</strong></span>
-        }
-    </p>
-</section>
-
-<ActiveFilterChips Chips="chips" ClearAllUrl="@clearFiltersUrl" />
-
-<section class="listing-layout">
-    <FacetSidebar
-        BrandOptions="brandOptions"
-        CategoryOptions="categoryOptions"
-        InStockUrl="@inStockUrl"
-        InStockSelected="@(selectedInStock is true)"
-        InStockCount="@response.Facets.InStockCount"
-        MinAvailable="@response.Facets.Price.MinAvailable"
-        MaxAvailable="@response.Facets.Price.MaxAvailable" />
-
-    <div class="listing-main">
-        <SortDropdown Options="sortOptions" />
-
-        <form class="price-filter-form" method="get" action="/search">
-            @if (!string.IsNullOrWhiteSpace(displayQuery))
+    <section class="listing-intro-panel tech-listing-intro">
+        <p class="tech-eyebrow">Search</p>
+        <h1>Search results</h1>
+        <p>
+            @if (string.IsNullOrWhiteSpace(displayQuery))
             {
-                <input type="hidden" name="q" value="@displayQuery" />
+                <span>Showing the full premium collection.</span>
             }
-
-            @if (!string.IsNullOrWhiteSpace(selectedCategorySlug))
+            else
             {
-                <input type="hidden" name="categorySlug" value="@selectedCategorySlug" />
+                <span>Results for <strong>@displayQuery</strong> with live filters and search facets from the backend.</span>
             }
+        </p>
+        <div class="listing-intro-meta">
+            <span>@response.Total product@(response.Total == 1 ? string.Empty : "s") found</span>
+            <span>@(string.IsNullOrWhiteSpace(selectedCategorySlug) ? "All categories" : $"Category: {selectedCategorySlug}")</span>
+        </div>
+    </section>
 
-            @foreach (var brand in selectedBrands)
+    <ActiveFilterChips Chips="chips" ClearAllUrl="@clearFiltersUrl" />
+
+    <section class="listing-layout tech-listing-layout">
+        <FacetSidebar
+            BrandOptions="brandOptions"
+            CategoryOptions="categoryOptions"
+            InStockUrl="@inStockUrl"
+            InStockSelected="@(selectedInStock is true)"
+            InStockCount="@response.Facets.InStockCount"
+            MinAvailable="@response.Facets.Price.MinAvailable"
+            MaxAvailable="@response.Facets.Price.MaxAvailable" />
+
+        <div class="listing-main">
+            <SortDropdown Options="sortOptions" />
+
+            @if (!string.IsNullOrWhiteSpace(loadErrorMessage))
             {
-                <input type="hidden" name="brand" value="@brand" />
+                <section class="tech-empty-panel">
+                    <p class="tech-eyebrow">Search unavailable</p>
+                    <h2>We could not load search results right now.</h2>
+                    <p>@loadErrorMessage</p>
+                    <a class="tech-button tech-button-primary" href="/search">Try again</a>
+                </section>
             }
-
-            @if (selectedInStock is true)
+            else
             {
-                <input type="hidden" name="inStock" value="true" />
+                <form class="price-filter-form" method="get" action="/search">
+                    @if (!string.IsNullOrWhiteSpace(displayQuery))
+                    {
+                        <input type="hidden" name="q" value="@displayQuery" />
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(selectedCategorySlug))
+                    {
+                        <input type="hidden" name="categorySlug" value="@selectedCategorySlug" />
+                    }
+
+                    @foreach (var brand in selectedBrands)
+                    {
+                        <input type="hidden" name="brand" value="@brand" />
+                    }
+
+                    @if (selectedInStock is true)
+                    {
+                        <input type="hidden" name="inStock" value="true" />
+                    }
+
+                    @if (!IsDefaultSort(selectedSort, displayQuery))
+                    {
+                        <input type="hidden" name="sort" value="@selectedSort" />
+                    }
+
+                    <label>
+                        Min EUR
+                        <input type="number" step="0.01" min="0" name="minPrice" value="@minPriceInput" />
+                    </label>
+                    <label>
+                        Max EUR
+                        <input type="number" step="0.01" min="0" name="maxPrice" value="@maxPriceInput" />
+                    </label>
+                    <button type="submit">Apply price</button>
+                    <a href="@BuildPriceResetUrl()">Clear price</a>
+                </form>
+
+                <ProductGrid Items="response.Items" EmptyMessage="No products matched your filters." />
+
+                <Pagination CurrentPage="@response.Page" TotalPages="@response.TotalPages" BuildUrl="BuildPageUrl" />
             }
-
-            @if (!IsDefaultSort(selectedSort, displayQuery))
-            {
-                <input type="hidden" name="sort" value="@selectedSort" />
-            }
-
-            <label>
-                Min EUR
-                <input type="number" step="0.01" min="0" name="minPrice" value="@minPriceInput" />
-            </label>
-            <label>
-                Max EUR
-                <input type="number" step="0.01" min="0" name="maxPrice" value="@maxPriceInput" />
-            </label>
-            <button type="submit">Apply price</button>
-            <a href="@BuildPriceResetUrl()">Clear price</a>
-        </form>
-
-        <ProductGrid Items="response.Items" EmptyMessage="No products matched your filters." />
-
-        <Pagination CurrentPage="@response.Page" TotalPages="@response.TotalPages" BuildUrl="BuildPageUrl" />
-    </div>
-</section>
+        </div>
+    </section>
+</div>
 
 @code {
     private static readonly IReadOnlyCollection<SortDefinition> SearchSortDefinitions =
@@ -146,6 +166,7 @@
     private string clearFiltersUrl = "/search";
     private string minPriceInput = string.Empty;
     private string maxPriceInput = string.Empty;
+    private string? loadErrorMessage;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -157,18 +178,35 @@
         selectedPage = NormalizePage(Page);
         selectedSort = NormalizeSearchSort(Sort, displayQuery);
 
-        response = await StoreApiClient.SearchProductsAsync(
-            new StoreSearchProductsRequest(
+        try
+        {
+            response = await StoreApiClient.SearchProductsAsync(
+                new StoreSearchProductsRequest(
+                    displayQuery,
+                    selectedCategorySlug,
+                    selectedBrands,
+                    selectedMinPrice,
+                    selectedMaxPrice,
+                    selectedInStock,
+                    selectedSort,
+                    selectedPage,
+                    24),
+                CancellationToken.None);
+            loadErrorMessage = null;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(
+                exception,
+                "Failed to load search results. Query={Query} Category={CategorySlug} Sort={Sort} Page={Page}",
                 displayQuery,
                 selectedCategorySlug,
-                selectedBrands,
-                selectedMinPrice,
-                selectedMaxPrice,
-                selectedInStock,
                 selectedSort,
-                selectedPage,
-                24),
-            CancellationToken.None);
+                selectedPage);
+
+            response = EmptyResponse();
+            loadErrorMessage = "Search is temporarily unavailable. Please refresh in a moment.";
+        }
 
         selectedBrands = response.AppliedFilters.Brands;
         selectedCategorySlug = response.AppliedFilters.CategorySlug;

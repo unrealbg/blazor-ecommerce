@@ -166,9 +166,9 @@ CI:
 ### Seed and environment modes
 
 - `Release:SeedMode=none` is the safe default for production.
-- `Release:SeedMode=minimal` is intended for low-noise bootstrap environments.
-- `Release:SeedMode=demo` is for showcase environments only.
-- `Release:SeedMode=test` is for automated verification and should not be used in shared persistent environments.
+- `Release:SeedMode=minimal` seeds a small curated catalog suitable for low-noise bootstrap environments.
+- `Release:SeedMode=demo` seeds the full showcase catalog for premium storefront demos and review apps.
+- `Release:SeedMode=test` seeds the same curated subset as `minimal` and is intended for automated verification only.
 - `Release:MigrationMode=apply` should only run where automated schema upgrades are part of the deployment contract.
 - `Release:MigrationMode=validate` is safer for gated or manually promoted production rollouts.
 

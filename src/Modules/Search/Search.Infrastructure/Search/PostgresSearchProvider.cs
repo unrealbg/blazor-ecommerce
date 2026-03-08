@@ -185,11 +185,10 @@ internal sealed class PostgresSearchProvider(
         }
 
         var containsPattern = $"%{normalized}%";
-        var tsQuery = EF.Functions.WebSearchToTsQuery(SearchConfiguration, normalized);
 
         return source.Where(document =>
             EF.Functions.ToTsVector(SearchConfiguration, document.Name + " " + (document.DescriptionText ?? string.Empty) + " " + (document.Brand ?? string.Empty) + " " + (document.CategoryName ?? string.Empty) + " " + (document.SearchText ?? string.Empty))
-                .Matches(tsQuery) ||
+                .Matches(EF.Functions.WebSearchToTsQuery(SearchConfiguration, normalized)) ||
             EF.Functions.ILike(document.Name, containsPattern) ||
             (document.Brand != null && EF.Functions.ILike(document.Brand, containsPattern)) ||
             EF.Functions.TrigramsAreSimilar(document.Name, normalized));
@@ -311,13 +310,12 @@ internal sealed class PostgresSearchProvider(
         }
 
         var prefixPattern = $"{normalized}%";
-        var tsQuery = EF.Functions.WebSearchToTsQuery(SearchConfiguration, normalized);
 
         return source
             .OrderByDescending(document => document.NormalizedName == normalized)
             .ThenByDescending(document => EF.Functions.ILike(document.Name, prefixPattern))
             .ThenByDescending(document => EF.Functions.ToTsVector(SearchConfiguration, document.Name + " " + (document.DescriptionText ?? string.Empty) + " " + (document.Brand ?? string.Empty) + " " + (document.CategoryName ?? string.Empty) + " " + (document.SearchText ?? string.Empty))
-                .Rank(tsQuery))
+                .Rank(EF.Functions.WebSearchToTsQuery(SearchConfiguration, normalized)))
             .ThenByDescending(document => EF.Functions.TrigramsSimilarity(document.Name, normalized))
             .ThenByDescending(document => document.IsInStock)
             .ThenByDescending(document => document.PopularityScore ?? 0m)

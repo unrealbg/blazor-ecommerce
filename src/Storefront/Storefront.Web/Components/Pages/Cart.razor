@@ -5,136 +5,201 @@
 @inject Storefront.Web.Services.Customer.ICustomerContext CustomerContext
 @inject Storefront.Web.Services.CartState CartState
 
-<PageTitle>Your Cart</PageTitle>
+<PageTitle>Your Bag</PageTitle>
 
-<h1>Your Cart</h1>
-
-@if (isLoading)
-{
-    <p>Loading cart...</p>
-}
-else if (cart is null || cart.Lines.Count == 0)
-{
-    <p>Your cart is empty.</p>
-}
-else
-{
-    <section class="admin-panel">
-        <h2>Coupon</h2>
-        <div class="form-grid">
-            <label>
-                Coupon code
-                <input @bind="couponCode" placeholder="SAVE10" />
-            </label>
-            <div class="cart-actions">
-                <button type="button" class="btn-primary" @onclick="ApplyCouponAsync">Apply coupon</button>
-                @if (!string.IsNullOrWhiteSpace(cart.AppliedCouponCode))
-                {
-                    <button type="button" class="btn-link danger" @onclick="RemoveCouponAsync">Remove coupon</button>
-                }
-            </div>
-        </div>
-
-        @if (!string.IsNullOrWhiteSpace(cart.AppliedCouponCode))
-        {
-            <p class="status-message">Applied coupon: <strong>@cart.AppliedCouponCode</strong></p>
-        }
+<div class="tech-cart-page">
+    <section class="tech-page-intro">
+        <p class="tech-eyebrow">Bag</p>
+        <h1>Your selected hardware, prepared for checkout.</h1>
+        <p>Live cart data from the backend, presented with a cleaner premium electronics layout.</p>
     </section>
 
-    @if (cart.Messages.Count > 0)
+    <CheckoutProgressHeader CurrentStep="1" Steps="checkoutSteps" />
+
+    @if (isLoading)
     {
-        foreach (var cartMessage in cart.Messages)
-        {
-            <p class="status-message warning">@cartMessage</p>
-        }
+        <section class="tech-empty-panel">
+            <p class="tech-eyebrow">Loading</p>
+            <h2>Loading your bag</h2>
+            <p>We are syncing your latest cart state.</p>
+        </section>
     }
+    else if (cart is null || cart.Lines.Count == 0)
+    {
+        <section class="tech-empty-panel">
+            <p class="tech-eyebrow">Empty bag</p>
+            <h2>Your bag is currently empty.</h2>
+            <p>Add a product from the live catalog to continue to checkout.</p>
+            <a class="tech-button tech-button-primary" href="/search">Browse products</a>
+        </section>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(message))
+        {
+            <p class="status-message">@message</p>
+        }
 
-    <table class="cart-table">
-        <thead>
-            <tr>
-                <th>Product</th>
-                <th>Unit Price</th>
-                <th>Quantity</th>
-                <th>Line Total</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var line in cart.Lines)
+        @if (cart.Messages.Count > 0)
+        {
+            foreach (var cartMessage in cart.Messages)
             {
-                <tr>
-                    <td>
-                        <strong>@line.ProductName</strong>
-                        @if (!string.IsNullOrWhiteSpace(line.VariantName))
-                        {
-                            <div>@line.VariantName</div>
-                        }
-                        @if (!string.IsNullOrWhiteSpace(line.SelectedOptionsJson))
-                        {
-                            <div class="meta">@line.SelectedOptionsJson</div>
-                        }
-                    </td>
-                    <td>
-                        @if (line.CompareAtUnitAmount is > 0m && line.CompareAtUnitAmount > line.FinalUnitAmount)
-                        {
-                            <div class="price-compare">@FormatPrice(line.CompareAtUnitAmount.Value, line.Currency)</div>
-                        }
-                        <div>@FormatPrice(line.FinalUnitAmount, line.Currency)</div>
-                    </td>
-                    <td>
-                        <input
-                            type="number"
-                            min="1"
-                            value="@GetQuantityValue(line.VariantId)"
-                            @onchange="args => UpdateLocalQuantity(line.VariantId, args.Value?.ToString())" />
-                    </td>
-                    <td>
-                        @FormatPrice(line.LineTotalAmount, line.Currency)
-                        @if (line.DiscountTotalAmount > 0m)
-                        {
-                            <div class="meta">Saved @FormatPrice(line.DiscountTotalAmount, line.Currency)</div>
-                        }
-                    </td>
-                    <td class="cart-actions">
-                        <button type="button" class="btn-link" @onclick="() => UpdateQuantityAsync(line.VariantId)">Update</button>
-                        <button type="button" class="btn-link danger" @onclick="() => RemoveItemAsync(line.VariantId)">Remove</button>
-                    </td>
-                </tr>
+                <p class="status-message warning">@cartMessage</p>
             }
-        </tbody>
-    </table>
-
-    <section class="admin-panel">
-        <h2>Summary</h2>
-        <p>Subtotal before discounts: <strong>@FormatPrice(cart.SubtotalBeforeDiscountAmount, cart.Currency)</strong></p>
-        @if (cart.LineDiscountTotalAmount > 0m)
-        {
-            <p>Line discounts: <strong>-@FormatPrice(cart.LineDiscountTotalAmount, cart.Currency)</strong></p>
         }
-        @if (cart.CartDiscountTotalAmount > 0m)
-        {
-            <p>Cart discounts: <strong>-@FormatPrice(cart.CartDiscountTotalAmount, cart.Currency)</strong></p>
-        }
-        <p class="cart-total">Total: @FormatPrice(totalAmount, cart.Currency)</p>
 
-        @if (cart.AppliedDiscounts.Count > 0)
-        {
-            <ul>
-                @foreach (var discount in cart.AppliedDiscounts)
-                {
-                    <li>@discount.Description: -@FormatPrice(discount.Amount, discount.Currency)</li>
-                }
-            </ul>
-        }
-    </section>
+        <div class="tech-cart-layout">
+            <div class="tech-cart-main">
+                <section class="tech-detail-card tech-cart-coupon">
+                    <div class="tech-detail-card-header">
+                        <p class="tech-eyebrow">Promotion</p>
+                        <h2>Apply a launch or loyalty code</h2>
+                    </div>
 
-    <a class="btn-primary" href="/checkout">Proceed to checkout</a>
-}
+                    <div class="form-grid tech-form-grid">
+                        <label class="tech-field">
+                            <span>Coupon code</span>
+                            <input @bind="couponCode" placeholder="SAVE10" />
+                        </label>
+                    </div>
 
-@if (!string.IsNullOrWhiteSpace(message))
-{
-    <p class="status-message">@message</p>
-}
+                    <div class="cart-actions">
+                        <button type="button" class="btn-primary" @onclick="ApplyCouponAsync">Apply coupon</button>
+                        @if (!string.IsNullOrWhiteSpace(cart.AppliedCouponCode))
+                        {
+                            <button type="button" class="btn-link danger" @onclick="RemoveCouponAsync">Remove coupon</button>
+                        }
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(cart.AppliedCouponCode))
+                    {
+                        <p class="status-message">Applied coupon: <strong>@cart.AppliedCouponCode</strong></p>
+                    }
+                </section>
+
+                <section class="tech-detail-card tech-cart-lines">
+                    <div class="tech-section-header">
+                        <div>
+                            <p class="tech-eyebrow">Selected products</p>
+                            <h2>@cart.Lines.Count item@(cart.Lines.Count == 1 ? string.Empty : "s") ready for checkout.</h2>
+                        </div>
+                    </div>
+
+                    <div class="tech-cart-lines-grid">
+                        @foreach (var line in cart.Lines)
+                        {
+                            <article class="tech-cart-line">
+                                <div class="tech-cart-line-media">
+                                    @if (!string.IsNullOrWhiteSpace(line.ImageUrl))
+                                    {
+                                        <img src="@line.ImageUrl" alt="@line.ProductName" loading="lazy" decoding="async" />
+                                    }
+                                </div>
+
+                                <div class="tech-cart-line-copy">
+                                    <p class="tech-eyebrow">@(string.IsNullOrWhiteSpace(line.VariantName) ? "Configured product" : line.VariantName)</p>
+                                    <h3>@line.ProductName</h3>
+                                    @if (!string.IsNullOrWhiteSpace(line.SelectedOptionsJson))
+                                    {
+                                        <p class="tech-inline-meta">@line.SelectedOptionsJson</p>
+                                    }
+
+                                    <div class="tech-price-row">
+                                        <span class="tech-price-current">@FormatPrice(line.FinalUnitAmount, line.Currency)</span>
+                                        @if (line.CompareAtUnitAmount is > 0m && line.CompareAtUnitAmount > line.FinalUnitAmount)
+                                        {
+                                            <span class="tech-price-compare">@FormatPrice(line.CompareAtUnitAmount.Value, line.Currency)</span>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="tech-cart-line-controls">
+                                    <label class="tech-field">
+                                        <span>Quantity</span>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value="@GetQuantityValue(line.VariantId)"
+                                            @onchange="args => UpdateLocalQuantity(line.VariantId, args.Value?.ToString())" />
+                                    </label>
+
+                                    <div class="cart-actions">
+                                        <button type="button" class="btn-secondary" @onclick="() => UpdateQuantityAsync(line.VariantId)">Update</button>
+                                        <button type="button" class="btn-link danger" @onclick="() => RemoveItemAsync(line.VariantId)">Remove</button>
+                                    </div>
+                                </div>
+
+                                <div class="tech-cart-line-total">
+                                    <strong>@FormatPrice(line.LineTotalAmount, line.Currency)</strong>
+                                    @if (line.DiscountTotalAmount > 0m)
+                                    {
+                                        <p class="tech-inline-meta">Saved @FormatPrice(line.DiscountTotalAmount, line.Currency)</p>
+                                    }
+                                </div>
+                            </article>
+                        }
+                    </div>
+                </section>
+            </div>
+
+            <aside class="tech-cart-aside">
+                <section class="tech-detail-card tech-summary-card">
+                    <div class="tech-detail-card-header">
+                        <p class="tech-eyebrow">Summary</p>
+                        <h2>Order totals</h2>
+                    </div>
+
+                    <div class="tech-summary-list">
+                        <div class="tech-summary-row">
+                            <span>Subtotal before discounts</span>
+                            <strong>@FormatPrice(cart.SubtotalBeforeDiscountAmount, cart.Currency)</strong>
+                        </div>
+                        @if (cart.LineDiscountTotalAmount > 0m)
+                        {
+                            <div class="tech-summary-row">
+                                <span>Line discounts</span>
+                                <strong>-@FormatPrice(cart.LineDiscountTotalAmount, cart.Currency)</strong>
+                            </div>
+                        }
+                        @if (cart.CartDiscountTotalAmount > 0m)
+                        {
+                            <div class="tech-summary-row">
+                                <span>Cart discounts</span>
+                                <strong>-@FormatPrice(cart.CartDiscountTotalAmount, cart.Currency)</strong>
+                            </div>
+                        }
+                        <div class="tech-summary-row tech-summary-row-total">
+                            <span>Total</span>
+                            <strong>@FormatPrice(totalAmount, cart.Currency)</strong>
+                        </div>
+                    </div>
+
+                    @if (cart.AppliedDiscounts.Count > 0)
+                    {
+                        <ul class="tech-summary-bullets">
+                            @foreach (var discount in cart.AppliedDiscounts)
+                            {
+                                <li>@discount.Description: -@FormatPrice(discount.Amount, discount.Currency)</li>
+                            }
+                        </ul>
+                    }
+
+                    <a class="tech-button tech-button-primary tech-button-block" href="/checkout">Proceed to checkout</a>
+                </section>
+
+                <MiniCartDrawer
+                    Items="BuildMiniCartItems()"
+                    Subtotal="@totalAmount"
+                    Currency="@cart.Currency"
+                    Eyebrow="Mini cart"
+                    Title="Compact order view"
+                    PrimaryActionHref="/checkout"
+                    PrimaryActionLabel="Continue to checkout"
+                    ShowSecondaryAction="false" />
+            </aside>
+        </div>
+    }
+</div>
 
 @code {
     private StoreCart? cart;
@@ -144,6 +209,7 @@ else
     private string customerId = string.Empty;
     private Dictionary<Guid, int> quantities = [];
     private string couponCode = string.Empty;
+    private readonly IReadOnlyList<string> checkoutSteps = ["Bag", "Shipping", "Payment", "Review"];
 
     protected override async Task OnInitializedAsync()
     {
@@ -220,6 +286,19 @@ else
     private int GetQuantityValue(Guid variantId)
     {
         return quantities.TryGetValue(variantId, out var quantity) ? quantity : 1;
+    }
+
+    private IReadOnlyCollection<MiniCartDrawer.MiniCartLine> BuildMiniCartItems()
+    {
+        return cart?.Lines
+            .Select(line => new MiniCartDrawer.MiniCartLine(
+                line.ProductName,
+                line.VariantName ?? "Configured product",
+                line.LineTotalAmount,
+                line.Currency,
+                line.ImageUrl))
+            .ToArray()
+            ?? [];
     }
 
     private static string FormatPrice(decimal amount, string currency)

@@ -13,154 +13,223 @@
 
 <SeoHead Metadata="metadata" JsonLdScripts="jsonLdScripts" />
 
-<Breadcrumbs Items="breadcrumbs" />
+<div class="tech-product-page">
+    <Breadcrumbs Items="breadcrumbs" />
 
-@if (isLoading)
-{
-    <p>Loading product...</p>
-}
-else if (product is null || !product.IsActive || !string.Equals(product.Currency, "EUR", StringComparison.Ordinal))
-{
-    <h1>Product not found</h1>
-    <p>The product could not be found.</p>
-}
-else
-{
-    <article class="product-details">
-        <div class="product-gallery">
-            @if (!string.IsNullOrWhiteSpace(selectedImageUrl))
-            {
-                <ResponsiveImage
-                    Source="@selectedImageUrl"
-                    Alt="@selectedImageAlt"
-                    Preset="MediaImagePreset.ProductHero"
-                    CssClass="product-image"
-                    Priority="true" />
-            }
-
-            @if (galleryImages.Count > 1)
-            {
-                <div class="product-gallery-thumbs">
-                    @foreach (var image in galleryImages)
+    @if (isLoading)
+    {
+        <section class="tech-empty-panel">
+            <p class="tech-eyebrow">Loading</p>
+            <h1>Preparing product details</h1>
+            <p>We are fetching the latest product information from the catalog.</p>
+        </section>
+    }
+    else if (product is null || !product.IsActive || !string.Equals(product.Currency, "EUR", StringComparison.Ordinal))
+    {
+        <section class="tech-empty-panel">
+            <p class="tech-eyebrow">Unavailable</p>
+            <h1>Product not found</h1>
+            <p>The requested product could not be loaded from the live catalog.</p>
+            <a class="tech-button tech-button-primary" href="/search">Browse the collection</a>
+        </section>
+    }
+    else
+    {
+        <article class="product-details tech-product-details">
+            <div class="product-gallery tech-product-gallery">
+                <div class="tech-product-media-shell">
+                    @if (!string.IsNullOrWhiteSpace(selectedImageUrl))
                     {
-                        <button type="button" class="btn-link" @onclick="() => SelectImage(image.SourceUrl, image.AltText)">
-                            <ResponsiveImage
-                                Source="@image.SourceUrl"
-                                Alt="@(image.AltText ?? product.Name)"
-                                Preset="MediaImagePreset.ProductCard"
-                                CssClass="card-image" />
-                        </button>
+                        <ResponsiveImage
+                            Source="@selectedImageUrl"
+                            Alt="@selectedImageAlt"
+                            Preset="MediaImagePreset.ProductHero"
+                            CssClass="product-image"
+                            Priority="true" />
+                    }
+                    else
+                    {
+                        <div class="tech-product-placeholder" aria-hidden="true"></div>
                     }
                 </div>
-            }
-        </div>
 
-        <div class="product-copy">
-            <h1>@product.Name</h1>
-
-            @if (product.CategoryBreadcrumbs.Count > 0)
-            {
-                <p class="meta">@string.Join(" / ", product.CategoryBreadcrumbs.Select(item => item.Name))</p>
-            }
-
-            @if (!string.IsNullOrWhiteSpace(product.Brand))
-            {
-                <p>Brand: <strong>@product.Brand</strong></p>
-            }
-
-            <p>@(string.IsNullOrWhiteSpace(product.Description) ? "No description provided." : product.Description)</p>
-            <p class="price">
-                @if (selectedCompareAtAmount is > 0m && selectedCompareAtAmount > selectedAmount)
+                @if (galleryImages.Count > 1)
                 {
-                    <span class="price-compare">@FormatPrice(selectedCompareAtAmount.Value, selectedCurrency)</span>
+                    <div class="product-gallery-thumbs tech-product-thumbs">
+                        @foreach (var image in galleryImages)
+                        {
+                            var isSelectedImage = string.Equals(selectedImageUrl, image.SourceUrl, StringComparison.OrdinalIgnoreCase);
+                            <button type="button" class="tech-thumb @(isSelectedImage ? "selected" : string.Empty)" @onclick="() => SelectImage(image.SourceUrl, image.AltText)">
+                                <ResponsiveImage
+                                    Source="@image.SourceUrl"
+                                    Alt="@(image.AltText ?? product.Name)"
+                                    Preset="MediaImagePreset.ProductCard"
+                                    CssClass="card-image" />
+                            </button>
+                        }
+                    </div>
                 }
-                <span>@FormatPrice(selectedAmount, selectedCurrency)</span>
-            </p>
+            </div>
 
-            @if (reviewSummary is not null && reviewSummary.ApprovedReviewCount > 0)
-            {
-                <div class="meta">
-                    <RatingStars Value="reviewSummary.AverageRating" />
-                    <span>@reviewSummary.AverageRating.ToString("0.0")/5 from @reviewSummary.ApprovedReviewCount review(s)</span>
+            <div class="product-copy tech-product-copy">
+                <div class="tech-product-heading">
+                    <p class="tech-eyebrow">@(product.CategoryName ?? product.Brand ?? "Flagship hardware")</p>
+                    <div class="tech-product-title-row">
+                        <h1>@product.Name</h1>
+                        <span class="tech-chip @GetStockChipClass()">@GetStockStatusLabel()</span>
+                    </div>
+                    <div class="tech-product-meta">
+                        @if (!string.IsNullOrWhiteSpace(product.Brand))
+                        {
+                            <span>@product.Brand</span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(selectedSku))
+                        {
+                            <span>SKU @selectedSku</span>
+                        }
+                        @if (reviewSummary is not null && reviewSummary.ApprovedReviewCount > 0)
+                        {
+                            <span>@reviewSummary.AverageRating.ToString("0.0")/5 from @reviewSummary.ApprovedReviewCount review(s)</span>
+                        }
+                    </div>
                 </div>
-            }
 
-            @if (!string.IsNullOrWhiteSpace(selectedSku))
-            {
-                <p>SKU: @selectedSku</p>
-            }
+                <p class="tech-product-description">
+                    @(string.IsNullOrWhiteSpace(product.Description)
+                        ? "Designed for shoppers who expect premium materials, disciplined detail, and clear technical positioning."
+                        : product.Description)
+                </p>
 
-            @if (optionNames.Count > 0)
-            {
-                <section class="admin-panel">
-                    <h2>Choose options</h2>
-                    @foreach (var optionName in optionNames)
-                    {
-                        <label>
-                            @optionName
-                            <select value="@GetSelectedOptionValue(optionName)" @onchange="args => SelectOption(optionName, args.Value?.ToString())">
-                                @foreach (var value in GetOptionValues(optionName))
-                                {
-                                    <option value="@value">@value</option>
-                                }
-                            </select>
-                        </label>
-                    }
-                </section>
-            }
+                <div class="tech-price-stack">
+                    <div class="tech-price-row">
+                        <span class="tech-price-current">@FormatPrice(selectedAmount, selectedCurrency)</span>
+                        @if (selectedCompareAtAmount is > 0m && selectedCompareAtAmount > selectedAmount)
+                        {
+                            <span class="tech-price-compare">@FormatPrice(selectedCompareAtAmount.Value, selectedCurrency)</span>
+                        }
+                    </div>
+                    <p class="tech-inline-meta">@GetAvailabilityDescription()</p>
+                </div>
 
-            <p>Status: @GetStockStatusLabel()</p>
+                <div class="tech-spec-row">
+                    <article class="tech-spec-item">
+                        <span>Fulfilment</span>
+                        <strong>24-48H</strong>
+                        <small>insured EU dispatch</small>
+                    </article>
+                    <article class="tech-spec-item">
+                        <span>Service</span>
+                        <strong>CARE+</strong>
+                        <small>returns and support guidance</small>
+                    </article>
+                    <article class="tech-spec-item">
+                        <span>Packaging</span>
+                        <strong>PREMIUM</strong>
+                        <small>protected presentation</small>
+                    </article>
+                </div>
 
-            @if (!string.IsNullOrWhiteSpace(selectionMessage))
-            {
-                <p class="status-message warning">@selectionMessage</p>
-            }
+                @if (optionNames.Count > 0)
+                {
+                    <section class="tech-detail-card">
+                        <div class="tech-detail-card-header">
+                            <p class="tech-eyebrow">Configuration</p>
+                            <h2>Choose your setup</h2>
+                        </div>
 
-            <AddToCartButton
-                ProductId="product.Id"
-                VariantId="@(selectedVariant?.Id ?? product.DefaultVariantId)"
-                Disabled="@IsAddToCartDisabled()"
-                DisabledMessage="This product is currently out of stock."
-                @rendermode="InteractiveServer" />
-        </div>
+                        <div class="tech-option-grid">
+                            @foreach (var optionName in optionNames)
+                            {
+                                <label class="tech-field">
+                                    <span>@optionName</span>
+                                    <select value="@GetSelectedOptionValue(optionName)" @onchange="args => SelectOption(optionName, args.Value?.ToString())">
+                                        @foreach (var value in GetOptionValues(optionName))
+                                        {
+                                            <option value="@value">@value</option>
+                                        }
+                                    </select>
+                                </label>
+                            }
+                        </div>
+                    </section>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(selectionMessage))
+                {
+                    <p class="status-message warning">@selectionMessage</p>
+                }
+
+                <AddToCartButton
+                    ProductId="product.Id"
+                    VariantId="@(selectedVariant?.Id ?? product.DefaultVariantId)"
+                    Disabled="@IsAddToCartDisabled()"
+                    DisabledMessage="This product is currently out of stock."
+                    @rendermode="InteractiveServer" />
+            </div>
+        </article>
 
         @if (groupedAttributes.Count > 0)
         {
-            <section class="admin-panel">
-                <h2>Specifications</h2>
-                @foreach (var group in groupedAttributes)
-                {
-                    <h3>@group.Key</h3>
-                    <table class="cart-table">
-                        <tbody>
-                            @foreach (var attribute in group.Value)
-                            {
-                                <tr>
-                                    <th>@(attribute.Name)</th>
-                                    <td>@(attribute.Value)</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                }
+            <section class="tech-detail-card tech-detail-section">
+                <div class="tech-section-header">
+                    <div>
+                        <p class="tech-eyebrow">Specifications</p>
+                        <h2>Technical details presented with the same clarity as the product itself.</h2>
+                    </div>
+                </div>
+
+                <div class="tech-spec-groups">
+                    @foreach (var group in groupedAttributes)
+                    {
+                        <article class="tech-spec-group-card">
+                            <h3>@group.Key</h3>
+                            <table class="cart-table tech-spec-table">
+                                <tbody>
+                                    @foreach (var attribute in group.Value)
+                                    {
+                                        <tr>
+                                            <th>@(attribute.Name)</th>
+                                            <td>@(attribute.Value)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </article>
+                    }
+                </div>
             </section>
         }
 
         @if (product.RelatedProducts.Count > 0)
         {
-            <section class="admin-panel">
-                <h2>Related products</h2>
-                <div class="grid">
+            <section class="tech-section">
+                <div class="tech-section-header">
+                    <div>
+                        <p class="tech-eyebrow">Featured collection</p>
+                        <h2>Products that extend the same material and performance ecosystem.</h2>
+                    </div>
+                </div>
+
+                <div class="product-grid">
                     @foreach (var related in product.RelatedProducts)
                     {
-                        <article class="card">
-                            <ResponsiveImage
-                                Source="@related.ImageUrl"
-                                Alt="@related.Name"
-                                Preset="MediaImagePreset.ProductCard"
-                                CssClass="card-image" />
-                            <h3><a href="/product/@related.Slug">@related.Name</a></h3>
-                            <p class="price">@FormatPrice(related.Amount, related.Currency)</p>
+                        <article class="product-card">
+                            <a class="product-card-media" href="/product/@related.Slug">
+                                <ResponsiveImage
+                                    Source="@related.ImageUrl"
+                                    Alt="@related.Name"
+                                    Preset="MediaImagePreset.ProductCard"
+                                    CssClass="product-card-image" />
+                            </a>
+                            <div class="product-card-copy">
+                                <p class="product-card-kicker">Related product</p>
+                                <h3 class="product-card-title"><a href="/product/@related.Slug">@related.Name</a></h3>
+                                <p class="product-card-description">Designed to complement the primary setup without adding visual clutter.</p>
+                                <div class="product-card-meta-row">
+                                    <span class="product-card-price">@FormatPrice(related.Amount, related.Currency)</span>
+                                    <a class="product-card-cta" href="/product/@related.Slug">Open product</a>
+                                </div>
+                            </div>
                         </article>
                     }
                 </div>
@@ -169,26 +238,31 @@ else
 
         @if (reviewsEnabled)
         {
-        <section class="admin-panel">
-            <h2>Ratings and reviews</h2>
+        <section class="tech-detail-card tech-detail-section">
+            <div class="tech-section-header">
+                <div>
+                    <p class="tech-eyebrow">Review proof</p>
+                    <h2>Ratings and reviews stay part of the product story, not an afterthought.</h2>
+                </div>
+            </div>
 
             @if (reviewSummary is null || reviewSummary.ApprovedReviewCount == 0)
             {
-                <p>No approved reviews yet.</p>
+                <p class="empty-state tech-empty-state">No approved reviews yet.</p>
             }
             else
             {
-                <div class="form-grid">
-                    <div>
-                        <p class="price">@reviewSummary.AverageRating.ToString("0.0")/5</p>
+                <div class="tech-review-summary">
+                    <div class="tech-review-summary-score">
+                        <p class="tech-price-current">@reviewSummary.AverageRating.ToString("0.0")/5</p>
                         <RatingStars Value="reviewSummary.AverageRating" />
                         <p>@reviewSummary.ApprovedReviewCount approved review(s)</p>
                     </div>
-                    <div>
+                    <div class="tech-review-bars">
                         @foreach (var star in Enumerable.Range(1, 5).Reverse())
                         {
                             var count = GetReviewCountForRating(star);
-                            <div class="meta">
+                            <div class="tech-review-bar">
                                 <span>@star star</span>
                                 <progress max="@Math.Max(1, reviewSummary.ApprovedReviewCount)" value="@count"></progress>
                                 <span>@count</span>
@@ -198,16 +272,16 @@ else
                 </div>
             }
 
-            <div class="cart-actions">
-                <label>
-                    Sort reviews
+            <div class="tech-toolbar">
+                <label class="tech-field">
+                    <span>Sort reviews</span>
                     <select @bind="reviewSort" @bind:after="LoadReviewsAsync">
                         <option value="newest">Newest</option>
                         <option value="most-helpful">Most helpful</option>
                     </select>
                 </label>
-                <label>
-                    Filter rating
+                <label class="tech-field">
+                    <span>Filter rating</span>
                     <select @bind="reviewRatingFilter" @bind:after="LoadReviewsAsync">
                         <option value="">All ratings</option>
                         <option value="5">5 stars</option>
@@ -221,24 +295,24 @@ else
 
             @if (isReviewsLoading)
             {
-                <p>Loading reviews...</p>
+                <p class="empty-state tech-empty-state">Loading reviews...</p>
             }
             else if (reviewPage.Items.Count == 0)
             {
-                <p>No reviews match the current filters.</p>
+                <p class="empty-state tech-empty-state">No reviews match the current filters.</p>
             }
             else
             {
-                <div class="order-list">
+                <div class="order-list tech-review-list">
                     @foreach (var review in reviewPage.Items)
                     {
-                        <article class="order-card">
+                        <article class="order-card tech-review-card">
                             <header>
                                 <div>
                                     <strong>@review.DisplayName</strong>
                                     @if (review.IsVerifiedPurchase)
                                     {
-                                        <span class="status-message">Verified purchase</span>
+                                        <span class="tech-chip tech-chip-success">Verified purchase</span>
                                     }
                                 </div>
                                 <p>@review.CreatedAtUtc.ToString("yyyy-MM-dd")</p>
@@ -251,7 +325,7 @@ else
 
                             @if (!string.IsNullOrWhiteSpace(review.VariantName))
                             {
-                                <p class="meta">Reviewed variant: @review.VariantName</p>
+                                <p class="tech-inline-meta">Reviewed variant: @review.VariantName</p>
                             }
 
                             @if (!string.IsNullOrWhiteSpace(review.Body))
@@ -277,14 +351,14 @@ else
                     }
                 </div>
 
-                <div class="cart-actions">
+                <div class="pagination tech-pagination">
                     <button class="btn-secondary" type="button" disabled="@(reviewPage.Page <= 1)" @onclick="PreviousReviewPageAsync">Previous</button>
-                    <span>Page @reviewPage.Page of @reviewPage.TotalPages</span>
+                    <span class="page-indicator">Page @reviewPage.Page of @reviewPage.TotalPages</span>
                     <button class="btn-secondary" type="button" disabled="@(reviewPage.Page >= reviewPage.TotalPages)" @onclick="NextReviewPageAsync">Next</button>
                 </div>
             }
 
-            <div class="admin-panel">
+            <div class="tech-form-card">
                 <h3>Write a review</h3>
                 @if (currentCustomer is null)
                 {
@@ -294,11 +368,11 @@ else
                 else
                 {
                     <EditForm Model="reviewForm" OnValidSubmit="SubmitReviewAsync">
-                        <div class="form-grid">
+                        <div class="form-grid tech-form-grid">
                             @if (product.Variants.Count > 1)
                             {
-                                <label>
-                                    Variant
+                                <label class="tech-field">
+                                    <span>Variant</span>
                                     <select @bind="reviewForm.VariantId">
                                         <option value="">Default product</option>
                                         @foreach (var variant in product.Variants.Where(item => item.IsActive))
@@ -308,8 +382,8 @@ else
                                     </select>
                                 </label>
                             }
-                            <label>
-                                Rating
+                            <label class="tech-field">
+                                <span>Rating</span>
                                 <select @bind="reviewForm.Rating">
                                     @foreach (var rating in Enumerable.Range(1, 5).Reverse())
                                     {
@@ -317,12 +391,12 @@ else
                                     }
                                 </select>
                             </label>
-                            <label>
-                                Title
+                            <label class="tech-field">
+                                <span>Title</span>
                                 <InputText @bind-Value="reviewForm.Title" />
                             </label>
-                            <label>
-                                Review
+                            <label class="tech-field tech-field-full">
+                                <span>Review</span>
                                 <InputTextArea @bind-Value="reviewForm.Body" />
                             </label>
                         </div>
@@ -337,23 +411,28 @@ else
             </div>
         </section>
 
-        <section class="admin-panel">
-            <h2>Product Q&amp;A</h2>
+        <section class="tech-detail-card tech-detail-section">
+            <div class="tech-section-header">
+                <div>
+                    <p class="tech-eyebrow">Product Q&amp;A</p>
+                    <h2>Keep buying questions close to the product, with clear public answers.</h2>
+                </div>
+            </div>
 
             @if (isQuestionsLoading)
             {
-                <p>Loading questions...</p>
+                <p class="empty-state tech-empty-state">Loading questions...</p>
             }
             else if (questionPage.Items.Count == 0)
             {
-                <p>No approved questions yet.</p>
+                <p class="empty-state tech-empty-state">No approved questions yet.</p>
             }
             else
             {
-                <div class="order-list">
+                <div class="order-list tech-question-list">
                     @foreach (var question in questionPage.Items)
                     {
-                        <article class="order-card">
+                        <article class="order-card tech-question-card">
                             <header>
                                 <strong>@question.DisplayName</strong>
                                 <p>@question.CreatedAtUtc.ToString("yyyy-MM-dd")</p>
@@ -362,19 +441,21 @@ else
 
                             @if (question.Answers.Count == 0)
                             {
-                                <p class="meta">No public answers yet.</p>
+                                <p class="tech-inline-meta">No public answers yet.</p>
                             }
                             else
                             {
-                                <ul>
+                                <ul class="tech-answer-list">
                                     @foreach (var answer in question.Answers.Where(item => string.Equals(item.Status, "Approved", StringComparison.OrdinalIgnoreCase)))
                                     {
                                         <li>
-                                            <strong>@answer.DisplayName</strong>
-                                            @if (answer.IsOfficialAnswer)
-                                            {
-                                                <span class="status-message">Official answer</span>
-                                            }
+                                            <div class="tech-answer-header">
+                                                <strong>@answer.DisplayName</strong>
+                                                @if (answer.IsOfficialAnswer)
+                                                {
+                                                    <span class="tech-chip tech-chip-accent">Official answer</span>
+                                                }
+                                            </div>
                                             <div>@answer.AnswerText</div>
                                         </li>
                                     }
@@ -383,9 +464,9 @@ else
 
                             @if (currentCustomer is not null)
                             {
-                                <div class="form-grid">
-                                    <label>
-                                        Add answer
+                                <div class="form-grid tech-form-grid">
+                                    <label class="tech-field tech-field-full">
+                                        <span>Add answer</span>
                                         <InputTextArea Value="@GetPendingAnswer(question.Id)" ValueChanged="value => SetPendingAnswer(question.Id, value)" />
                                     </label>
                                 </div>
@@ -396,13 +477,13 @@ else
                 </div>
             }
 
-            <div class="cart-actions">
+            <div class="pagination tech-pagination">
                 <button class="btn-secondary" type="button" disabled="@(questionPage.Page <= 1)" @onclick="PreviousQuestionPageAsync">Previous</button>
-                <span>Page @questionPage.Page of @questionPage.TotalPages</span>
+                <span class="page-indicator">Page @questionPage.Page of @questionPage.TotalPages</span>
                 <button class="btn-secondary" type="button" disabled="@(questionPage.Page >= questionPage.TotalPages)" @onclick="NextQuestionPageAsync">Next</button>
             </div>
 
-            <div class="admin-panel">
+            <div class="tech-form-card">
                 <h3>Ask a question</h3>
                 @if (currentCustomer is null)
                 {
@@ -412,9 +493,9 @@ else
                 else
                 {
                     <EditForm Model="questionForm" OnValidSubmit="SubmitQuestionAsync">
-                        <div class="form-grid">
-                            <label>
-                                Question
+                        <div class="form-grid tech-form-grid">
+                            <label class="tech-field tech-field-full">
+                                <span>Question</span>
                                 <InputTextArea @bind-Value="questionForm.QuestionText" />
                             </label>
                         </div>
@@ -429,8 +510,8 @@ else
             </div>
         </section>
         }
-    </article>
-}
+    }
+</div>
 
 @code {
     [Parameter]
@@ -593,6 +674,53 @@ else
         }
 
         return selectedVariant.IsInStock ? "In stock" : "Out of stock";
+    }
+
+    private string GetStockChipClass()
+    {
+        if (selectedVariant is null)
+        {
+            return product?.IsInStock == true ? "tech-chip-success" : "tech-chip-muted";
+        }
+
+        if (!selectedVariant.IsTracked)
+        {
+            return "tech-chip-success";
+        }
+
+        if (selectedVariant.AllowBackorder && selectedVariant.AvailableQuantity <= 0)
+        {
+            return "tech-chip-accent";
+        }
+
+        return selectedVariant.IsInStock ? "tech-chip-success" : "tech-chip-muted";
+    }
+
+    private string GetAvailabilityDescription()
+    {
+        if (selectedVariant is null)
+        {
+            return product?.IsInStock == true
+                ? "Ready for dispatch with premium post-purchase support."
+                : "Currently unavailable. Check back for the next stock allocation.";
+        }
+
+        if (!selectedVariant.IsTracked)
+        {
+            return "Available for purchase without tracked stock limits.";
+        }
+
+        if (selectedVariant.AllowBackorder && selectedVariant.AvailableQuantity <= 0)
+        {
+            return "Backorder is enabled for this configuration.";
+        }
+
+        if (selectedVariant.IsInStock && selectedVariant.AvailableQuantity is > 0)
+        {
+            return $"{selectedVariant.AvailableQuantity} unit(s) currently available.";
+        }
+
+        return "Currently unavailable. Try another configuration.";
     }
 
     private bool IsAddToCartDisabled()

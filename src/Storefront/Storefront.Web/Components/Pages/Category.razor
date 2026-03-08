@@ -5,6 +5,7 @@
 @using Storefront.Web.Services.Api
 @using Storefront.Web.Services.Seo
 @inject IStoreApiClient StoreApiClient
+@inject ILogger<Category> Logger
 @inject IPageMetadataService MetadataService
 @inject ICanonicalUrlService CanonicalUrlService
 @inject IStructuredDataService StructuredDataService
@@ -15,61 +16,80 @@
     NextUrl="@canonicalUrls?.NextUrl"
     JsonLdScripts="jsonLdScripts" />
 
-<Breadcrumbs Items="breadcrumbs" />
+<div class="tech-listing-page">
+    <Breadcrumbs Items="breadcrumbs" />
 
-<section>
-    <h1>@categoryTitle</h1>
-    <p>Browse products in this category.</p>
-</section>
+    <section class="listing-intro-panel tech-listing-intro">
+        <p class="tech-eyebrow">Collection</p>
+        <h1>@categoryTitle</h1>
+        <p>Backend-powered category browsing with a calmer technology-brand layout, clearer filtering, and more visual room per product.</p>
+        <div class="listing-intro-meta">
+            <span>@response.Total product@(response.Total == 1 ? string.Empty : "s") available</span>
+            <span>@(selectedInStock is true ? "In-stock filter active" : "All availability")</span>
+        </div>
+    </section>
 
-<ActiveFilterChips Chips="chips" ClearAllUrl="@clearFiltersUrl" />
+    <ActiveFilterChips Chips="chips" ClearAllUrl="@clearFiltersUrl" />
 
-<section class="listing-layout">
-    <FacetSidebar
-        BrandOptions="brandOptions"
-        CategoryOptions="[]"
-        InStockUrl="@inStockUrl"
-        InStockSelected="@(selectedInStock is true)"
-        InStockCount="@response.Facets.InStockCount"
-        MinAvailable="@response.Facets.Price.MinAvailable"
-        MaxAvailable="@response.Facets.Price.MaxAvailable" />
+    <section class="listing-layout tech-listing-layout">
+        <FacetSidebar
+            BrandOptions="brandOptions"
+            CategoryOptions="[]"
+            InStockUrl="@inStockUrl"
+            InStockSelected="@(selectedInStock is true)"
+            InStockCount="@response.Facets.InStockCount"
+            MinAvailable="@response.Facets.Price.MinAvailable"
+            MaxAvailable="@response.Facets.Price.MaxAvailable" />
 
-    <div class="listing-main">
-        <SortDropdown Options="sortOptions" />
+        <div class="listing-main">
+            <SortDropdown Options="sortOptions" />
 
-        <form class="price-filter-form" method="get" action="/category/@Slug">
-            @foreach (var brand in selectedBrands)
+            @if (!string.IsNullOrWhiteSpace(loadErrorMessage))
             {
-                <input type="hidden" name="brand" value="@brand" />
+                <section class="tech-empty-panel">
+                    <p class="tech-eyebrow">Collection unavailable</p>
+                    <h2>We could not load this category right now.</h2>
+                    <p>@loadErrorMessage</p>
+                    <a class="tech-button tech-button-primary" href="/search">Browse all products</a>
+                </section>
             }
-
-            @if (selectedInStock is true)
+            else
             {
-                <input type="hidden" name="inStock" value="true" />
+                <form class="price-filter-form" method="get" action="/category/@Slug">
+                    @foreach (var brand in selectedBrands)
+                    {
+                        <input type="hidden" name="brand" value="@brand" />
+                    }
+
+                    @if (selectedInStock is true)
+                    {
+                        <input type="hidden" name="inStock" value="true" />
+                    }
+
+                    @if (!IsDefaultSort(selectedSort))
+                    {
+                        <input type="hidden" name="sort" value="@selectedSort" />
+                    }
+
+                    <label>
+                        Min EUR
+                        <input type="number" step="0.01" min="0" name="minPrice" value="@minPriceInput" />
+                    </label>
+                    <label>
+                        Max EUR
+                        <input type="number" step="0.01" min="0" name="maxPrice" value="@maxPriceInput" />
+                    </label>
+                    <button type="submit">Apply price</button>
+                    <a href="@BuildPriceResetUrl()">Clear price</a>
+                </form>
+
+                <ProductGrid Items="response.Items" EmptyMessage="No products found in this category." />
+
+                <Pagination CurrentPage="@response.Page" TotalPages="@response.TotalPages" BuildUrl="BuildPageUrl" />
             }
-
-            @if (!IsDefaultSort(selectedSort))
-            {
-                <input type="hidden" name="sort" value="@selectedSort" />
-            }
-
-            <label>
-                Min EUR
-                <input type="number" step="0.01" min="0" name="minPrice" value="@minPriceInput" />
-            </label>
-            <label>
-                Max EUR
-                <input type="number" step="0.01" min="0" name="maxPrice" value="@maxPriceInput" />
-            </label>
-            <button type="submit">Apply price</button>
-            <a href="@BuildPriceResetUrl()">Clear price</a>
-        </form>
-
-        <ProductGrid Items="response.Items" EmptyMessage="No products found in this category." />
-
-        <Pagination CurrentPage="@response.Page" TotalPages="@response.TotalPages" BuildUrl="BuildPageUrl" />
-    </div>
-</section>
+        </div>
+    </section>
+</div>
 
 @code {
     private static readonly IReadOnlyCollection<SortDefinition> CategorySortDefinitions =
@@ -121,6 +141,7 @@
     private string clearFiltersUrl = "/";
     private string minPriceInput = string.Empty;
     private string maxPriceInput = string.Empty;
+    private string? loadErrorMessage;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -130,18 +151,34 @@
         selectedPage = NormalizePage(Page);
         selectedSort = NormalizeCategorySort(Sort);
 
-        response = await StoreApiClient.SearchProductsAsync(
-            new StoreSearchProductsRequest(
-                Query: null,
-                CategorySlug: Slug,
-                Brands: selectedBrands,
-                MinPrice: selectedMinPrice,
-                MaxPrice: selectedMaxPrice,
-                InStock: selectedInStock,
-                Sort: selectedSort,
-                Page: selectedPage,
-                PageSize: 24),
-            CancellationToken.None);
+        try
+        {
+            response = await StoreApiClient.SearchProductsAsync(
+                new StoreSearchProductsRequest(
+                    Query: null,
+                    CategorySlug: Slug,
+                    Brands: selectedBrands,
+                    MinPrice: selectedMinPrice,
+                    MaxPrice: selectedMaxPrice,
+                    InStock: selectedInStock,
+                    Sort: selectedSort,
+                    Page: selectedPage,
+                    PageSize: 24),
+                CancellationToken.None);
+            loadErrorMessage = null;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogWarning(
+                exception,
+                "Failed to load category listing. Category={CategorySlug} Sort={Sort} Page={Page}",
+                Slug,
+                selectedSort,
+                selectedPage);
+
+            response = EmptyResponse();
+            loadErrorMessage = "This collection is temporarily unavailable. Please refresh in a moment.";
+        }
 
         selectedBrands = response.AppliedFilters.Brands;
         selectedMinPrice = response.AppliedFilters.MinPrice;

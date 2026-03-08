@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Maison Solenne | Premium Luxury Storefront Starter</title>
+  <meta
+    name="description"
+    content="Luxury editorial storefront starter for a Blazor e-commerce application, designed with restrained warmth, generous whitespace, and premium commerce patterns."
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            luxe: {
+              canvas: "#f6f1e8",
+              surface: "#fbf8f3",
+              surfaceAlt: "#f0e8dc",
+              line: "#ddd2c5",
+              ink: "#161311",
+              soft: "#6d645b",
+              accent: "#b79a66",
+              accentSoft: "#efe1c2",
+              smoke: "#2a2420",
+              sand: "#e6dbcc",
+              moss: "#8d8677"
+            }
+          },
+          fontFamily: {
+            display: ["Cormorant Garamond", "serif"],
+            sans: ["Manrope", "ui-sans-serif", "system-ui", "sans-serif"]
+          },
+          boxShadow: {
+            luxe: "0 24px 60px rgba(22, 19, 17, 0.08)",
+            soft: "0 14px 32px rgba(22, 19, 17, 0.05)"
+          },
+          maxWidth: {
+            shell: "84rem"
+          },
+          letterSpacing: {
+            luxe: "0.32em"
+          }
+        }
+      }
+    };
+  </script>
+  <style type="text/tailwindcss">
+    @layer base {
+      html {
+        @apply bg-luxe-canvas;
+      }
+
+      body {
+        @apply bg-luxe-canvas font-sans text-luxe-ink antialiased;
+      }
+
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6 {
+        @apply font-display text-luxe-ink;
+      }
+
+      a {
+        @apply transition-colors duration-200;
+      }
+
+      summary::-webkit-details-marker {
+        display: none;
+      }
+    }
+
+    @layer components {
+      .shell {
+        @apply mx-auto max-w-shell px-4 sm:px-6 lg:px-8;
+      }
+
+      .section-space {
+        @apply py-16 sm:py-20 lg:py-24;
+      }
+
+      .surface-card {
+        @apply rounded-[2rem] border border-luxe-line bg-luxe-surface shadow-soft;
+      }
+
+      .surface-card-strong {
+        @apply rounded-[2rem] border border-luxe-line bg-luxe-surface shadow-luxe;
+      }
+
+      .surface-card-warm {
+        @apply rounded-[2rem] border border-luxe-line bg-luxe-surfaceAlt shadow-soft;
+      }
+
+      .surface-card-dark {
+        @apply rounded-[2rem] border border-luxe-smoke bg-luxe-smoke text-white shadow-luxe;
+      }
+
+      .eyebrow {
+        @apply text-[0.7rem] font-semibold uppercase tracking-luxe text-luxe-soft;
+      }
+
+      .eyebrow-accent {
+        @apply text-[0.7rem] font-semibold uppercase tracking-luxe text-luxe-accent;
+      }
+
+      .display-xl {
+        @apply font-display text-5xl leading-[0.92] tracking-[-0.04em] sm:text-6xl lg:text-7xl;
+      }
+
+      .display-lg {
+        @apply font-display text-4xl leading-[0.96] tracking-[-0.03em] sm:text-5xl;
+      }
+
+      .display-md {
+        @apply font-display text-3xl leading-tight tracking-[-0.02em] sm:text-4xl;
+      }
+
+      .section-heading {
+        @apply flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between;
+      }
+
+      .section-copy {
+        @apply max-w-2xl text-base leading-8 text-luxe-soft sm:text-lg;
+      }
+
+      .section-link {
+        @apply inline-flex items-center gap-2 text-sm font-semibold text-luxe-ink hover:text-luxe-accent;
+      }
+
+      .btn-primary {
+        @apply inline-flex min-h-12 items-center justify-center rounded-full bg-luxe-ink px-6 text-sm font-semibold text-white hover:bg-luxe-smoke focus:outline-none focus:ring-2 focus:ring-luxe-ink focus:ring-offset-2 focus:ring-offset-luxe-canvas;
+      }
+
+      .btn-secondary {
+        @apply inline-flex min-h-12 items-center justify-center rounded-full border border-luxe-line bg-white px-6 text-sm font-semibold text-luxe-ink hover:border-luxe-accent hover:text-luxe-accent focus:outline-none focus:ring-2 focus:ring-luxe-accent focus:ring-offset-2 focus:ring-offset-luxe-canvas;
+      }
+
+      .btn-quiet {
+        @apply inline-flex min-h-12 items-center justify-center rounded-full border border-white/15 bg-white/5 px-6 text-sm font-semibold text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-luxe-smoke;
+      }
+
+      .chip {
+        @apply inline-flex items-center rounded-full border border-luxe-line bg-white px-3 py-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-luxe-soft;
+      }
+
+      .chip-accent {
+        @apply inline-flex items-center rounded-full bg-luxe-accentSoft px-3 py-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-luxe-ink;
+      }
+
+      .field {
+        @apply h-12 w-full rounded-full border border-luxe-line bg-white px-5 text-sm text-luxe-ink placeholder:text-luxe-soft/80 focus:border-luxe-accent focus:outline-none focus:ring-2 focus:ring-luxe-accent/15;
+      }
+
+      .trust-item {
+        @apply rounded-[1.5rem] border border-luxe-line bg-white p-5;
+      }
+
+      .product-card {
+        @apply surface-card-strong overflow-hidden p-5;
+      }
+
+      .product-card-media {
+        @apply relative overflow-hidden rounded-[1.5rem] bg-luxe-sand;
+      }
+
+      .product-card-copy {
+        @apply mt-5 grid gap-3;
+      }
+
+      .product-card-title {
+        @apply text-[1.65rem] leading-none tracking-[-0.02em];
+      }
+
+      .category-card {
+        @apply surface-card overflow-hidden;
+      }
+
+      .category-card-body {
+        @apply grid gap-4 p-6 lg:p-7;
+      }
+
+      .swatch {
+        @apply h-24 rounded-[1.5rem] border border-luxe-line;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="min-h-screen">
+    <header class="sticky top-0 z-50 border-b border-luxe-line/80 bg-luxe-canvas/95 backdrop-blur">
+      <div class="border-b border-luxe-line bg-[#f1e9de]">
+        <div class="shell flex flex-col gap-3 py-3 text-sm text-luxe-soft sm:flex-row sm:items-center sm:justify-between">
+          <p>Complimentary gift wrapping and signature delivery on selected orders above EUR 250.</p>
+          <nav aria-label="Announcement links" class="flex flex-wrap items-center gap-5">
+            <a href="#journal" class="hover:text-luxe-ink">Journal</a>
+            <a href="#manifesto" class="hover:text-luxe-ink">Client Services</a>
+            <a href="#footer" class="hover:text-luxe-ink">Private Appointments</a>
+          </nav>
+        </div>
+      </div>
+
+      <div class="shell">
+        <div class="flex items-center gap-4 py-5">
+          <a href="#hero" class="shrink-0 text-[1.4rem] font-semibold tracking-[0.18em] text-luxe-ink sm:text-[1.55rem]">
+            MAISON SOLENNE
+          </a>
+
+          <nav aria-label="Primary" class="hidden min-w-0 flex-1 items-center justify-center lg:flex">
+            <ul class="flex items-center gap-8 text-sm font-medium text-luxe-soft">
+              <li><a href="#categories" class="hover:text-luxe-ink">New Season</a></li>
+              <li><a href="#signature-products" class="hover:text-luxe-ink">Collections</a></li>
+              <li><a href="#featured-collection" class="hover:text-luxe-ink">Home</a></li>
+              <li><a href="#listing-template" class="hover:text-luxe-ink">Beauty</a></li>
+              <li><a href="#journal" class="hover:text-luxe-ink">Journal</a></li>
+              <li><a href="#style-guide" class="hover:text-luxe-ink">Style Guide</a></li>
+            </ul>
+          </nav>
+
+          <form role="search" class="hidden max-w-sm flex-1 xl:block">
+            <label class="sr-only" for="store-search">Search the collection</label>
+            <input
+              id="store-search"
+              type="search"
+              placeholder="Search the collection"
+              class="field"
+            />
+          </form>
+
+          <nav aria-label="Account links" class="ml-auto hidden items-center gap-3 md:flex">
+            <a href="#product-details-template" class="text-sm font-medium text-luxe-soft hover:text-luxe-ink">Account</a>
+            <a href="#product-details-template" class="text-sm font-medium text-luxe-soft hover:text-luxe-ink">Wishlist</a>
+          </nav>
+
+          <a href="#mini-cart-drawer" class="inline-flex min-h-11 items-center gap-3 rounded-full border border-luxe-line bg-white px-4 text-sm font-semibold text-luxe-ink shadow-soft hover:border-luxe-accent">
+            Bag
+            <span class="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-luxe-ink px-2 text-xs font-semibold text-white">2</span>
+          </a>
+        </div>
+
+        <details class="border-t border-luxe-line py-4 lg:hidden">
+          <summary class="flex cursor-pointer items-center justify-between gap-4">
+            <span class="text-sm font-semibold uppercase tracking-[0.22em] text-luxe-soft">Mobile menu</span>
+            <span class="inline-flex min-h-11 items-center justify-center rounded-full border border-luxe-line bg-white px-4 text-sm font-semibold text-luxe-ink">
+              Browse
+            </span>
+          </summary>
+
+          <div class="grid gap-5 pt-5">
+            <form role="search">
+              <label class="sr-only" for="mobile-search">Search the collection</label>
+              <input
+                id="mobile-search"
+                type="search"
+                placeholder="Search the collection"
+                class="field"
+              />
+            </form>
+
+            <nav aria-label="Mobile primary">
+              <ul class="grid gap-3 text-base font-medium text-luxe-ink">
+                <li><a href="#categories" class="block rounded-[1.4rem] border border-luxe-line bg-white px-5 py-4">New Season</a></li>
+                <li><a href="#signature-products" class="block rounded-[1.4rem] border border-luxe-line bg-white px-5 py-4">Collections</a></li>
+                <li><a href="#featured-collection" class="block rounded-[1.4rem] border border-luxe-line bg-white px-5 py-4">Home</a></li>
+                <li><a href="#listing-template" class="block rounded-[1.4rem] border border-luxe-line bg-white px-5 py-4">Beauty</a></li>
+                <li><a href="#journal" class="block rounded-[1.4rem] border border-luxe-line bg-white px-5 py-4">Journal</a></li>
+                <li><a href="#mini-cart-drawer" class="block rounded-[1.4rem] border border-luxe-line bg-white px-5 py-4">Bag</a></li>
+              </ul>
+            </nav>
+          </div>
+        </details>
+      </div>
+    </header>
+
+    <main>
+      <section id="hero" class="section-space pb-10 sm:pb-12">
+        <div class="shell grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
+          <article class="surface-card-strong overflow-hidden bg-[#f3ede3] px-8 py-10 sm:px-10 sm:py-12 lg:px-14 lg:py-16">
+            <p class="chip">Curated luxury essentials</p>
+            <h1 class="display-xl mt-7 max-w-4xl">
+              A premium storefront shaped by atmosphere, confidence, and restraint.
+            </h1>
+            <p class="section-copy mt-7 max-w-2xl">
+              Maison Solenne is designed to feel like a contemporary European boutique: slower rhythm, larger visual blocks, polished product framing, and editorial spacing that raises perceived value before a single item is added to bag.
+            </p>
+
+            <div class="mt-8 flex flex-wrap gap-3">
+              <a href="#signature-products" class="btn-primary">Explore the collection</a>
+              <a href="#manifesto" class="btn-secondary">Discover the brand</a>
+            </div>
+
+            <dl class="mt-10 grid gap-4 sm:grid-cols-3">
+              <div class="trust-item">
+                <dt class="eyebrow">Delivery</dt>
+                <dd class="mt-3 text-sm font-semibold text-luxe-ink">White-glove EU dispatch in 2 to 4 days.</dd>
+              </div>
+              <div class="trust-item">
+                <dt class="eyebrow">Returns</dt>
+                <dd class="mt-3 text-sm font-semibold text-luxe-ink">Thoughtful 30-day returns and exchange support.</dd>
+              </div>
+              <div class="trust-item">
+                <dt class="eyebrow">Payments</dt>
+                <dd class="mt-3 text-sm font-semibold text-luxe-ink">Secure checkout with cards, wallets, and Klarna.</dd>
+              </div>
+            </dl>
+          </article>
+
+          <section class="grid gap-6" aria-label="Editorial highlights">
+            <figure class="surface-card overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&amp;fit=crop&amp;w=1400&amp;q=80"
+                alt="Warm interior with sculptural furniture, stone textures, and natural light"
+                class="h-72 w-full object-cover sm:h-80 lg:h-[25rem]"
+              />
+              <figcaption class="grid gap-3 p-6 sm:p-7">
+                <p class="eyebrow-accent">The Residence edit</p>
+                <h2 class="display-md">Objects chosen for texture, calm, and everyday presence.</h2>
+                <p class="text-sm leading-7 text-luxe-soft">
+                  Use the lead visual block for the current campaign, private capsule, or seasonal story.
+                </p>
+              </figcaption>
+            </figure>
+
+            <div class="grid gap-6 sm:grid-cols-2">
+              <article class="surface-card-warm p-6 sm:p-7">
+                <p class="eyebrow">Private selection</p>
+                <h2 class="mt-3 text-[2rem] leading-none tracking-[-0.02em]">
+                  Limited arrivals with stronger storytelling value.
+                </h2>
+                <p class="mt-4 text-sm leading-7 text-luxe-soft">
+                  Ideal for founders&apos; edits, hero launches, and high-margin campaign moments.
+                </p>
+                <a href="#featured-collection" class="section-link mt-5">View the private edit <span aria-hidden="true">+</span></a>
+              </article>
+
+              <article class="surface-card-dark p-6 sm:p-7">
+                <p class="eyebrow text-white/60">Journal note</p>
+                <h2 class="mt-3 text-[2rem] leading-none tracking-[-0.02em] text-white">
+                  Modern luxury online should feel curated, not crowded.
+                </h2>
+                <p class="mt-4 text-sm leading-7 text-white/75">
+                  A calm, confident storefront earns trust faster than dense grids or promotional noise.
+                </p>
+                <a href="#journal" class="section-link mt-5 text-white hover:text-white/75">Read the manifesto <span aria-hidden="true">+</span></a>
+              </article>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="pb-10 sm:pb-12">
+        <div class="shell">
+          <section class="surface-card px-6 py-6 sm:px-8" aria-label="Store assurances">
+            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <article class="trust-item bg-luxe-surfaceAlt">
+                <h2 class="text-base font-semibold">Complimentary presentation</h2>
+                <p class="mt-2 text-sm leading-7 text-luxe-soft">Premium packaging and hand-finished gift notes on selected orders.</p>
+              </article>
+              <article class="trust-item bg-luxe-surfaceAlt">
+                <h2 class="text-base font-semibold">Curated assortment</h2>
+                <p class="mt-2 text-sm leading-7 text-luxe-soft">Merchandising focused on fewer, better products and stronger narratives.</p>
+              </article>
+              <article class="trust-item bg-luxe-surfaceAlt">
+                <h2 class="text-base font-semibold">Transparent service</h2>
+                <p class="mt-2 text-sm leading-7 text-luxe-soft">Clear duties, lead times, shipping methods, and returns before checkout.</p>
+              </article>
+              <article class="trust-item bg-luxe-surfaceAlt">
+                <h2 class="text-base font-semibold">Trusted checkout</h2>
+                <p class="mt-2 text-sm leading-7 text-luxe-soft">Calm forms, visible progress, and confident order confirmation cues.</p>
+              </article>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="categories" class="section-space pt-8">
+        <div class="shell">
+          <header class="section-heading">
+            <div>
+              <p class="eyebrow">Curated categories</p>
+              <h2 class="display-lg mt-4 max-w-3xl">Browse the assortment through mood, craft, and ritual.</h2>
+            </div>
+            <a href="#listing-template" class="section-link">View all categories <span aria-hidden="true">+</span></a>
+          </header>
+
+          <section class="mt-8 grid gap-6 lg:grid-cols-3" aria-label="Category tiles">
+            <article class="category-card lg:row-span-2">
+              <img
+                src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&amp;fit=crop&amp;w=1400&amp;q=80"
+                alt="Curated living room with soft materials and sculptural decor"
+                class="h-80 w-full object-cover sm:h-[28rem] lg:h-full"
+                loading="lazy"
+              />
+              <div class="category-card-body">
+                <p class="eyebrow-accent">Residence</p>
+                <h3 class="display-md">Home objects selected to feel architectural and warm.</h3>
+                <p class="text-sm leading-7 text-luxe-soft">
+                  Lighting, trays, candles, and textiles presented with space to breathe.
+                </p>
+                <a href="#listing-template" class="section-link">Shop Residence <span aria-hidden="true">+</span></a>
+              </div>
+            </article>
+
+            <article class="category-card">
+              <img
+                src="https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&amp;fit=crop&amp;w=1200&amp;q=80"
+                alt="Luxury skincare products styled on warm stone"
+                class="h-64 w-full object-cover"
+                loading="lazy"
+              />
+              <div class="category-card-body">
+                <p class="eyebrow-accent">Quiet beauty</p>
+                <h3 class="text-[2rem] leading-none tracking-[-0.02em]">Daily rituals, elevated.</h3>
+                <p class="text-sm leading-7 text-luxe-soft">Studio-grade formulations with editorial product presentation.</p>
+              </div>
+            </article>
+
+            <article class="category-card">
+              <img
+                src="https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&amp;fit=crop&amp;w=1200&amp;q=80"
+                alt="Minimal luxury wardrobe with neutral tailoring"
+                class="h-64 w-full object-cover"
+                loading="lazy"
+              />
+              <div class="category-card-body">
+                <p class="eyebrow-accent">Wardrobe</p>
+                <h3 class="text-[2rem] leading-none tracking-[-0.02em]">Soft structure and permanent neutrals.</h3>
+                <p class="text-sm leading-7 text-luxe-soft">Pieces intended to feel timeless online and tactile on arrival.</p>
+              </div>
+            </article>
+
+            <article class="category-card">
+              <img
+                src="https://images.unsplash.com/photo-1491553895911-0055eca6402d?auto=format&amp;fit=crop&amp;w=1200&amp;q=80"
+                alt="Leather accessories and champagne-toned gifting details"
+                class="h-64 w-full object-cover"
+                loading="lazy"
+              />
+              <div class="category-card-body">
+                <p class="eyebrow-accent">Gifting</p>
+                <h3 class="text-[2rem] leading-none tracking-[-0.02em]">Considered pieces with immediate occasion value.</h3>
+                <p class="text-sm leading-7 text-luxe-soft">Curated sets, leather goods, and quiet luxury signatures.</p>
+              </div>
+            </article>
+          </section>
+        </div>
+      </section>
+
+      <section id="signature-products" class="section-space">
+        <div class="shell">
+          <header class="section-heading">
+            <div>
+              <p class="eyebrow">Signature products</p>
+              <h2 class="display-lg mt-4 max-w-3xl">Polished product cards with room for craftsmanship to register.</h2>
+            </div>
+            <a href="#product-details-template" class="section-link">See product detail direction <span aria-hidden="true">+</span></a>
+          </header>
+
+          <section class="mt-8 grid gap-6 lg:grid-cols-3" aria-label="Signature products">
+            <article class="product-card">
+              <div class="product-card-media">
+                <span class="absolute left-4 top-4 z-10 rounded-full bg-luxe-ink px-3 py-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-white">New</span>
+                <img
+                  src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&amp;fit=crop&amp;w=1400&amp;q=80"
+                  alt="Neutral wool coat styled in a premium editorial setting"
+                  class="h-96 w-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+              <div class="product-card-copy">
+                <p class="eyebrow">Wardrobe / Solenne line</p>
+                <h3 class="product-card-title">Double-Faced Wool Coat</h3>
+                <p class="text-sm text-luxe-soft">4.9/5 from 84 verified reviews</p>
+                <div class="flex items-end justify-between gap-4">
+                  <p class="text-xl font-semibold text-luxe-ink">EUR 680</p>
+                  <span class="chip-accent">Made in Italy</span>
+                </div>
+                <button type="button" class="btn-primary w-full">Add to bag</button>
+              </div>
+            </article>
+
+            <article class="product-card">
+              <div class="product-card-media">
+                <span class="absolute left-4 top-4 z-10 rounded-full bg-[#b79a66] px-3 py-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-white">Editor&apos;s pick</span>
+                <img
+                  src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&amp;fit=crop&amp;w=1400&amp;q=80"
+                  alt="Stone side table lamp in a refined residential interior"
+                  class="h-96 w-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+              <div class="product-card-copy">
+                <p class="eyebrow">Residence / Lighting</p>
+                <h3 class="product-card-title">Travertine Table Lamp</h3>
+                <p class="text-sm text-luxe-soft">Soft glow, linen shade, sculptural stone base.</p>
+                <div class="flex items-end justify-between gap-4">
+                  <p class="text-xl font-semibold text-luxe-ink">EUR 240</p>
+                  <span class="chip">Low stock</span>
+                </div>
+                <button type="button" class="btn-secondary w-full">View details</button>
+              </div>
+            </article>
+
+            <article class="product-card">
+              <div class="product-card-media">
+                <span class="absolute left-4 top-4 z-10 rounded-full bg-[#8a4131] px-3 py-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-white">Private offer</span>
+                <img
+                  src="https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&amp;fit=crop&amp;w=1400&amp;q=80"
+                  alt="Premium beauty serum and vessel arrangement on warm stone"
+                  class="h-96 w-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+              <div class="product-card-copy">
+                <p class="eyebrow">Beauty / Ritual</p>
+                <h3 class="product-card-title">Cellular Night Concentrate</h3>
+                <p class="text-sm text-luxe-soft">A slower, richer ritual designed for high-repeat clients.</p>
+                <div class="flex items-end justify-between gap-4">
+                  <div class="flex items-center gap-3">
+                    <p class="text-xl font-semibold text-luxe-ink">EUR 118</p>
+                    <p class="text-sm text-luxe-soft line-through">EUR 148</p>
+                  </div>
+                  <span class="chip-accent">20% off</span>
+                </div>
+                <button type="button" class="btn-primary w-full">Add to bag</button>
+              </div>
+            </article>
+          </section>
+        </div>
+      </section>
+
+      <section id="journal" class="section-space pt-0">
+        <div class="shell grid gap-6 lg:grid-cols-2">
+          <article class="surface-card-dark px-8 py-10 sm:px-10">
+            <p class="eyebrow text-white/60">Split editorial block</p>
+            <h2 class="display-md mt-4 text-white">Commerce should feel like entering a private salon, not a warehouse.</h2>
+            <p class="mt-5 max-w-xl text-sm leading-8 text-white/75">
+              This panel is designed for founder notes, campaign essays, journal stories, or deeper brand framing that makes premium pricing feel earned and coherent.
+            </p>
+            <div class="mt-8 flex flex-wrap gap-3">
+              <a href="#manifesto" class="btn-quiet">Read the journal</a>
+              <a href="#style-guide" class="inline-flex min-h-12 items-center justify-center rounded-full px-2 text-sm font-semibold text-white/80 hover:text-white">
+                Review the system
+              </a>
+            </div>
+          </article>
+
+          <article class="surface-card-warm px-8 py-10 sm:px-10">
+            <p class="eyebrow">Seasonal campaign</p>
+            <h2 class="display-md mt-4">Reserved access for the winter residence collection.</h2>
+            <p class="mt-5 max-w-xl text-sm leading-8 text-luxe-soft">
+              Use the companion panel for member-only access, first-order incentives, gift-with-purchase messaging, or softly framed sale moments.
+            </p>
+            <div class="mt-8 flex flex-wrap gap-3">
+              <a href="#featured-collection" class="btn-primary">Access the collection</a>
+              <span class="chip-accent">Invitation-led positioning</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="featured-collection" class="section-space">
+        <div class="shell">
+          <header class="section-heading">
+            <div>
+              <p class="eyebrow">Best sellers / featured collection</p>
+              <h2 class="display-lg mt-4 max-w-3xl">A featured collection should feel composed, not merely sorted.</h2>
+            </div>
+            <a href="#listing-template" class="section-link">Open listing template <span aria-hidden="true">+</span></a>
+          </header>
+
+          <div class="mt-8 grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
+            <article class="surface-card overflow-hidden">
+              <img
+                src="https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&amp;fit=crop&amp;w=1400&amp;q=80"
+                alt="Editorial portrait styling the featured collection in neutral tailoring"
+                class="h-80 w-full object-cover sm:h-[28rem]"
+                loading="lazy"
+              />
+              <div class="grid gap-4 p-7 sm:p-8">
+                <p class="eyebrow-accent">The Quiet Evening collection</p>
+                <h3 class="display-md">Soft tailoring, lacquered objects, and warm brass accents.</h3>
+                <p class="text-sm leading-8 text-luxe-soft">
+                  Use the featured collection panel to slow the page down with one stronger story before returning to product cards.
+                </p>
+                <a href="#manifesto" class="section-link">View collection story <span aria-hidden="true">+</span></a>
+              </div>
+            </article>
+
+            <section class="grid gap-6 sm:grid-cols-2" aria-label="Best seller products">
+              <article class="product-card">
+                <div class="product-card-media">
+                  <img
+                    src="https://images.unsplash.com/photo-1517705008128-361805f42e86?auto=format&amp;fit=crop&amp;w=1200&amp;q=80"
+                    alt="Linen robe folded on a stone bench"
+                    class="h-72 w-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+                <div class="product-card-copy">
+                  <p class="eyebrow">Wardrobe</p>
+                  <h3 class="text-[1.45rem] leading-none tracking-[-0.02em]">Linen Lounge Robe</h3>
+                  <p class="text-sm text-luxe-soft">EUR 168</p>
+                  <button type="button" class="btn-secondary w-full">View item</button>
+                </div>
+              </article>
+
+              <article class="product-card">
+                <div class="product-card-media">
+                  <img
+                    src="https://images.unsplash.com/photo-1491553895911-0055eca6402d?auto=format&amp;fit=crop&amp;w=1200&amp;q=80"
+                    alt="Leather travel case and gifting accessories"
+                    class="h-72 w-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+                <div class="product-card-copy">
+                  <p class="eyebrow">Travel / gifting</p>
+                  <h3 class="text-[1.45rem] leading-none tracking-[-0.02em]">Leather Weekender Case</h3>
+                  <p class="text-sm text-luxe-soft">EUR 320</p>
+                  <button type="button" class="btn-secondary w-full">View item</button>
+                </div>
+              </article>
+
+              <article class="product-card">
+                <div class="product-card-media">
+                  <img
+                    src="https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&amp;fit=crop&amp;w=1200&amp;q=80"
+                    alt="Soft blouse in neutral tones styled editorially"
+                    class="h-72 w-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+                <div class="product-card-copy">
+                  <p class="eyebrow">Wardrobe</p>
+                  <h3 class="text-[1.45rem] leading-none tracking-[-0.02em]">Silk Collar Blouse</h3>
+                  <p class="text-sm text-luxe-soft">EUR 210</p>
+                  <button type="button" class="btn-secondary w-full">View item</button>
+                </div>
+              </article>
+
+              <article class="product-card">
+                <div class="product-card-media">
+                  <img
+                    src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&amp;fit=crop&amp;w=1200&amp;q=80"
+                    alt="Refined stone tray and candle arrangement"
+                    class="h-72 w-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+                <div class="product-card-copy">
+                  <p class="eyebrow">Residence</p>
+                  <h3 class="text-[1.45rem] leading-none tracking-[-0.02em]">Carved Stone Tray</h3>
+                  <p class="text-sm text-luxe-soft">EUR 92</p>
+                  <button type="button" class="btn-secondary w-full">View item</button>
+                </div>
+              </article>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <section id="manifesto" class="section-space">
+        <div class="shell grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+          <article class="surface-card-dark overflow-hidden">
+            <img
+              src="https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&amp;fit=crop&amp;w=1600&amp;q=80"
+              alt="Calm editorial retail interior with stone, linen, and warm tonal materials"
+              class="h-80 w-full object-cover sm:h-[30rem]"
+              loading="lazy"
+            />
+          </article>
+
+          <article class="surface-card px-8 py-10 sm:px-10">
+            <p class="eyebrow">Brand manifesto</p>
+            <h2 class="display-lg mt-4 max-w-2xl">Luxury online is communicated through editing, pacing, and confidence.</h2>
+            <p class="section-copy mt-6">
+              The goal is not to show more products. The goal is to make every product feel deliberate. This concept favors stronger hierarchy, quieter accents, refined metadata, and an editorial cadence that reduces clutter while improving trust.
+            </p>
+
+            <ul class="mt-8 grid gap-4 text-sm leading-7 text-luxe-soft">
+              <li class="rounded-[1.5rem] border border-luxe-line bg-luxe-surfaceAlt px-5 py-4">
+                Fewer cards per row so product imagery and material details feel more premium.
+              </li>
+              <li class="rounded-[1.5rem] border border-luxe-line bg-luxe-surfaceAlt px-5 py-4">
+                Stronger section framing so campaigns, categories, and hero stories have distinct rhythm.
+              </li>
+              <li class="rounded-[1.5rem] border border-luxe-line bg-luxe-surfaceAlt px-5 py-4">
+                Trust signals that support conversion without drifting into marketplace clutter.
+              </li>
+            </ul>
+
+            <div class="mt-8 flex flex-wrap gap-3">
+              <a href="#newsletter" class="btn-primary">Join the private list</a>
+              <a href="#style-guide" class="btn-secondary">Review components</a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section-space pt-0">
+        <div class="shell">
+          <header class="section-heading">
+            <div>
+              <p class="eyebrow">Testimonials / trust</p>
+              <h2 class="display-lg mt-4 max-w-3xl">Proof points should feel composed and credible.</h2>
+            </div>
+            <span class="chip-accent">Verified reviews and service cues</span>
+          </header>
+
+          <div class="mt-8 grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
+            <section class="grid gap-6 sm:grid-cols-2" aria-label="Customer testimonials">
+              <article class="surface-card px-7 py-8">
+                <p class="text-[2rem] leading-none text-luxe-accent">&quot;</p>
+                <blockquote class="mt-4 text-base leading-8 text-luxe-soft">
+                  The storefront feels expensive in the right way. It is calm, easy to trust, and every product feels considered before you even reach checkout.
+                </blockquote>
+                <footer class="mt-6 border-t border-luxe-line pt-5 text-sm">
+                  <p class="font-semibold text-luxe-ink">Elena P.</p>
+                  <p class="text-luxe-soft">Verified client, Vienna</p>
+                </footer>
+              </article>
+
+              <article class="surface-card px-7 py-8">
+                <p class="text-[2rem] leading-none text-luxe-accent">&quot;</p>
+                <blockquote class="mt-4 text-base leading-8 text-luxe-soft">
+                  Product pages feel reassuring rather than sales-led. The visual language makes premium pricing feel coherent and justified.
+                </blockquote>
+                <footer class="mt-6 border-t border-luxe-line pt-5 text-sm">
+                  <p class="font-semibold text-luxe-ink">Nora M.</p>
+                  <p class="text-luxe-soft">Verified client, Berlin</p>
+                </footer>
+              </article>
+            </section>
+
+            <article class="surface-card-warm px-8 py-8 sm:px-10">
+              <p class="eyebrow">Store confidence</p>
+              <h3 class="display-md mt-4">Trust metrics without visual clutter.</h3>
+              <dl class="mt-8 grid gap-5 sm:grid-cols-3 lg:grid-cols-1">
+                <div class="rounded-[1.5rem] border border-luxe-line bg-white px-5 py-5">
+                  <dt class="eyebrow">Average rating</dt>
+                  <dd class="mt-3 text-3xl font-semibold text-luxe-ink">4.9 / 5</dd>
+                </div>
+                <div class="rounded-[1.5rem] border border-luxe-line bg-white px-5 py-5">
+                  <dt class="eyebrow">Repeat order rate</dt>
+                  <dd class="mt-3 text-3xl font-semibold text-luxe-ink">38%</dd>
+                </div>
+                <div class="rounded-[1.5rem] border border-luxe-line bg-white px-5 py-5">
+                  <dt class="eyebrow">Support response</dt>
+                  <dd class="mt-3 text-3xl font-semibold text-luxe-ink">Under 4h</dd>
+                </div>
+              </dl>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="newsletter" class="section-space pt-0">
+        <div class="shell">
+          <section class="surface-card-strong px-8 py-10 sm:px-10 lg:px-12" aria-labelledby="newsletter-title">
+            <div class="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
+              <header>
+                <p class="eyebrow">Newsletter signup</p>
+                <h2 id="newsletter-title" class="display-lg mt-4 max-w-3xl">
+                  Receive launches, journal notes, and private sale access without the noise.
+                </h2>
+                <p class="mt-5 max-w-2xl text-sm leading-8 text-luxe-soft">
+                  This block is designed for a premium opt-in moment: generous spacing, a single clear input, and language that reinforces curation over discounting.
+                </p>
+              </header>
+
+              <form class="grid gap-3 sm:grid-cols-[1fr_auto]">
+                <label class="sr-only" for="newsletter-email">Email address</label>
+                <input id="newsletter-email" type="email" class="field" placeholder="Email address" />
+                <button type="submit" class="btn-primary">Subscribe</button>
+              </form>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="listing-template" class="section-space">
+        <div class="shell">
+          <header class="section-heading">
+            <div>
+              <p class="eyebrow">Product listing page section</p>
+              <h2 class="display-lg mt-4 max-w-3xl">A category template with breathing room, strong filters, and premium merchandising.</h2>
+            </div>
+            <span class="chip">Listing mock</span>
+          </header>
+
+          <div class="mt-8 grid gap-6 lg:grid-cols-[19rem_1fr]">
+            <aside class="surface-card p-6 sm:p-7" aria-labelledby="refine-title">
+              <h3 id="refine-title" class="display-md text-[2rem]">Refine</h3>
+              <form class="mt-8 grid gap-7 text-sm text-luxe-soft">
+                <fieldset class="grid gap-4">
+                  <legend class="font-semibold text-luxe-ink">Category</legend>
+                  <label class="flex items-center gap-3">
+                    <input type="checkbox" class="h-4 w-4 rounded border-luxe-line text-luxe-ink focus:ring-luxe-accent" checked />
+                    Residence
+                  </label>
+                  <label class="flex items-center gap-3">
+                    <input type="checkbox" class="h-4 w-4 rounded border-luxe-line text-luxe-ink focus:ring-luxe-accent" />
+                    Quiet Beauty
+                  </label>
+                  <label class="flex items-center gap-3">
+                    <input type="checkbox" class="h-4 w-4 rounded border-luxe-line text-luxe-ink focus:ring-luxe-accent" />
+                    Wardrobe
+                  </label>
+                </fieldset>
+
+                <fieldset class="grid gap-4">
+                  <legend class="font-semibold text-luxe-ink">Materials</legend>
+                  <div class="flex flex-wrap gap-2">
+                    <span class="chip">Linen</span>
+                    <span class="chip">Stone</span>
+                    <span class="chip">Leather</span>
+                  </div>
+                </fieldset>
+
+                <fieldset class="grid gap-4">
+                  <legend class="font-semibold text-luxe-ink">Price range</legend>
+                  <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                    <label class="grid gap-2">
+                      <span>Minimum</span>
+                      <input type="text" class="field" placeholder="EUR 0" />
+                    </label>
+                    <label class="grid gap-2">
+                      <span>Maximum</span>
+                      <input type="text" class="field" placeholder="EUR 800" />
+                    </label>
+                  </div>
+                </fieldset>
+              </form>
+            </aside>
+
+            <section class="grid gap-6" aria-labelledby="listing-title">
+              <article class="surface-card px-7 py-7 sm:px-8">
+                <div class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+                  <header>
+                    <p class="text-sm text-luxe-soft">Collection / Residence</p>
+                    <h3 id="listing-title" class="display-md mt-3">Residence</h3>
+                    <p class="mt-4 max-w-2xl text-sm leading-8 text-luxe-soft">
+                      Fewer cards per row, more generous product imagery, cleaner filters, and enough whitespace for premium interior pieces to feel tactile.
+                    </p>
+                  </header>
+                  <label class="grid gap-2 text-sm text-luxe-soft">
+                    <span>Sort by</span>
+                    <select class="field pr-10">
+                      <option>Featured</option>
+                      <option>Newest arrivals</option>
+                      <option>Price: Low to High</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="mt-6 flex flex-wrap gap-2">
+                  <span class="chip-accent">Soft neutrals</span>
+                  <span class="chip">Crafted finishes</span>
+                  <span class="chip">Ready to ship</span>
+                </div>
+              </article>
+
+              <section class="grid gap-6 md:grid-cols-2 xl:grid-cols-3" aria-label="Listing products">
+                <article class="product-card">
+                  <div class="product-card-media">
+                    <img
+                      src="https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&amp;fit=crop&amp;w=1200&amp;q=80"
+                      alt="Sculptural chair and interior object"
+                      class="h-80 w-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                  <div class="product-card-copy">
+                    <p class="eyebrow">Residence</p>
+                    <h3 class="text-[1.45rem] leading-none tracking-[-0.02em]">Lacquer Side Chair</h3>
+                    <p class="text-sm text-luxe-soft">EUR 420</p>
+                  </div>
+                </article>
+
+                <article class="product-card">
+                  <div class="product-card-media">
+                    <img
+                      src="https://images.unsplash.com/photo-1517705008128-361805f42e86?auto=format&amp;fit=crop&amp;w=1200&amp;q=80"
+                      alt="Linen textile and bench composition"
+                      class="h-80 w-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                  <div class="product-card-copy">
+                    <p class="eyebrow">Textiles</p>
+                    <h3 class="text-[1.45rem] leading-none tracking-[-0.02em]">Stonewashed Linen Throw</h3>
+                    <p class="text-sm text-luxe-soft">EUR 148</p>
+                  </div>
+                </article>
+
+                <article class="product-card">
+                  <div class="product-card-media">
+                    <img
+                      src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&amp;fit=crop&amp;w=1200&amp;q=80"
+                      alt="Stone object and candle arrangement"
+                      class="h-80 w-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                  <div class="product-card-copy">
+                    <p class="eyebrow">Objects</p>
+                    <h3 class="text-[1.45rem] leading-none tracking-[-0.02em]">Carved Marble Vessel</h3>
+                    <p class="text-sm text-luxe-soft">EUR 114</p>
+                  </div>
+                </article>
+              </section>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <section id="product-details-template" class="section-space pt-0">
+        <div class="shell">
+          <header class="section-heading">
+            <div>
+              <p class="eyebrow">Product details page section</p>
+              <h2 class="display-lg mt-4 max-w-3xl">A calm product detail layout built for material confidence and decisive purchase flow.</h2>
+            </div>
+            <span class="chip">PDP mock</span>
+          </header>
+
+          <article class="surface-card-strong mt-8 overflow-hidden p-6 sm:p-8 lg:p-10">
+            <div class="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+              <section class="grid gap-4 lg:grid-cols-[7rem_1fr]" aria-label="Product gallery">
+                <div class="order-2 grid grid-cols-3 gap-3 lg:order-1 lg:grid-cols-1">
+                  <img
+                    src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&amp;fit=crop&amp;w=800&amp;q=80"
+                    alt="Thumbnail view of the travertine table lamp"
+                    class="h-24 w-full rounded-[1.25rem] border border-luxe-line object-cover"
+                    loading="lazy"
+                  />
+                  <img
+                    src="https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&amp;fit=crop&amp;w=800&amp;q=80"
+                    alt="Lifestyle thumbnail view of the table lamp in an interior"
+                    class="h-24 w-full rounded-[1.25rem] border border-luxe-line object-cover"
+                    loading="lazy"
+                  />
+                  <img
+                    src="https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&amp;fit=crop&amp;w=800&amp;q=80"
+                    alt="Detail thumbnail showing texture and warm materials"
+                    class="h-24 w-full rounded-[1.25rem] border border-luxe-line object-cover"
+                    loading="lazy"
+                  />
+                </div>
+
+                <figure class="order-1 overflow-hidden rounded-[1.75rem] border border-luxe-line bg-luxe-sand lg:order-2">
+                  <img
+                    src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&amp;fit=crop&amp;w=1600&amp;q=80"
+                    alt="Travertine table lamp on a softly styled side table"
+                    class="h-[32rem] w-full object-cover"
+                  />
+                </figure>
+              </section>
+
+              <section aria-labelledby="pdp-title">
+                <p class="eyebrow">Residence / Lighting</p>
+                <h3 id="pdp-title" class="display-lg mt-4">Travertine Table Lamp</h3>
+                <p class="mt-4 text-sm text-luxe-soft">4.8/5 from 36 reviews · SKU STL-2401 · Ships in 48 hours</p>
+
+                <div class="mt-6 flex flex-wrap items-center gap-3">
+                  <p class="text-3xl font-semibold text-luxe-ink">EUR 240</p>
+                  <span class="chip-accent">Featured in Residence</span>
+                </div>
+
+                <p class="mt-6 text-base leading-8 text-luxe-soft">
+                  A sculptural stone base, warm linen shade, and softly diffused light designed to add atmosphere without visual excess. The layout keeps every purchase decision close to the main story.
+                </p>
+
+                <section class="mt-8">
+                  <h4 class="text-sm font-semibold uppercase tracking-[0.22em] text-luxe-soft">Finish</h4>
+                  <div class="mt-4 flex flex-wrap gap-3">
+                    <button type="button" aria-label="Natural stone finish" class="h-11 w-11 rounded-full border-2 border-luxe-ink bg-[#d6cab9]"></button>
+                    <button type="button" aria-label="Chalk finish" class="h-11 w-11 rounded-full border border-luxe-line bg-[#efe7d8]"></button>
+                    <button type="button" aria-label="Taupe finish" class="h-11 w-11 rounded-full border border-luxe-line bg-[#baa78e]"></button>
+                  </div>
+                </section>
+
+                <section class="mt-8 grid gap-4 text-sm text-luxe-soft">
+                  <article class="rounded-[1.5rem] border border-luxe-line bg-luxe-surfaceAlt px-5 py-4">
+                    Complimentary linen dust bag and protective packaging included.
+                  </article>
+                  <article class="rounded-[1.5rem] border border-luxe-line bg-luxe-surfaceAlt px-5 py-4">
+                    Estimated delivery: 2 to 4 business days within major EU cities.
+                  </article>
+                </section>
+
+                <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+                  <label class="grid gap-2 text-sm text-luxe-soft">
+                    <span>Quantity</span>
+                    <select class="field sm:w-28">
+                      <option>1</option>
+                      <option>2</option>
+                      <option>3</option>
+                    </select>
+                  </label>
+                  <div class="flex-1 pt-0 sm:pt-6">
+                    <button type="button" class="btn-primary w-full">Add to bag</button>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="mini-cart-drawer" class="section-space pt-0">
+        <div class="shell">
+          <header class="section-heading">
+            <div>
+              <p class="eyebrow">Mini cart drawer</p>
+              <h2 class="display-lg mt-4 max-w-3xl">A drawer shell that reassures without hijacking the whole page.</h2>
+            </div>
+            <span class="chip">Drawer mock</span>
+          </header>
+
+          <div class="mt-8 grid gap-6 lg:grid-cols-[1fr_26rem]">
+            <article class="surface-card-warm px-8 py-8 sm:px-10">
+              <p class="eyebrow">Interaction guidance</p>
+              <h3 class="display-md mt-4">Keep the drawer brief, tactile, and conversion-minded.</h3>
+              <ul class="mt-6 grid gap-4 text-sm leading-8 text-luxe-soft">
+                <li class="rounded-[1.5rem] border border-luxe-line bg-white px-5 py-4">
+                  Show only the essentials: line item, quantity, subtotal, and a direct path to checkout.
+                </li>
+                <li class="rounded-[1.5rem] border border-luxe-line bg-white px-5 py-4">
+                  Preserve product imagery and material cues so the customer still feels the brand while reviewing the bag.
+                </li>
+                <li class="rounded-[1.5rem] border border-luxe-line bg-white px-5 py-4">
+                  Add only one secondary action, usually &quot;View bag&quot;, to avoid decision dilution.
+                </li>
+              </ul>
+            </article>
+
+            <aside class="surface-card-strong p-6 sm:p-7" aria-labelledby="bag-title">
+              <header class="flex items-start justify-between gap-4 border-b border-luxe-line pb-5">
+                <div>
+                  <p class="eyebrow">Bag overview</p>
+                  <h3 id="bag-title" class="display-md mt-3 text-[2.2rem]">Your selection</h3>
+                </div>
+                <a href="#hero" class="text-sm font-semibold text-luxe-soft hover:text-luxe-ink">Close</a>
+              </header>
+
+              <div class="grid gap-4 py-5">
+                <article class="flex gap-4 rounded-[1.5rem] border border-luxe-line bg-white p-4">
+                  <img
+                    src="https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&amp;fit=crop&amp;w=800&amp;q=80"
+                    alt="Travertine table lamp thumbnail"
+                    class="h-24 w-20 rounded-[1rem] object-cover"
+                    loading="lazy"
+                  />
+                  <div class="min-w-0 flex-1">
+                    <p class="eyebrow">Residence</p>
+                    <h4 class="mt-2 text-lg font-semibold text-luxe-ink">Travertine Table Lamp</h4>
+                    <p class="mt-2 text-sm text-luxe-soft">Natural stone · Qty 1</p>
+                    <p class="mt-3 text-sm font-semibold text-luxe-ink">EUR 240</p>
+                  </div>
+                </article>
+
+                <article class="flex gap-4 rounded-[1.5rem] border border-luxe-line bg-white p-4">
+                  <img
+                    src="https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&amp;fit=crop&amp;w=800&amp;q=80"
+                    alt="Cellular night concentrate thumbnail"
+                    class="h-24 w-20 rounded-[1rem] object-cover"
+                    loading="lazy"
+                  />
+                  <div class="min-w-0 flex-1">
+                    <p class="eyebrow">Beauty</p>
+                    <h4 class="mt-2 text-lg font-semibold text-luxe-ink">Cellular Night Concentrate</h4>
+                    <p class="mt-2 text-sm text-luxe-soft">50 ml · Qty 1</p>
+                    <p class="mt-3 text-sm font-semibold text-luxe-ink">EUR 118</p>
+                  </div>
+                </article>
+              </div>
+
+              <footer class="border-t border-luxe-line pt-5">
+                <div class="flex items-center justify-between text-sm text-luxe-soft">
+                  <span>Subtotal</span>
+                  <span class="text-lg font-semibold text-luxe-ink">EUR 358</span>
+                </div>
+                <p class="mt-3 text-sm leading-7 text-luxe-soft">Taxes and delivery are calculated in checkout.</p>
+                <div class="mt-5 grid gap-3">
+                  <a href="#checkout-progress" class="btn-primary w-full">Proceed to checkout</a>
+                  <a href="#listing-template" class="btn-secondary w-full">View bag</a>
+                </div>
+              </footer>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section id="checkout-progress" class="section-space pt-0">
+        <div class="shell">
+          <header class="section-heading">
+            <div>
+              <p class="eyebrow">Checkout progress header</p>
+              <h2 class="display-lg mt-4 max-w-3xl">Visible progress should make checkout feel secure and predictable.</h2>
+            </div>
+            <span class="chip-accent">Checkout pattern</span>
+          </header>
+
+          <article class="surface-card-strong mt-8 px-6 py-8 sm:px-8">
+            <nav aria-label="Checkout steps">
+              <ol class="grid gap-4 md:grid-cols-4">
+                <li class="rounded-[1.5rem] border border-luxe-line bg-luxe-surfaceAlt px-5 py-4">
+                  <p class="eyebrow">Step 1</p>
+                  <p class="mt-3 text-lg font-semibold text-luxe-ink">Bag</p>
+                </li>
+                <li class="rounded-[1.5rem] border border-luxe-ink bg-luxe-ink px-5 py-4 text-white">
+                  <p class="eyebrow text-white/60">Step 2</p>
+                  <p class="mt-3 text-lg font-semibold">Delivery</p>
+                </li>
+                <li class="rounded-[1.5rem] border border-luxe-line bg-luxe-surfaceAlt px-5 py-4">
+                  <p class="eyebrow">Step 3</p>
+                  <p class="mt-3 text-lg font-semibold text-luxe-ink">Payment</p>
+                </li>
+                <li class="rounded-[1.5rem] border border-luxe-line bg-luxe-surfaceAlt px-5 py-4">
+                  <p class="eyebrow">Step 4</p>
+                  <p class="mt-3 text-lg font-semibold text-luxe-ink">Review</p>
+                </li>
+              </ol>
+            </nav>
+
+            <div class="mt-6 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+              <p class="text-sm leading-7 text-luxe-soft">
+                Pair the progress header with a concise reassurance line, secure payment indicators, and a restrained order summary rather than a second full navigation system.
+              </p>
+              <span class="chip">Encrypted checkout</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="style-guide" class="section-space">
+        <div class="shell">
+          <header class="section-heading">
+            <div>
+              <p class="eyebrow">Design system style guide</p>
+              <h2 class="display-lg mt-4 max-w-3xl">Core tokens and reusable components for Blazor migration.</h2>
+            </div>
+            <span class="chip">Starter system</span>
+          </header>
+
+          <div class="mt-8 grid gap-6 lg:grid-cols-2">
+            <article class="surface-card p-7 sm:p-8">
+              <p class="eyebrow">Palette</p>
+              <h3 class="display-md mt-4">Warm neutrals with restrained champagne accents.</h3>
+              <div class="mt-6 grid gap-4 sm:grid-cols-2">
+                <section class="grid gap-3">
+                  <div class="swatch bg-luxe-canvas"></div>
+                  <p class="text-sm font-semibold text-luxe-ink">Canvas · #f6f1e8</p>
+                </section>
+                <section class="grid gap-3">
+                  <div class="swatch bg-luxe-surface"></div>
+                  <p class="text-sm font-semibold text-luxe-ink">Surface · #fbf8f3</p>
+                </section>
+                <section class="grid gap-3">
+                  <div class="swatch bg-luxe-surfaceAlt"></div>
+                  <p class="text-sm font-semibold text-luxe-ink">Surface Alt · #f0e8dc</p>
+                </section>
+                <section class="grid gap-3">
+                  <div class="swatch bg-luxe-accent"></div>
+                  <p class="text-sm font-semibold text-luxe-ink">Accent · #b79a66</p>
+                </section>
+                <section class="grid gap-3">
+                  <div class="swatch bg-luxe-line"></div>
+                  <p class="text-sm font-semibold text-luxe-ink">Border · #ddd2c5</p>
+                </section>
+                <section class="grid gap-3">
+                  <div class="swatch bg-luxe-ink"></div>
+                  <p class="text-sm font-semibold text-luxe-ink">Ink · #161311</p>
+                </section>
+              </div>
+            </article>
+
+            <article class="surface-card p-7 sm:p-8">
+              <p class="eyebrow">Typography</p>
+              <h3 class="display-md mt-4">High-contrast hierarchy with editorial serif display.</h3>
+              <div class="mt-6 grid gap-5">
+                <p class="font-display text-6xl leading-none tracking-[-0.04em] text-luxe-ink">Display XL</p>
+                <p class="font-display text-4xl leading-none tracking-[-0.03em] text-luxe-ink">Display LG</p>
+                <p class="font-display text-3xl leading-none tracking-[-0.02em] text-luxe-ink">Display MD</p>
+                <p class="text-base leading-8 text-luxe-soft">
+                  Body copy uses Manrope for clarity, compact metadata, and reliable readability across desktop and mobile commerce flows.
+                </p>
+              </div>
+            </article>
+
+            <article class="surface-card p-7 sm:p-8">
+              <p class="eyebrow">Buttons and CTAs</p>
+              <h3 class="display-md mt-4">Primary, secondary, and quiet-action hierarchy.</h3>
+              <div class="mt-6 flex flex-wrap gap-3">
+                <a href="#hero" class="btn-primary">Primary action</a>
+                <a href="#hero" class="btn-secondary">Secondary action</a>
+                <a href="#journal" class="section-link">Editorial text link <span aria-hidden="true">+</span></a>
+              </div>
+              <div class="mt-6 flex flex-wrap gap-2">
+                <span class="chip">Default chip</span>
+                <span class="chip-accent">Accent badge</span>
+                <span class="chip">Verified</span>
+              </div>
+            </article>
+
+            <article class="surface-card p-7 sm:p-8">
+              <p class="eyebrow">Forms and controls</p>
+              <h3 class="display-md mt-4">Input styling that feels refined and clear.</h3>
+              <form class="mt-6 grid gap-4">
+                <label class="grid gap-2 text-sm text-luxe-soft">
+                  <span>Email address</span>
+                  <input type="email" class="field" placeholder="name@example.com" />
+                </label>
+                <label class="grid gap-2 text-sm text-luxe-soft">
+                  <span>Preferred appointment date</span>
+                  <select class="field pr-10">
+                    <option>Select a date</option>
+                    <option>Tuesday</option>
+                    <option>Thursday</option>
+                  </select>
+                </label>
+              </form>
+            </article>
+
+            <article class="surface-card p-7 sm:p-8">
+              <p class="eyebrow">Reusable product card</p>
+              <h3 class="display-md mt-4">Premium card pattern for collection rails.</h3>
+              <article class="product-card mt-6">
+                <div class="product-card-media">
+                  <span class="absolute left-4 top-4 z-10 rounded-full bg-luxe-ink px-3 py-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-white">Sample</span>
+                  <img
+                    src="https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&amp;fit=crop&amp;w=1200&amp;q=80"
+                    alt="Sample beauty product card"
+                    class="h-72 w-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+                <div class="product-card-copy">
+                  <p class="eyebrow">Beauty</p>
+                  <h4 class="text-[1.45rem] leading-none tracking-[-0.02em]">Sample product card</h4>
+                  <p class="text-sm text-luxe-soft">Readable metadata, calm spacing, strong CTA.</p>
+                </div>
+              </article>
+            </article>
+
+            <article class="surface-card p-7 sm:p-8">
+              <p class="eyebrow">Reusable category card</p>
+              <h3 class="display-md mt-4">Large visual block for curated browsing.</h3>
+              <article class="category-card mt-6">
+                <img
+                  src="https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&amp;fit=crop&amp;w=1200&amp;q=80"
+                  alt="Sample category card"
+                  class="h-72 w-full object-cover"
+                  loading="lazy"
+                />
+                <div class="category-card-body">
+                  <p class="eyebrow-accent">Category card</p>
+                  <h4 class="text-[2rem] leading-none tracking-[-0.02em]">Large image, concise story, premium entry point.</h4>
+                </div>
+              </article>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer id="footer" class="border-t border-luxe-line bg-[#f1e9de]">
+      <div class="shell py-14 sm:py-16">
+        <div class="grid gap-10 md:grid-cols-2 xl:grid-cols-[1.2fr_repeat(4,minmax(0,1fr))]">
+          <section>
+            <a href="#hero" class="text-[1.4rem] font-semibold tracking-[0.18em] text-luxe-ink">MAISON SOLENNE</a>
+            <p class="mt-5 max-w-sm text-sm leading-8 text-luxe-soft">
+              Premium editorial storefront starter for a modern Blazor commerce experience: calm, brand-led, and designed to feel expensive without excess.
+            </p>
+          </section>
+
+          <nav aria-label="Footer shop">
+            <h2 class="eyebrow">Shop</h2>
+            <ul class="mt-4 grid gap-3 text-sm text-luxe-soft">
+              <li><a href="#signature-products" class="hover:text-luxe-ink">New Season</a></li>
+              <li><a href="#featured-collection" class="hover:text-luxe-ink">Collections</a></li>
+              <li><a href="#listing-template" class="hover:text-luxe-ink">Best Sellers</a></li>
+              <li><a href="#categories" class="hover:text-luxe-ink">Gifts</a></li>
+            </ul>
+          </nav>
+
+          <nav aria-label="Footer support">
+            <h2 class="eyebrow">Support</h2>
+            <ul class="mt-4 grid gap-3 text-sm text-luxe-soft">
+              <li><a href="#checkout-progress" class="hover:text-luxe-ink">Delivery</a></li>
+              <li><a href="#mini-cart-drawer" class="hover:text-luxe-ink">Returns</a></li>
+              <li><a href="#product-details-template" class="hover:text-luxe-ink">Care guide</a></li>
+              <li><a href="#newsletter" class="hover:text-luxe-ink">Contact</a></li>
+            </ul>
+          </nav>
+
+          <nav aria-label="Footer company">
+            <h2 class="eyebrow">Company</h2>
+            <ul class="mt-4 grid gap-3 text-sm text-luxe-soft">
+              <li><a href="#manifesto" class="hover:text-luxe-ink">About</a></li>
+              <li><a href="#journal" class="hover:text-luxe-ink">Journal</a></li>
+              <li><a href="#style-guide" class="hover:text-luxe-ink">Design system</a></li>
+              <li><a href="#newsletter" class="hover:text-luxe-ink">Appointments</a></li>
+            </ul>
+          </nav>
+
+          <nav aria-label="Footer legal">
+            <h2 class="eyebrow">Legal</h2>
+            <ul class="mt-4 grid gap-3 text-sm text-luxe-soft">
+              <li><a href="#footer" class="hover:text-luxe-ink">Privacy</a></li>
+              <li><a href="#footer" class="hover:text-luxe-ink">Terms</a></li>
+              <li><a href="#footer" class="hover:text-luxe-ink">Cookies</a></li>
+              <li><a href="#footer" class="hover:text-luxe-ink">Accessibility</a></li>
+            </ul>
+          </nav>
+        </div>
+
+        <div class="mt-12 border-t border-luxe-line pt-6 text-sm text-luxe-soft sm:flex sm:items-center sm:justify-between">
+          <p>&copy; 2026 Maison Solenne. All rights reserved.</p>
+          <p>English · EUR · Europe-first delivery</p>
+        </div>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

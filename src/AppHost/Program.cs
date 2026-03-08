@@ -4,12 +4,12 @@ using AppHost.Configuration;
 using AppHost.Health;
 using Backoffice.Api;
 using BuildingBlocks.Application.Authorization;
-using BuildingBlocks.Application.Extensions;
 using BuildingBlocks.Application.Diagnostics;
+using BuildingBlocks.Application.Extensions;
 using BuildingBlocks.Application.Security;
 using BuildingBlocks.Infrastructure.Extensions;
-using BuildingBlocks.Infrastructure.Modules;
 using BuildingBlocks.Infrastructure.Messaging;
+using BuildingBlocks.Infrastructure.Modules;
 using BuildingBlocks.Infrastructure.Operations;
 using BuildingBlocks.Infrastructure.Persistence;
 using Cart.Api;
@@ -17,15 +17,15 @@ using Catalog.Api;
 using Customers.Api;
 using FluentValidation;
 using Inventory.Api;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
-using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Orders.Api;
 using Payments.Api;
 using Pricing.Api;
@@ -66,6 +66,7 @@ builder.Services.AddOptions<AppBuildOptions>()
     .ValidateOnStart();
 builder.Services.AddOptions<AppReleaseOptions>()
     .BindConfiguration(AppReleaseOptions.SectionName)
+    .Validate(options => ReleaseSeedModes.IsSupported(options.SeedMode), "Release seed mode is invalid.")
     .ValidateOnStart();
 builder.Services.AddOptions<AppFeatureFlagsOptions>()
     .BindConfiguration(AppFeatureFlagsOptions.SectionName)
@@ -277,6 +278,7 @@ builder.Services.AddOpenTelemetry()
 var app = builder.Build();
 var skipInfrastructureInitialization = builder.Configuration.GetValue<bool>("Infrastructure:SkipInitialization");
 var buildOptions = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<AppBuildOptions>>().Value;
+var releaseOptions = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<AppReleaseOptions>>().Value;
 
 app.Logger.LogInformation(
     "Starting app host {ApplicationName} version {Version} revision {Revision}",
@@ -318,6 +320,7 @@ if (!skipInfrastructureInitialization)
 {
     await app.Services.InitializeSharedInfrastructureAsync(app.Lifetime.ApplicationStopping);
     await moduleInstallers.InitializeModulesAsync(app.Services, app.Lifetime.ApplicationStopping);
+    await moduleInstallers.SeedModulesAsync(app.Services, releaseOptions.SeedMode, app.Lifetime.ApplicationStopping);
 }
 
 var apiV1 = app.MapGroup("/api/v1");

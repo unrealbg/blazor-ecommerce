@@ -1,34 +1,112 @@
 @using Storefront.Web.Services.Api
 @using Storefront.Web.Services.Media
 
-<article class="card">
-    <ResponsiveImage
-        Source="@Item.ImageUrl"
-        Alt="@Item.Name"
-        Preset="@Preset"
-        CssClass="card-image"
-        Priority="@PriorityImage" />
-    <h2>
-        <a href="/product/@Item.Slug">@Item.Name</a>
-    </h2>
-    <p>@(string.IsNullOrWhiteSpace(Item.Description) ? "No description provided." : Item.Description)</p>
-    @if (!string.IsNullOrWhiteSpace(Item.Brand))
-    {
-        <p class="meta">@Item.Brand</p>
-    }
+<article class="product-card">
+    <a class="product-card-media" href="@Href">
+        @if (!string.IsNullOrWhiteSpace(ResolvedBadge))
+        {
+            <span class="product-card-badge">@ResolvedBadge</span>
+        }
 
-    <p class="price">@FormatPrice(Item.PriceAmount, Item.Currency)</p>
+        <ResponsiveImage
+            Source="@ImageUrl"
+            Alt="@Name"
+            Preset="@Preset"
+            CssClass="product-card-image"
+            Priority="@PriorityImage" />
+    </a>
+
+    <div class="product-card-copy">
+        <p class="product-card-kicker">@(CategoryName ?? Brand ?? "Premium system")</p>
+        <h2 class="product-card-title">
+            <a href="@Href">@Name</a>
+        </h2>
+
+        @if (RatingValue is not null || ReviewCount is not null)
+        {
+            <div class="product-card-rating">
+                @if (RatingValue is not null)
+                {
+                    <RatingStars Value="@RatingValue.Value" />
+                }
+
+                @if (ReviewCount is not null)
+                {
+                    <span>(@ReviewCount review@(ReviewCount == 1 ? string.Empty : "s"))</span>
+                }
+            </div>
+        }
+
+        <p class="product-card-description">@ResolvedDescription</p>
+
+        <div class="product-card-pricing">
+            <span class="product-card-price">@FormatPrice(PriceAmount, Currency)</span>
+            @if (CompareAtAmount is > 0m && CompareAtAmount > PriceAmount)
+            {
+                <span class="product-card-price-compare">@FormatPrice(CompareAtAmount.Value, Currency)</span>
+            }
+        </div>
+
+        <div class="product-card-meta-row">
+            <span class="product-card-stock @(IsInStock ? "in-stock" : "low-stock")">@(IsInStock ? "Available now" : "Low stock")</span>
+            <a class="product-card-cta" href="@Href">@CtaLabel</a>
+        </div>
+    </div>
 </article>
 
 @code {
     [Parameter]
-    public required StoreSearchProductItem Item { get; set; }
+    public StoreSearchProductItem? Item { get; set; }
+
+    [Parameter]
+    public StoreProduct? Product { get; set; }
 
     [Parameter]
     public MediaImagePreset Preset { get; set; } = MediaImagePreset.ProductCard;
 
     [Parameter]
     public bool PriorityImage { get; set; }
+
+    [Parameter]
+    public string? Badge { get; set; }
+
+    [Parameter]
+    public decimal? RatingValue { get; set; }
+
+    [Parameter]
+    public int? ReviewCount { get; set; }
+
+    [Parameter]
+    public string CtaLabel { get; set; } = "View product";
+
+    private string Href => $"/product/{(Product?.Slug ?? Item?.Slug ?? string.Empty)}";
+
+    private string Name => Product?.Name ?? Item?.Name ?? string.Empty;
+
+    private string? ImageUrl => Product?.ImageUrl ?? Item?.ImageUrl;
+
+    private string? Brand => Product?.Brand ?? Item?.Brand;
+
+    private string? CategoryName => Product?.CategoryName ?? Item?.CategoryName;
+
+    private decimal PriceAmount => Product?.Amount ?? Item?.PriceAmount ?? 0m;
+
+    private decimal? CompareAtAmount => Product?.CompareAtAmount;
+
+    private string Currency => Product?.Currency ?? Item?.Currency ?? "EUR";
+
+    private bool IsInStock => Product?.IsInStock ?? Item?.IsInStock ?? false;
+
+    private string ResolvedDescription =>
+        !string.IsNullOrWhiteSpace(Product?.ShortDescription) ? Product!.ShortDescription! :
+        !string.IsNullOrWhiteSpace(Product?.Description) ? Product!.Description! :
+        !string.IsNullOrWhiteSpace(Item?.Description) ? Item!.Description! :
+        "Engineered for a calmer, more premium product-first storefront.";
+
+    private string? ResolvedBadge =>
+        !string.IsNullOrWhiteSpace(Badge) ? Badge :
+        CompareAtAmount is > 0m && CompareAtAmount > PriceAmount ? "Sale" :
+        Product?.IsFeatured is true ? "Featured" : null;
 
     private static string FormatPrice(decimal amount, string currency)
     {

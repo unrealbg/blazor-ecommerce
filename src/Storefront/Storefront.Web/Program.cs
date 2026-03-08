@@ -143,7 +143,11 @@ app.MapGet("/rss.xml", async (IRssService rssService, CancellationToken cancella
 });
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment() || HasHttpsEndpoint(app.Configuration))
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseAntiforgery();
 
 app.MapStaticAssets();
@@ -290,6 +294,14 @@ static TimeSpan? ResolveTtl(PathString path, StorefrontCacheOptions options)
     }
 
     return null;
+}
+
+static bool HasHttpsEndpoint(IConfiguration configuration)
+{
+    var urls = configuration["ASPNETCORE_URLS"] ?? configuration["urls"] ?? string.Empty;
+    return urls
+        .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Any(url => url.StartsWith("https://", StringComparison.OrdinalIgnoreCase));
 }
 
 public partial class Program;
