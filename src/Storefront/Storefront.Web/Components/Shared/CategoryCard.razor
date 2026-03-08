@@ -1,9 +1,27 @@
+@using Storefront.Web.Services.Media
+
 <article class="category-card">
     <a class="category-card-link" href="@Href">
         <div class="category-card-media">
             @if (!string.IsNullOrWhiteSpace(ImageUrl))
             {
-                <img src="@ImageUrl" alt="@Name" loading="lazy" decoding="async" />
+                <div class="category-card-image-frame">
+                    <div class="category-card-placeholder" aria-hidden="true">
+                        <div class="category-card-placeholder-glow"></div>
+                    </div>
+                    <ResponsiveImage
+                        Source="@ImageUrl"
+                        Alt="@Name"
+                        Preset="MediaImagePreset.ProductHero"
+                        CssClass="category-card-image category-card-image-live"
+                        HideOnError="true" />
+                </div>
+            }
+            else
+            {
+                <div class="category-card-placeholder" aria-hidden="true">
+                    <div class="category-card-placeholder-glow"></div>
+                </div>
             }
         </div>
         <div class="category-card-copy">

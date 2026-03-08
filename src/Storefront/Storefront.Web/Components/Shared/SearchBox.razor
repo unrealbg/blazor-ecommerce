@@ -16,7 +16,10 @@
             @oninput="OnInputAsync"
             @onfocus="OnFocus"
             @onblur="OnBlurAsync" />
-        <button type="submit" class="search-submit">Search</button>
+        <button type="submit" class="search-submit">
+            <span aria-hidden="true">→</span>
+            <span class="sr-only">Search</span>
+        </button>
     </form>
 
     @if (isOpen && suggestions.Count != 0)

@@ -8,12 +8,23 @@
             <span class="product-card-badge">@ResolvedBadge</span>
         }
 
-        <ResponsiveImage
-            Source="@ImageUrl"
-            Alt="@Name"
-            Preset="@Preset"
-            CssClass="product-card-image"
-            Priority="@PriorityImage" />
+        @if (!string.IsNullOrWhiteSpace(ImageUrl))
+        {
+            <div class="product-card-image-frame">
+                <div class="product-card-image product-card-placeholder" aria-hidden="true"></div>
+                <ResponsiveImage
+                    Source="@ImageUrl"
+                    Alt="@Name"
+                    Preset="@Preset"
+                    CssClass="product-card-image product-card-image-live"
+                    Priority="@PriorityImage"
+                    HideOnError="true" />
+            </div>
+        }
+        else
+        {
+            <div class="product-card-image product-card-placeholder" aria-hidden="true"></div>
+        }
     </a>
 
     <div class="product-card-copy">

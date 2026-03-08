@@ -16,10 +16,10 @@
         <div class="tech-hero-grid">
             <article class="tech-panel tech-panel-dark tech-hero-primary">
                 <p class="tech-eyebrow tech-eyebrow-light">Flagship launch</p>
-                <h1>Premium hardware for quieter desks, sharper sound, and deliberate upgrades.</h1>
+                <h1>Premium hardware for quieter desks, sharper sound, and more deliberate upgrades.</h1>
                 <p class="tech-copy tech-copy-inverse">
-                    Discover flagship audio, workspace systems, and accessories presented with clearer launch-page
-                    cadence, stronger material focus, and the trust cues of a serious European electronics store.
+                    Discover flagship audio, workspace systems, and carry essentials chosen for stronger materials,
+                    quieter detailing, and the confidence of a premium European electronics store.
                 </p>
                 <div class="tech-action-row">
                     <a class="tech-button tech-button-light" href="@HeroHref">@(heroProduct is null ? "Shop flagship collection" : $"Shop {heroProduct.Name}")</a>
@@ -60,16 +60,33 @@
                     <a href="@HeroHref" class="tech-hero-media-link">
                         @if (!string.IsNullOrWhiteSpace(heroProduct?.ImageUrl))
                         {
-                            <ResponsiveImage
-                                Source="@heroProduct!.ImageUrl"
-                                Alt="@heroProduct.Name"
-                                Preset="MediaImagePreset.ProductHero"
-                                CssClass="tech-hero-image"
-                                Priority="true" />
+                            <div class="tech-hero-media-shell">
+                                <div class="tech-hero-media-glow" aria-hidden="true"></div>
+                                <div class="tech-hero-placeholder tech-hero-media-fallback" aria-hidden="true">
+                                    <div class="tech-hero-placeholder-device">
+                                        <span class="tech-hero-placeholder-badge">Curated hardware</span>
+                                        <div class="tech-hero-placeholder-silhouette"></div>
+                                        <div class="tech-hero-placeholder-reflection"></div>
+                                    </div>
+                                </div>
+                                <ResponsiveImage
+                                    Source="@heroProduct!.ImageUrl"
+                                    Alt="@heroProduct.Name"
+                                    Preset="MediaImagePreset.ProductHero"
+                                    CssClass="tech-hero-image tech-hero-image-live"
+                                    Priority="true"
+                                    HideOnError="true" />
+                            </div>
                         }
                         else
                         {
-                            <div class="tech-hero-placeholder" aria-hidden="true"></div>
+                            <div class="tech-hero-placeholder" aria-hidden="true">
+                                <div class="tech-hero-placeholder-device">
+                                    <span class="tech-hero-placeholder-badge">Curated hardware</span>
+                                    <div class="tech-hero-placeholder-silhouette"></div>
+                                    <div class="tech-hero-placeholder-reflection"></div>
+                                </div>
+                            </div>
                         }
                     </a>
 
@@ -115,10 +132,9 @@
 
                 <article class="tech-panel tech-panel-muted tech-hero-note">
                     <p class="tech-eyebrow">Curated system</p>
-                    <h2>A calmer layout gives premium hardware more presence.</h2>
+                    <h2>Choose the lead piece first, then complete the setup with intention.</h2>
                     <p class="tech-copy">
-                        Larger image fields, quieter chrome, and fewer competing choices keep attention on product,
-                        materials, and aftercare.
+                        A quieter storefront keeps attention on the products, the materials, and the details that matter once they arrive on your desk.
                     </p>
                     <a class="tech-inline-link" href="/search?sort=newest">View the latest hardware →</a>
                 </article>
@@ -176,7 +192,7 @@
         <div class="tech-section-header">
             <div>
                 <p class="tech-eyebrow">Signature products</p>
-                <h2>Live catalog data, presented with the cadence of a premium electronics launch.</h2>
+                <h2>A tighter edit of premium hardware for listening, work, and everyday carry.</h2>
             </div>
             <a class="tech-inline-link" href="/search?sort=popular">Browse best sellers →</a>
         </div>
@@ -209,18 +225,18 @@
     <section class="tech-split-grid">
         <article class="tech-panel tech-panel-dark">
             <p class="tech-eyebrow tech-eyebrow-light">Launch campaign</p>
-            <h2>Pre-order, limited finish, or campaign copy should feel engineered into the page.</h2>
+            <h2>Early access, limited finishes, and reserved bundles presented with restraint.</h2>
             <p class="tech-copy tech-copy-inverse">
-                This surface works for launch windows, premium bundles, or reserved stock access without turning the storefront into a promo wall.
+                Discover new releases, member drops, and carefully timed offers without losing the calm tone of the storefront.
             </p>
             <a class="tech-button tech-button-ghost" href="/search?sort=price_desc">Explore launch offers</a>
         </article>
 
         <article class="tech-panel tech-panel-muted">
             <p class="tech-eyebrow">Editorial block</p>
-            <h2>The ecosystem story should support conversion, not compete with it.</h2>
+            <h2>Stories, setup notes, and pairings that help you choose with more confidence.</h2>
             <p class="tech-copy">
-                Use split panels to connect flagship products, accessories, and aftercare with a cleaner technology-brand rhythm.
+                Read product context, compare compatible pieces, and see how the range fits together before you commit to the final setup.
             </p>
             <a class="tech-button tech-button-primary" href="/blog">Read the journal</a>
         </article>
@@ -230,7 +246,7 @@
         <div class="tech-section-header tech-section-header-dark">
             <div>
                 <p class="tech-eyebrow tech-eyebrow-light">Featured collection</p>
-                <h2>Dark sections create the controlled drama of a product keynote without losing clarity.</h2>
+                <h2>A tighter collection of hardware chosen for material quality, clarity, and daily use.</h2>
             </div>
         </div>
 
@@ -241,7 +257,7 @@
                     <h3>@(collectionProducts.FirstOrDefault()?.Name ?? "Studio system")</h3>
                     <p>
                         @(collectionProducts.FirstOrDefault() is null
-                            ? "A larger visual collection block for launch bundles, deskside systems, or premium audio stacks."
+                            ? "Explore a focused edit of audio, workspace, and carry essentials selected to feel cohesive from first product to final accessory."
                             : ResolveHeroDescription(collectionProducts.First()))
                     </p>
                     <a class="tech-button tech-button-light" href="@(collectionProducts.FirstOrDefault() is null ? "/search" : $"/product/{collectionProducts.First().Slug}")">View collection lead</a>
@@ -249,11 +265,19 @@
 
                 @if (!string.IsNullOrWhiteSpace(collectionProducts.FirstOrDefault()?.ImageUrl))
                 {
-                    <ResponsiveImage
-                        Source="@collectionProducts.First().ImageUrl"
-                        Alt="@collectionProducts.First().Name"
-                        Preset="MediaImagePreset.ProductHero"
-                        CssClass="tech-collection-image" />
+                    <div class="tech-collection-media-shell">
+                        <div class="tech-collection-placeholder" aria-hidden="true"></div>
+                        <ResponsiveImage
+                            Source="@collectionProducts.First().ImageUrl"
+                            Alt="@collectionProducts.First().Name"
+                            Preset="MediaImagePreset.ProductHero"
+                            CssClass="tech-collection-image tech-collection-image-live"
+                            HideOnError="true" />
+                    </div>
+                }
+                else
+                {
+                    <div class="tech-collection-placeholder" aria-hidden="true"></div>
                 }
             </article>
 
@@ -272,8 +296,8 @@
                 {
                     <article class="tech-collection-card">
                         <p class="tech-eyebrow tech-eyebrow-light">System note</p>
-                        <h3>Fewer products per viewport, more perceived value per product.</h3>
-                        <p>This space is reserved for future launch bundles, desk systems, or curated product pairings.</p>
+                        <h3>One stronger collection is easier to choose from than a crowded wall of products.</h3>
+                        <p>Return here for future desk systems, paired accessories, and reserved hardware edits.</p>
                     </article>
                 }
             </div>
@@ -282,63 +306,84 @@
 
     <section class="tech-ecosystem-grid">
         <article class="tech-panel tech-ecosystem-copy">
-            <p class="tech-eyebrow">Editorial ecosystem</p>
-            <h2>Show how products fit together before asking the customer to compare specifications.</h2>
+            <p class="tech-eyebrow">Connected ecosystem</p>
+            <h2>Build around one product you trust, then complete the setup with pieces that belong together.</h2>
             <p class="tech-copy">
-                This is where a premium electronics storefront earns trust: cohesive material language, compatible accessories,
-                and clear service continuity from discovery to delivery.
+                The strongest hardware setups feel considered from the first device to the final accessory, with service that continues after delivery.
             </p>
             <div class="tech-feature-list">
                 <div>
-                    <strong>Seamless pairing</strong>
-                    <p>Search, product, cart, and checkout now share the same quieter visual system.</p>
+                    <strong>Start with the lead piece</strong>
+                    <p>Choose the product you will use most, then add only the accessories that improve the everyday experience.</p>
                 </div>
                 <div>
-                    <strong>Unified materials</strong>
-                    <p>The interface now mirrors the premium hardware tone of alloy, glass, and restrained light accents.</p>
+                    <strong>Keep the material language consistent</strong>
+                    <p>Quiet finishes, durable construction, and restrained detailing make the range feel cohesive in use and at rest.</p>
                 </div>
                 <div>
-                    <strong>Backend-ready</strong>
-                    <p>Featured products, search results, PDP data, cart, and checkout continue to come from the real API.</p>
+                    <strong>Expect care after checkout</strong>
+                    <p>Delivery updates, returns guidance, and support remain as clear as the products themselves.</p>
                 </div>
             </div>
         </article>
 
         <article class="tech-panel tech-ecosystem-media">
-            <img
-                src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&amp;fit=crop&amp;w=1200&amp;q=80"
-                alt="Minimal premium electronics ecosystem on a desk" />
+            <div class="tech-product-placeholder tech-ecosystem-placeholder" aria-hidden="true">
+                <div class="tech-hero-placeholder-device">
+                    <span class="tech-hero-placeholder-badge">System view</span>
+                    <div class="tech-hero-placeholder-silhouette tech-ecosystem-placeholder-silhouette"></div>
+                    <div class="tech-hero-placeholder-reflection"></div>
+                </div>
+            </div>
         </article>
     </section>
 
-    <section class="tech-proof-grid">
-        <article class="tech-proof-card">
-            <p>“The storefront feels closer to a premium hardware launch than a generic ecommerce template.”</p>
-            <strong>Lena Hartmann</strong>
-            <span>Product Design Director</span>
-        </article>
-        <article class="tech-proof-card">
-            <p>“The presentation carries the confidence you expect from premium hardware.”</p>
-            <strong>Jonas Weiss</strong>
-            <span>Retail Experience Lead</span>
-        </article>
-        <article class="tech-proof-card">
-            <p>“Cleaner hierarchy, larger cards, fewer distractions. It now looks priced for premium electronics.”</p>
-            <strong>Marta Iliev</strong>
-            <span>Commerce Consultant</span>
-        </article>
+    <section class="tech-proof-section">
+        <div class="tech-section-header">
+            <div>
+                <p class="tech-eyebrow">Client perspective</p>
+                <h2>Feedback from teams shaping premium product and retail experiences.</h2>
+            </div>
+        </div>
+
+        <div class="tech-proof-grid">
+            <article class="tech-proof-card">
+                <blockquote>“The collection feels considered from the first screen. Products finally have the space they deserve.”</blockquote>
+                <footer class="tech-proof-attribution">
+                    <strong>Lena Hartmann</strong>
+                    <span>Product Design Director</span>
+                </footer>
+            </article>
+            <article class="tech-proof-card">
+                <blockquote>“Everything from discovery to checkout carries the same calm confidence as the hardware itself.”</blockquote>
+                <footer class="tech-proof-attribution">
+                    <strong>Jonas Weiss</strong>
+                    <span>Retail Experience Lead</span>
+                </footer>
+            </article>
+            <article class="tech-proof-card">
+                <blockquote>“It feels like a premium electronics store, not a crowded catalogue trying to sell everything at once.”</blockquote>
+                <footer class="tech-proof-attribution">
+                    <strong>Marta Iliev</strong>
+                    <span>Commerce Consultant</span>
+                </footer>
+            </article>
+        </div>
     </section>
 
     <section class="tech-panel tech-newsletter">
-        <div>
+        <div class="tech-newsletter-copy">
             <p class="tech-eyebrow">Launch access</p>
             <h2>Receive release notes, stock alerts, and editorial previews.</h2>
-            <p class="tech-copy">Minimal capture, clear value, and enough whitespace to keep the signup aligned with the rest of the storefront.</p>
+            <p class="tech-copy">Minimal capture, clear value, and a quieter signup surface that feels integrated with the rest of the storefront.</p>
         </div>
         <form class="newsletter-form">
             <label class="sr-only" for="newsletter-email">Email address</label>
-            <input id="newsletter-email" type="email" placeholder="Email address" />
-            <button type="submit">Request access</button>
+            <div class="newsletter-form-shell">
+                <input id="newsletter-email" type="email" placeholder="Email address" />
+                <button type="submit">Request access</button>
+            </div>
+            <p class="newsletter-form-note">Release notes only. No noise, no aggressive promotional mailings.</p>
         </form>
     </section>
 </div>
@@ -355,9 +400,9 @@
     private IReadOnlyList<StoreProduct> collectionProducts = [];
     private readonly IReadOnlyCollection<HomeCategory> featuredCategories =
     [
-        new("Audio", "Headphones, speakers, and listening gear with flagship acoustics and quieter industrial detailing.", "/category/audio", "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=900&q=80", "Listening", "Shop audio"),
-        new("Workspace", "Keyboards, docks, displays, and desk tools presented as one coordinated performance system.", "/category/workspace", "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=900&q=80", "Workspace", "Build the desk"),
-        new("Accessories", "Power, carry, and finishing pieces selected to complete the setup without visual noise.", "/category/accessories", "https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=900&q=80", "Daily carry", "Complete the setup"),
+        new("Audio", "Headphones, speakers, and listening gear with flagship acoustics and quieter industrial detailing.", "/category/audio", null, "Listening", "Shop audio"),
+        new("Workspace", "Keyboards, docks, displays, and desk tools presented as one coordinated performance system.", "/category/workspace", null, "Workspace", "Build the desk"),
+        new("Accessories", "Power, carry, and finishing pieces selected to complete the setup without visual noise.", "/category/accessories", null, "Daily carry", "Complete the setup"),
     ];
 
     private string HeroHref => heroProduct is null ? "/category/all-products" : $"/product/{heroProduct.Slug}";
@@ -448,7 +493,7 @@
             ? product.ShortDescription
             : !string.IsNullOrWhiteSpace(product.Description)
                 ? product.Description
-                : "Premium hardware presented with stronger hierarchy, more whitespace, and a calmer launch-style rhythm.";
+                : "Designed for quieter spaces, stronger daily performance, and longer ownership.";
     }
 
     private static string GetHeroAvailabilityLabel(StoreProduct? product)
@@ -496,5 +541,5 @@
         return $"{amount:0.00} {currency}";
     }
 
-    private sealed record HomeCategory(string Name, string Description, string Href, string ImageUrl, string Eyebrow, string CtaLabel);
+    private sealed record HomeCategory(string Name, string Description, string Href, string? ImageUrl, string Eyebrow, string CtaLabel);
 }

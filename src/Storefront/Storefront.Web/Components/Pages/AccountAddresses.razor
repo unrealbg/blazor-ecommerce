@@ -5,142 +5,173 @@
 
 <PageTitle>My Addresses</PageTitle>
 
-<h1>Addresses</h1>
+<section class="tech-panel account-page-intro">
+    <p class="tech-eyebrow">Addresses</p>
+    <h1>Keep delivery and billing details ready for a faster, calmer checkout.</h1>
+    <p class="tech-copy">Saved addresses stay close at hand for future orders, support requests, and a more deliberate checkout flow.</p>
+</section>
 
 @if (isLoading)
 {
-    <p>Loading addresses...</p>
+    <section class="tech-detail-card account-state-card">
+        <p class="tech-eyebrow">Loading</p>
+        <h2>Preparing your saved addresses</h2>
+        <p>We are fetching your current billing and delivery details.</p>
+    </section>
 }
 else if (!isAuthenticated)
 {
-    <p>You need to sign in to manage addresses.</p>
-    <p><a class="btn-link" href="/account/login">Go to login</a></p>
+    <section class="tech-detail-card account-state-card">
+        <p class="tech-eyebrow">Sign in required</p>
+        <h2>Manage saved addresses</h2>
+        <p>Sign in to keep billing and shipping details ready for faster checkout.</p>
+        <a class="tech-button tech-button-primary" href="/account/login">Sign in</a>
+    </section>
 }
 else
 {
     @if (addressModels.Count == 0)
     {
-        <p>No saved addresses.</p>
+        <section class="tech-detail-card account-state-card">
+            <p class="tech-eyebrow">No saved addresses</p>
+            <h2>Add your first delivery address</h2>
+            <p>Once saved, your preferred billing and shipping details will appear here.</p>
+        </section>
     }
     else
     {
         <div class="address-list">
             @foreach (var address in addressModels)
             {
-                <EditForm Model="address" OnValidSubmit="@(() => UpdateAddressAsync(address))">
-                    <div class="form-grid">
-                        <label>
-                            Label
+                <EditForm Model="address" OnValidSubmit="@(() => UpdateAddressAsync(address))" class="tech-detail-card account-form-card">
+                    <div class="tech-detail-card-header">
+                        <div>
+                            <p class="tech-eyebrow">Saved address</p>
+                            <h2>@address.Label</h2>
+                        </div>
+                    </div>
+                    <div class="form-grid tech-form-grid">
+                        <label class="tech-field">
+                            <span>Label</span>
                             <InputText @bind-Value="address.Label" />
                         </label>
-                        <label>
-                            First name
+                        <label class="tech-field">
+                            <span>First name</span>
                             <InputText @bind-Value="address.FirstName" />
                         </label>
-                        <label>
-                            Last name
+                        <label class="tech-field">
+                            <span>Last name</span>
                             <InputText @bind-Value="address.LastName" />
                         </label>
-                        <label>
-                            Company
+                        <label class="tech-field">
+                            <span>Company</span>
                             <InputText @bind-Value="address.Company" />
                         </label>
-                        <label>
-                            Street 1
+                        <label class="tech-field">
+                            <span>Street 1</span>
                             <InputText @bind-Value="address.Street1" />
                         </label>
-                        <label>
-                            Street 2
+                        <label class="tech-field">
+                            <span>Street 2</span>
                             <InputText @bind-Value="address.Street2" />
                         </label>
-                        <label>
-                            City
+                        <label class="tech-field">
+                            <span>City</span>
                             <InputText @bind-Value="address.City" />
                         </label>
-                        <label>
-                            Postal code
+                        <label class="tech-field">
+                            <span>Postal code</span>
                             <InputText @bind-Value="address.PostalCode" />
                         </label>
-                        <label>
-                            Country code
+                        <label class="tech-field">
+                            <span>Country code</span>
                             <InputText @bind-Value="address.CountryCode" />
                         </label>
-                        <label>
-                            Phone
+                        <label class="tech-field">
+                            <span>Phone</span>
                             <InputText @bind-Value="address.Phone" />
                         </label>
-                        <label class="checkbox-row">
+                        <label class="checkbox-row account-checkbox-row">
                             <InputCheckbox @bind-Value="address.IsDefaultShipping" />
                             <span>Default shipping</span>
                         </label>
-                        <label class="checkbox-row">
+                        <label class="checkbox-row account-checkbox-row">
                             <InputCheckbox @bind-Value="address.IsDefaultBilling" />
                             <span>Default billing</span>
                         </label>
                     </div>
-                    <div class="address-actions">
-                        <button class="btn-primary" type="submit">Save</button>
-                        <button class="btn-link danger" type="button" @onclick="() => DeleteAddressAsync(address.Id)">Delete</button>
+                    <div class="address-actions account-card-actions">
+                        <button class="tech-button tech-button-primary" type="submit">Save address</button>
+                        <button class="account-link-button account-link-button-danger" type="button" @onclick="() => DeleteAddressAsync(address.Id)">Delete address</button>
                     </div>
                 </EditForm>
             }
         </div>
     }
 
-    <h2>Add address</h2>
-    <EditForm Model="newAddress" OnValidSubmit="AddAddressAsync">
-        <div class="form-grid">
-            <label>
-                Label
-                <InputText @bind-Value="newAddress.Label" />
-            </label>
-            <label>
-                First name
-                <InputText @bind-Value="newAddress.FirstName" />
-            </label>
-            <label>
-                Last name
-                <InputText @bind-Value="newAddress.LastName" />
-            </label>
-            <label>
-                Company
-                <InputText @bind-Value="newAddress.Company" />
-            </label>
-            <label>
-                Street 1
-                <InputText @bind-Value="newAddress.Street1" />
-            </label>
-            <label>
-                Street 2
-                <InputText @bind-Value="newAddress.Street2" />
-            </label>
-            <label>
-                City
-                <InputText @bind-Value="newAddress.City" />
-            </label>
-            <label>
-                Postal code
-                <InputText @bind-Value="newAddress.PostalCode" />
-            </label>
-            <label>
-                Country code
-                <InputText @bind-Value="newAddress.CountryCode" />
-            </label>
-            <label>
-                Phone
-                <InputText @bind-Value="newAddress.Phone" />
-            </label>
-            <label class="checkbox-row">
-                <InputCheckbox @bind-Value="newAddress.IsDefaultShipping" />
-                <span>Default shipping</span>
-            </label>
-            <label class="checkbox-row">
-                <InputCheckbox @bind-Value="newAddress.IsDefaultBilling" />
-                <span>Default billing</span>
-            </label>
+    <section class="tech-detail-card account-form-card">
+        <div class="tech-detail-card-header">
+            <div>
+                <p class="tech-eyebrow">Add address</p>
+                <h2>New delivery or billing address</h2>
+            </div>
         </div>
-        <button class="btn-primary" type="submit">Add address</button>
-    </EditForm>
+        <EditForm Model="newAddress" OnValidSubmit="AddAddressAsync">
+            <div class="form-grid tech-form-grid">
+                <label class="tech-field">
+                    <span>Label</span>
+                    <InputText @bind-Value="newAddress.Label" />
+                </label>
+                <label class="tech-field">
+                    <span>First name</span>
+                    <InputText @bind-Value="newAddress.FirstName" />
+                </label>
+                <label class="tech-field">
+                    <span>Last name</span>
+                    <InputText @bind-Value="newAddress.LastName" />
+                </label>
+                <label class="tech-field">
+                    <span>Company</span>
+                    <InputText @bind-Value="newAddress.Company" />
+                </label>
+                <label class="tech-field">
+                    <span>Street 1</span>
+                    <InputText @bind-Value="newAddress.Street1" />
+                </label>
+                <label class="tech-field">
+                    <span>Street 2</span>
+                    <InputText @bind-Value="newAddress.Street2" />
+                </label>
+                <label class="tech-field">
+                    <span>City</span>
+                    <InputText @bind-Value="newAddress.City" />
+                </label>
+                <label class="tech-field">
+                    <span>Postal code</span>
+                    <InputText @bind-Value="newAddress.PostalCode" />
+                </label>
+                <label class="tech-field">
+                    <span>Country code</span>
+                    <InputText @bind-Value="newAddress.CountryCode" />
+                </label>
+                <label class="tech-field">
+                    <span>Phone</span>
+                    <InputText @bind-Value="newAddress.Phone" />
+                </label>
+                <label class="checkbox-row account-checkbox-row">
+                    <InputCheckbox @bind-Value="newAddress.IsDefaultShipping" />
+                    <span>Default shipping</span>
+                </label>
+                <label class="checkbox-row account-checkbox-row">
+                    <InputCheckbox @bind-Value="newAddress.IsDefaultBilling" />
+                    <span>Default billing</span>
+                </label>
+            </div>
+            <div class="account-card-actions">
+                <button class="tech-button tech-button-primary" type="submit">Add address</button>
+            </div>
+        </EditForm>
+    </section>
 
     @if (!string.IsNullOrWhiteSpace(message))
     {
