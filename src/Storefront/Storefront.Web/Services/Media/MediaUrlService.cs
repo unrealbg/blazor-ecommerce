@@ -85,16 +85,29 @@ public sealed class MediaUrlService(
             return proxied;
         }
 
-        this.TryBuild(
+        if (this.TryBuildSiteRelativeFallback(source, width, height, fit, format, out proxied))
+        {
+            return proxied;
+        }
+
+        if (this.TryBuild(
             DefaultOgImageRelativePath,
             MediaSourceOrigin.Site,
             width,
             height,
             fit,
             format,
-            out var fallback);
+            out var fallback))
+        {
+            return fallback;
+        }
 
-        return fallback;
+        if (this.TryBuildSiteRelativeFallback(DefaultOgImageRelativePath, width, height, fit, format, out fallback))
+        {
+            return fallback;
+        }
+
+        return pageMetadataService.BuildAbsoluteUrl(DefaultOgImageRelativePath);
     }
 
     private bool TryBuild(
@@ -136,6 +149,55 @@ public sealed class MediaUrlService(
 
         var mediaPath = $"/media/image{QueryString.Create(queryParameters)}";
         proxiedUrl = pageMetadataService.BuildAbsoluteUrl(mediaPath);
+        return true;
+    }
+
+    private bool TryBuildSiteRelativeFallback(
+        string source,
+        int width,
+        int? height,
+        MediaFitMode fit,
+        MediaOutputFormat format,
+        out string proxiedUrl)
+    {
+        proxiedUrl = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            return false;
+        }
+
+        var normalizedSource = source.Trim().Replace('\\', '/');
+        if (Uri.TryCreate(normalizedSource, UriKind.Absolute, out _))
+        {
+            return false;
+        }
+
+        var normalizedPath = normalizedSource.StartsWith("/", StringComparison.Ordinal)
+            ? normalizedSource
+            : $"/{normalizedSource}";
+
+        if (normalizedPath.StartsWith("/assets/", StringComparison.OrdinalIgnoreCase) ||
+            normalizedPath.StartsWith("/uploads/", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var normalizedWidth = Math.Max(1, width);
+        var queryParameters = new List<KeyValuePair<string, string?>>
+        {
+            new("src", pageMetadataService.BuildAbsoluteUrl(normalizedPath)),
+            new("w", normalizedWidth.ToString()),
+            new("fit", fit.ToString().ToLowerInvariant()),
+            new("format", format.ToString().ToLowerInvariant()),
+        };
+
+        if (height is > 0)
+        {
+            queryParameters.Add(new KeyValuePair<string, string?>("h", height.Value.ToString()));
+        }
+
+        proxiedUrl = pageMetadataService.BuildAbsoluteUrl($"/media/image{QueryString.Create(queryParameters)}");
         return true;
     }
 

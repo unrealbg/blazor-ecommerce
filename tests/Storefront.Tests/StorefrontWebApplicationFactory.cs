@@ -32,6 +32,8 @@ public sealed class StorefrontWebApplicationFactory : WebApplicationFactory<Prog
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseEnvironment("Testing");
+
         builder.ConfigureAppConfiguration((_, configurationBuilder) =>
         {
             configurationBuilder.AddInMemoryCollection(

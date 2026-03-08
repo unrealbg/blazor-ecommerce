@@ -526,10 +526,12 @@
 </div>
 
 @code {
+    private const string DefaultOgImagePath = "/images/og-default.jpg";
+
     [Parameter]
     public string Slug { get; set; } = string.Empty;
 
-    private PageMetadata metadata = new("Product", "Product details page.", "/");
+    private PageMetadata metadata = new("Product", "Product details page.", "/", false, "product");
     private IReadOnlyCollection<string> jsonLdScripts = [];
     private IReadOnlyList<BreadcrumbItem> breadcrumbs = [];
     private StoreProduct? product;
@@ -566,6 +568,7 @@
     {
         isLoading = true;
         reviewsEnabled = FeatureFlags.Value.EnableReviews;
+        metadata = BuildInitialMetadata();
         Logger.LogDebug("Loading product page for slug {Slug}.", Slug);
 
         product = await StoreApiClient.GetProductBySlugAsync(Slug, CancellationToken.None);
@@ -605,8 +608,8 @@
             questionPage = new StoreQuestionPage(1, 10, 0, 1, []);
         }
 
-        var primaryImage = selectedImageUrl ?? product.ImageUrl ?? "/images/og-default.jpg";
-        var openGraphImage = SeoImageMetadata.ResolveOpenGraphImage(MediaUrlService, primaryImage);
+        var primaryImage = selectedImageUrl ?? product.ImageUrl ?? DefaultOgImagePath;
+        var openGraphImage = ResolveOpenGraphImage(primaryImage);
         var productImageUrls = galleryImages
             .Select(image => MediaUrlService.ProductImage(image.SourceUrl ?? primaryImage, 1200))
             .Append(MediaUrlService.ProductImage(primaryImage, 1200))
@@ -762,6 +765,49 @@
     private IEnumerable<BreadcrumbItem> ToAbsoluteBreadcrumbs(IEnumerable<BreadcrumbItem> source)
     {
         return source.Select(item => new BreadcrumbItem(item.Name, MetadataService.BuildAbsoluteUrl(item.Url)));
+    }
+
+    private PageMetadata BuildInitialMetadata()
+    {
+        return new PageMetadata(
+            BuildFallbackProductTitle(Slug),
+            "Explore specifications, pricing, and availability for this product.",
+            MetadataService.BuildAbsoluteUrl($"/product/{Slug}"),
+            false,
+            "product",
+            ResolveOpenGraphImage(DefaultOgImagePath));
+    }
+
+    private string ResolveOpenGraphImage(string? imageSource)
+    {
+        var resolved = SeoImageMetadata.ResolveOpenGraphImage(MediaUrlService, imageSource);
+        if (!string.IsNullOrWhiteSpace(resolved))
+        {
+            return resolved;
+        }
+
+        var fallback = SeoImageMetadata.ResolveOpenGraphImage(MediaUrlService, DefaultOgImagePath);
+        return !string.IsNullOrWhiteSpace(fallback)
+            ? fallback
+            : MetadataService.BuildAbsoluteUrl(DefaultOgImagePath);
+    }
+
+    private static string BuildFallbackProductTitle(string slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            return "Product - Buy Online";
+        }
+
+        var humanized = string.Join(
+            ' ',
+            slug.Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(segment => segment.Length > 0)
+                .Select(segment => char.ToUpperInvariant(segment[0]) + segment[1..].ToLowerInvariant()));
+
+        return string.IsNullOrWhiteSpace(humanized)
+            ? "Product - Buy Online"
+            : $"{humanized} - Buy Online";
     }
 
     private void InitializeSelectionState(StoreProduct currentProduct)
