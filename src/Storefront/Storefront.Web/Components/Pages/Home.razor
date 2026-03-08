@@ -16,10 +16,10 @@
         <div class="tech-hero-grid">
             <article class="tech-panel tech-panel-dark tech-hero-primary">
                 <p class="tech-eyebrow tech-eyebrow-light">Flagship launch</p>
-                <h1>Premium hardware for quieter desks, sharper sound, and more deliberate upgrades.</h1>
+                <h1>Premium hardware for quieter desks, sharper sound, and deliberate upgrades.</h1>
                 <p class="tech-copy tech-copy-inverse">
-                    Discover flagship audio, workspace systems, and accessories presented with launch-page clarity
-                    and the trust cues of a serious European electronics store.
+                    Discover flagship audio, workspace systems, and accessories presented with clearer launch-page
+                    cadence, stronger material focus, and the trust cues of a serious European electronics store.
                 </p>
                 <div class="tech-action-row">
                     <a class="tech-button tech-button-light" href="@HeroHref">@(heroProduct is null ? "Shop flagship collection" : $"Shop {heroProduct.Name}")</a>
@@ -90,15 +90,35 @@
                                 }
                             </div>
                         }
+
+                        <dl class="tech-hero-feature-meta" aria-label="Featured product details">
+                            <div class="tech-hero-feature-meta-item">
+                                <dt>Brand</dt>
+                                <dd>@(heroProduct?.Brand ?? "Curated selection")</dd>
+                            </div>
+                            <div class="tech-hero-feature-meta-item">
+                                <dt>Availability</dt>
+                                <dd>@GetHeroAvailabilityLabel(heroProduct)</dd>
+                            </div>
+                            <div class="tech-hero-feature-meta-item">
+                                <dt>Reference</dt>
+                                <dd>@(heroProduct?.Sku ?? "Flagship edit")</dd>
+                            </div>
+                        </dl>
+
+                        <div class="tech-hero-feature-actions">
+                            <a class="tech-button tech-button-primary" href="@HeroHref">View product</a>
+                            <a class="tech-inline-link" href="@GetHeroSecondaryHref(heroProduct)">@GetHeroSecondaryLabel(heroProduct)</a>
+                        </div>
                     </div>
                 </article>
 
                 <article class="tech-panel tech-panel-muted tech-hero-note">
                     <p class="tech-eyebrow">Curated system</p>
-                    <h2>A tighter storefront makes premium products feel more expensive.</h2>
+                    <h2>A calmer layout gives premium hardware more presence.</h2>
                     <p class="tech-copy">
-                        Larger image fields, quieter chrome, and fewer competing choices keep attention on material,
-                        performance, and aftercare.
+                        Larger image fields, quieter chrome, and fewer competing choices keep attention on product,
+                        materials, and aftercare.
                     </p>
                     <a class="tech-inline-link" href="/search?sort=newest">View the latest hardware →</a>
                 </article>
@@ -429,6 +449,46 @@
             : !string.IsNullOrWhiteSpace(product.Description)
                 ? product.Description
                 : "Premium hardware presented with stronger hierarchy, more whitespace, and a calmer launch-style rhythm.";
+    }
+
+    private static string GetHeroAvailabilityLabel(StoreProduct? product)
+    {
+        if (product is null)
+        {
+            return "Ready to ship";
+        }
+
+        return product.IsInStock
+            ? product.AvailableQuantity is > 0
+                ? $"{product.AvailableQuantity.Value} ready now"
+                : "In stock"
+            : product.AllowBackorder
+                ? "Backorder available"
+                : "Currently unavailable";
+    }
+
+    private static string GetHeroSecondaryHref(StoreProduct? product)
+    {
+        if (product is null)
+        {
+            return "/search?sort=newest";
+        }
+
+        return !string.IsNullOrWhiteSpace(product.CategorySlug)
+            ? $"/category/{product.CategorySlug}"
+            : !string.IsNullOrWhiteSpace(product.CategoryName)
+                ? $"/search?q={Uri.EscapeDataString(product.CategoryName)}"
+                : "/search?sort=newest";
+    }
+
+    private static string GetHeroSecondaryLabel(StoreProduct? product)
+    {
+        if (string.IsNullOrWhiteSpace(product?.CategoryName))
+        {
+            return "See latest arrivals →";
+        }
+
+        return $"Explore {product.CategoryName} →";
     }
 
     private static string FormatPrice(decimal amount, string currency)

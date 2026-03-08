@@ -20,12 +20,11 @@
         </div>
 
         <div class="main-header-search">
-            <SearchBox Placeholder="Search flagship products and systems" AriaLabel="Search products" @rendermode="NonPrerenderedInteractive" />
+            <SearchBox Placeholder="Search products and systems" AriaLabel="Search products" @rendermode="NonPrerenderedInteractive" />
         </div>
 
         <div class="main-header-actions">
             <a class="header-pill muted" href="/account/profile">Account</a>
-            <a class="header-pill muted" href="/account/orders">Orders</a>
             <a class="header-pill cart-pill" href="/cart">
                 <span>Bag</span>
                 <CartCountBadge @rendermode="NonPrerenderedInteractive" />
@@ -39,7 +38,7 @@
             </summary>
             <div class="mobile-menu-panel">
                 <div class="mobile-menu-search">
-                    <SearchBox Placeholder="Search products, systems, and accessories" AriaLabel="Search the storefront" @rendermode="NonPrerenderedInteractive" />
+                    <SearchBox Placeholder="Search products and accessories" AriaLabel="Search the storefront" @rendermode="NonPrerenderedInteractive" />
                 </div>
                 <nav class="mobile-nav" aria-label="Mobile navigation">
                     <a href="/">Flagship</a>
@@ -50,6 +49,7 @@
                     <a href="/blog">Journal</a>
                     <a href="/search">Search</a>
                     <a href="/account/profile">Account</a>
+                    <a href="/account/orders">Orders</a>
                     <a href="/cart">Bag</a>
                 </nav>
             </div>
