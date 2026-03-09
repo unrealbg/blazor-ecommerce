@@ -1,6 +1,7 @@
 @page "/cart"
 @rendermode InteractiveServer
 @using Storefront.Web.Services.Api
+@using Storefront.Web.Services.Media
 @inject IStoreApiClient StoreApiClient
 @inject ILogger<Cart> Logger
 @inject Storefront.Web.Services.Customer.ICustomerContext CustomerContext
@@ -76,10 +77,10 @@
                     </div>
 
                     <div class="cart-actions">
-                        <button type="button" class="btn-primary" @onclick="ApplyCouponAsync">Apply coupon</button>
+                        <button type="button" class="tech-button tech-button-primary tech-button-compact" @onclick="ApplyCouponAsync">Apply coupon</button>
                         @if (!string.IsNullOrWhiteSpace(cart.AppliedCouponCode))
                         {
-                            <button type="button" class="btn-link danger" @onclick="RemoveCouponAsync">Remove coupon</button>
+                            <button type="button" class="account-link-button account-link-button-danger" @onclick="RemoveCouponAsync">Remove coupon</button>
                         }
                     </div>
 
@@ -102,10 +103,18 @@
                         {
                             <article class="tech-cart-line">
                                 <div class="tech-cart-line-media">
-                                    @if (!string.IsNullOrWhiteSpace(line.ImageUrl))
-                                    {
-                                        <img src="@line.ImageUrl" alt="@line.ProductName" loading="lazy" decoding="async" />
-                                    }
+                                    <div class="tech-cart-line-media-frame">
+                                        <div class="tech-cart-line-media-placeholder" aria-hidden="true"></div>
+                                        @if (!string.IsNullOrWhiteSpace(line.ImageUrl))
+                                        {
+                                            <ResponsiveImage
+                                                Source="@line.ImageUrl"
+                                                Alt="@line.ProductName"
+                                                Preset="MediaImagePreset.ProductCard"
+                                                CssClass="tech-cart-line-media-image"
+                                                HideOnError="true" />
+                                        }
+                                    </div>
                                 </div>
 
                                 <div class="tech-cart-line-copy">
@@ -136,8 +145,8 @@
                                     </label>
 
                                     <div class="cart-actions">
-                                        <button type="button" class="btn-secondary" @onclick="() => UpdateQuantityAsync(line.VariantId)">Update</button>
-                                        <button type="button" class="btn-link danger" @onclick="() => RemoveItemAsync(line.VariantId)">Remove</button>
+                                        <button type="button" class="tech-button tech-button-ghost tech-button-compact" @onclick="() => UpdateQuantityAsync(line.VariantId)">Update</button>
+                                        <button type="button" class="account-link-button account-link-button-danger" @onclick="() => RemoveItemAsync(line.VariantId)">Remove</button>
                                     </div>
                                 </div>
 

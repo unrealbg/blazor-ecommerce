@@ -25,7 +25,11 @@ else if (!isAuthenticated)
         <p class="tech-eyebrow">Sign in required</p>
         <h2>Access your product questions</h2>
         <p>Sign in to view answers and moderation status for previous questions.</p>
-        <a class="tech-button tech-button-primary" href="/account/login">Sign in</a>
+        <div class="account-state-actions">
+            <a class="tech-button tech-button-primary" href="/account/login">Sign in</a>
+            <a class="tech-button tech-button-ghost" href="/account/register">Create account</a>
+        </div>
+        <p class="account-state-support">Questions and official answers stay close to the products you are considering or already own.</p>
     </section>
 }
 else if (questions.Count == 0)
@@ -34,6 +38,10 @@ else if (questions.Count == 0)
         <p class="tech-eyebrow">No questions yet</p>
         <h2>Your submitted questions will appear here.</h2>
         <p>Once you ask about a product, replies and official answers will stay available in this view.</p>
+        <div class="account-state-actions">
+            <a class="tech-button tech-button-primary" href="/search">Explore the collection</a>
+            <a class="tech-button tech-button-ghost" href="/account/orders">View orders</a>
+        </div>
     </section>
 }
 else
@@ -71,6 +79,10 @@ else
                         }
                     </ul>
                 }
+
+                <div class="account-card-actions">
+                    <a class="tech-inline-link" href="/product/@question.ProductSlug">Open product →</a>
+                </div>
             </article>
         }
     </div>

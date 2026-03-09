@@ -357,15 +357,15 @@
                             }
 
                             <div class="cart-actions">
-                                <button class="btn-secondary" type="button" @onclick='() => VoteReviewAsync(review.Id, "Helpful")'>
+                                <button class="tech-button tech-button-ghost tech-button-compact" type="button" @onclick='() => VoteReviewAsync(review.Id, "Helpful")'>
                                     Helpful (@review.HelpfulCount)
                                 </button>
-                                <button class="btn-secondary" type="button" @onclick='() => VoteReviewAsync(review.Id, "NotHelpful")'>
+                                <button class="tech-button tech-button-ghost tech-button-compact" type="button" @onclick='() => VoteReviewAsync(review.Id, "NotHelpful")'>
                                     Not helpful (@review.NotHelpfulCount)
                                 </button>
                                 @if (currentCustomer is not null)
                                 {
-                                    <button class="btn-link danger" type="button" @onclick="() => ReportReviewAsync(review.Id)">
+                                    <button class="account-link-button account-link-button-danger" type="button" @onclick="() => ReportReviewAsync(review.Id)">
                                         Report
                                     </button>
                                 }
@@ -375,9 +375,9 @@
                 </div>
 
                 <div class="pagination tech-pagination">
-                    <button class="btn-secondary" type="button" disabled="@(reviewPage.Page <= 1)" @onclick="PreviousReviewPageAsync">Previous</button>
+                    <button class="tech-button tech-button-ghost tech-button-compact" type="button" disabled="@(reviewPage.Page <= 1)" @onclick="PreviousReviewPageAsync">Previous</button>
                     <span class="page-indicator">Page @reviewPage.Page of @reviewPage.TotalPages</span>
-                    <button class="btn-secondary" type="button" disabled="@(reviewPage.Page >= reviewPage.TotalPages)" @onclick="NextReviewPageAsync">Next</button>
+                    <button class="tech-button tech-button-ghost tech-button-compact" type="button" disabled="@(reviewPage.Page >= reviewPage.TotalPages)" @onclick="NextReviewPageAsync">Next</button>
                 </div>
             }
 
@@ -385,8 +385,13 @@
                 <h3>Write a review</h3>
                 @if (currentCustomer is null)
                 {
-                    <p>You need to sign in to submit a review.</p>
-                    <p><a class="btn-link" href="/account/login">Go to login</a></p>
+                    <div class="tech-auth-callout">
+                        <p>You need to sign in to submit a review.</p>
+                        <div class="account-state-actions">
+                            <a class="tech-button tech-button-primary" href="/account/login">Sign in</a>
+                            <a class="tech-button tech-button-ghost" href="/account/register">Create account</a>
+                        </div>
+                    </div>
                 }
                 else
                 {
@@ -423,7 +428,7 @@
                                 <InputTextArea @bind-Value="reviewForm.Body" />
                             </label>
                         </div>
-                        <button class="btn-primary" type="submit" disabled="@isSubmittingReview">Submit review</button>
+                        <button class="tech-button tech-button-primary" type="submit" disabled="@isSubmittingReview">Submit review</button>
                     </EditForm>
                 }
 
@@ -493,7 +498,7 @@
                                         <InputTextArea Value="@GetPendingAnswer(question.Id)" ValueChanged="value => SetPendingAnswer(question.Id, value)" />
                                     </label>
                                 </div>
-                                <button class="btn-secondary" type="button" @onclick="() => SubmitAnswerAsync(question.Id)">Submit answer</button>
+                                <button class="tech-button tech-button-ghost tech-button-compact" type="button" @onclick="() => SubmitAnswerAsync(question.Id)">Submit answer</button>
                             }
                         </article>
                     }
@@ -501,17 +506,22 @@
             }
 
             <div class="pagination tech-pagination">
-                <button class="btn-secondary" type="button" disabled="@(questionPage.Page <= 1)" @onclick="PreviousQuestionPageAsync">Previous</button>
+                <button class="tech-button tech-button-ghost tech-button-compact" type="button" disabled="@(questionPage.Page <= 1)" @onclick="PreviousQuestionPageAsync">Previous</button>
                 <span class="page-indicator">Page @questionPage.Page of @questionPage.TotalPages</span>
-                <button class="btn-secondary" type="button" disabled="@(questionPage.Page >= questionPage.TotalPages)" @onclick="NextQuestionPageAsync">Next</button>
+                <button class="tech-button tech-button-ghost tech-button-compact" type="button" disabled="@(questionPage.Page >= questionPage.TotalPages)" @onclick="NextQuestionPageAsync">Next</button>
             </div>
 
             <div class="tech-form-card">
                 <h3>Ask a question</h3>
                 @if (currentCustomer is null)
                 {
-                    <p>You need to sign in to ask a question.</p>
-                    <p><a class="btn-link" href="/account/login">Go to login</a></p>
+                    <div class="tech-auth-callout">
+                        <p>You need to sign in to ask a question.</p>
+                        <div class="account-state-actions">
+                            <a class="tech-button tech-button-primary" href="/account/login">Sign in</a>
+                            <a class="tech-button tech-button-ghost" href="/account/register">Create account</a>
+                        </div>
+                    </div>
                 }
                 else
                 {
@@ -522,7 +532,7 @@
                                 <InputTextArea @bind-Value="questionForm.QuestionText" />
                             </label>
                         </div>
-                        <button class="btn-primary" type="submit" disabled="@isSubmittingQuestion">Submit question</button>
+                        <button class="tech-button tech-button-primary" type="submit" disabled="@isSubmittingQuestion">Submit question</button>
                     </EditForm>
                 }
 

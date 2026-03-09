@@ -9,6 +9,11 @@
         <p class="tech-eyebrow">Client sign in</p>
         <h1>Access orders, saved details, and support from one private account area.</h1>
         <p class="tech-copy">Sign in to keep delivery details ready, revisit previous purchases, and move through checkout with less friction.</p>
+        <ul class="account-auth-benefits">
+            <li>Saved addresses and contact details for faster checkout</li>
+            <li>Order tracking, payment follow-up, and delivery updates in one view</li>
+            <li>Reviews and product questions kept close to your purchase history</li>
+        </ul>
 
         <EditForm Model="model" OnValidSubmit="SubmitAsync">
             <div class="form-grid tech-form-grid">
@@ -30,6 +35,8 @@
                 <a class="tech-inline-link" href="/account/register">Create account →</a>
             </div>
         </EditForm>
+
+        <p class="account-state-support">Sign-in stays inside the same storefront system used for product discovery, checkout, and order care.</p>
 
         @if (!string.IsNullOrWhiteSpace(message))
         {

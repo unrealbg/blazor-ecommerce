@@ -9,6 +9,11 @@
         <p class="tech-eyebrow">Create account</p>
         <h1>Create a private client account for faster checkout, delivery updates, and ongoing support.</h1>
         <p class="tech-copy">Save your details once and keep future purchases, addresses, and account history inside the same premium storefront environment.</p>
+        <ul class="account-auth-benefits">
+            <li>Saved delivery details for calmer repeat purchases</li>
+            <li>Order history, payment status, and shipping updates in one place</li>
+            <li>Reviews, questions, and support context tied to your account</li>
+        </ul>
 
         <EditForm Model="model" OnValidSubmit="SubmitAsync">
             <div class="form-grid tech-form-grid">
@@ -38,6 +43,8 @@
                 <a class="tech-inline-link" href="/account/login">Already registered? Sign in →</a>
             </div>
         </EditForm>
+
+        <p class="account-state-support">Account creation keeps receipts, saved details, and post-purchase care inside one customer-facing product.</p>
 
         @if (!string.IsNullOrWhiteSpace(message))
         {

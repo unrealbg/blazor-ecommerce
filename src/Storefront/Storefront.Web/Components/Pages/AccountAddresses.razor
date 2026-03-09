@@ -25,7 +25,11 @@ else if (!isAuthenticated)
         <p class="tech-eyebrow">Sign in required</p>
         <h2>Manage saved addresses</h2>
         <p>Sign in to keep billing and shipping details ready for faster checkout.</p>
-        <a class="tech-button tech-button-primary" href="/account/login">Sign in</a>
+        <div class="account-state-actions">
+            <a class="tech-button tech-button-primary" href="/account/login">Sign in</a>
+            <a class="tech-button tech-button-ghost" href="/account/register">Create account</a>
+        </div>
+        <p class="account-state-support">Saved delivery details make later checkout calmer and more predictable.</p>
     </section>
 }
 else
@@ -36,6 +40,10 @@ else
             <p class="tech-eyebrow">No saved addresses</p>
             <h2>Add your first delivery address</h2>
             <p>Once saved, your preferred billing and shipping details will appear here.</p>
+            <div class="account-state-actions">
+                <a class="tech-button tech-button-primary" href="#new-address">Add address</a>
+                <a class="tech-button tech-button-ghost" href="/checkout">Go to checkout</a>
+            </div>
         </section>
     }
     else
@@ -48,6 +56,16 @@ else
                         <div>
                             <p class="tech-eyebrow">Saved address</p>
                             <h2>@address.Label</h2>
+                        </div>
+                        <div class="account-card-meta">
+                            @if (address.IsDefaultShipping)
+                            {
+                                <span class="tech-chip tech-chip-accent">Default shipping</span>
+                            }
+                            @if (address.IsDefaultBilling)
+                            {
+                                <span class="tech-chip tech-chip-muted">Default billing</span>
+                            }
                         </div>
                     </div>
                     <div class="form-grid tech-form-grid">
@@ -109,7 +127,7 @@ else
         </div>
     }
 
-    <section class="tech-detail-card account-form-card">
+    <section class="tech-detail-card account-form-card" id="new-address">
         <div class="tech-detail-card-header">
             <div>
                 <p class="tech-eyebrow">Add address</p>

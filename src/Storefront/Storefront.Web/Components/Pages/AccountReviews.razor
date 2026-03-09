@@ -25,7 +25,11 @@ else if (!isAuthenticated)
         <p class="tech-eyebrow">Sign in required</p>
         <h2>Access your submitted reviews</h2>
         <p>Sign in to manage feedback and see moderation status.</p>
-        <a class="tech-button tech-button-primary" href="/account/login">Sign in</a>
+        <div class="account-state-actions">
+            <a class="tech-button tech-button-primary" href="/account/login">Sign in</a>
+            <a class="tech-button tech-button-ghost" href="/account/register">Create account</a>
+        </div>
+        <p class="account-state-support">Reviews, verified purchases, and moderation updates stay connected to your client history.</p>
     </section>
 }
 else if (reviews.Count == 0)
@@ -34,6 +38,10 @@ else if (reviews.Count == 0)
         <p class="tech-eyebrow">Nothing submitted yet</p>
         <h2>Your product reviews will appear here.</h2>
         <p>Once you review a product, the rating and moderation status will be visible in this area.</p>
+        <div class="account-state-actions">
+            <a class="tech-button tech-button-primary" href="/account/orders">Review recent orders</a>
+            <a class="tech-button tech-button-ghost" href="/search">Browse hardware</a>
+        </div>
     </section>
 }
 else
@@ -65,6 +73,9 @@ else
                 {
                     <p>@review.Body</p>
                 }
+                <div class="account-card-actions">
+                    <a class="tech-inline-link" href="/product/@review.ProductSlug">Open product →</a>
+                </div>
             </article>
         }
     </div>
