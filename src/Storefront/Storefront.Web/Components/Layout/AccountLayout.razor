@@ -31,9 +31,18 @@
             <a class="@GetNavClass("/account/questions")" href="/account/questions">Questions</a>
             <button type="button" class="account-nav-button account-nav-button-danger" @onclick="LogoutAsync">Sign out</button>
         </nav>
-        <div class="account-sidebar-actions">
-            <a class="tech-button tech-button-ghost" href="/search">Browse hardware</a>
-            <a class="tech-inline-link" href="/cart">Open bag →</a>
+        <div class="account-sidebar-actions" aria-label="Quick account actions">
+            <p class="account-sidebar-actions-label">Quick access</p>
+            <div class="account-sidebar-actions-grid">
+                <a class="account-sidebar-action-card" href="/search">
+                    <span>Browse</span>
+                    <strong>Hardware collection</strong>
+                </a>
+                <a class="account-sidebar-action-card" href="/cart">
+                    <span>Bag</span>
+                    <strong>Review selected items</strong>
+                </a>
+            </div>
         </div>
         <div class="account-sidebar-note">
             <strong>Client care</strong>
