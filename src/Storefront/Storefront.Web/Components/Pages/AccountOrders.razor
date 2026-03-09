@@ -25,7 +25,11 @@ else if (!isAuthenticated)
         <p class="tech-eyebrow">Sign in required</p>
         <h2>Review your previous purchases</h2>
         <p>Sign in to view totals, payment status, and shipment progress.</p>
-        <a class="tech-button tech-button-primary" href="/account/login">Sign in</a>
+        <div class="account-state-actions">
+            <a class="tech-button tech-button-primary" href="/account/login">Sign in</a>
+            <a class="tech-button tech-button-ghost" href="/account/register">Create account</a>
+        </div>
+        <p class="account-state-support">Your private account keeps purchases, delivery status, and follow-up care in one place.</p>
     </section>
 }
 else if (orders.Count == 0)
@@ -34,11 +38,37 @@ else if (orders.Count == 0)
         <p class="tech-eyebrow">No orders yet</p>
         <h2>Your order history will appear here.</h2>
         <p>Once you place an order, payment details and shipment progress will be available in this area.</p>
-        <a class="tech-button tech-button-primary" href="/search">Browse hardware</a>
+        <div class="account-state-actions">
+            <a class="tech-button tech-button-primary" href="/search">Browse hardware</a>
+            <a class="tech-button tech-button-ghost" href="/cart">Open bag</a>
+        </div>
     </section>
 }
 else
 {
+    <section class="tech-detail-card account-overview-card">
+        <div class="account-card-header">
+            <div>
+                <p class="tech-eyebrow">Order snapshot</p>
+                <h2>Your recent purchase history</h2>
+            </div>
+        </div>
+        <div class="account-detail-grid account-detail-grid-emphasis">
+            <div>
+                <span>Total orders</span>
+                <strong>@orders.Count</strong>
+            </div>
+            <div>
+                <span>Total items</span>
+                <strong>@orders.Sum(order => order.Lines.Count)</strong>
+            </div>
+            <div>
+                <span>Latest order</span>
+                <strong>@orders.OrderByDescending(order => order.PlacedAtUtc).First().PlacedAtUtc.ToString("yyyy-MM-dd")</strong>
+            </div>
+        </div>
+    </section>
+
     <div class="order-list">
         @foreach (var order in orders)
         {

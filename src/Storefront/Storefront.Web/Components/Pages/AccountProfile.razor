@@ -26,7 +26,11 @@ else if (!isAuthenticated)
         <p class="tech-eyebrow">Sign in required</p>
         <h2>Access your private client area</h2>
         <p>Sign in to review saved details, delivery information, and previous orders.</p>
-        <a class="tech-button tech-button-primary" href="/account/login">Sign in</a>
+        <div class="account-state-actions">
+            <a class="tech-button tech-button-primary" href="/account/login">Sign in</a>
+            <a class="tech-button tech-button-ghost" href="/account/register">Create account</a>
+        </div>
+        <p class="account-state-support">A private account keeps orders, saved addresses, and support history inside the same storefront experience.</p>
     </section>
 }
 else
@@ -36,6 +40,21 @@ else
             <div>
                 <p class="tech-eyebrow">Client details</p>
                 <h2>Personal information</h2>
+            </div>
+        </div>
+
+        <div class="account-detail-grid account-detail-grid-emphasis">
+            <div>
+                <span>Receipts</span>
+                <strong>@profileModel.Email</strong>
+            </div>
+            <div>
+                <span>Updates</span>
+                <strong>@(string.IsNullOrWhiteSpace(profileModel.PhoneNumber) ? "Email only" : profileModel.PhoneNumber)</strong>
+            </div>
+            <div>
+                <span>Checkout</span>
+                <strong>Saved for faster completion</strong>
             </div>
         </div>
 

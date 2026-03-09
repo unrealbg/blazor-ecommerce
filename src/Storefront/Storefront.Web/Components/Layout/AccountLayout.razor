@@ -9,6 +9,20 @@
             <h2>Your profile, delivery details, and purchase history in one quiet client area.</h2>
             <p>Everything you need after checkout stays inside the same calm product language as the storefront itself.</p>
         </div>
+        <div class="account-sidebar-highlights" aria-label="Client area highlights">
+            <div class="account-sidebar-highlight">
+                <span>Profile</span>
+                <strong>Checkout-ready details</strong>
+            </div>
+            <div class="account-sidebar-highlight">
+                <span>Orders</span>
+                <strong>Payment and delivery status</strong>
+            </div>
+            <div class="account-sidebar-highlight">
+                <span>Support</span>
+                <strong>Reviews and product questions</strong>
+            </div>
+        </div>
         <nav class="account-nav" aria-label="Account navigation">
             <a class="@GetNavClass("/account/profile")" href="/account/profile">Profile</a>
             <a class="@GetNavClass("/account/addresses")" href="/account/addresses">Addresses</a>
@@ -17,6 +31,10 @@
             <a class="@GetNavClass("/account/questions")" href="/account/questions">Questions</a>
             <button type="button" class="account-nav-button account-nav-button-danger" @onclick="LogoutAsync">Sign out</button>
         </nav>
+        <div class="account-sidebar-actions">
+            <a class="tech-button tech-button-ghost" href="/search">Browse hardware</a>
+            <a class="tech-inline-link" href="/cart">Open bag →</a>
+        </div>
         <div class="account-sidebar-note">
             <strong>Client care</strong>
             <p>Delivery records, saved details, and support context stay readable, minimal, and consistent with the rest of the product.</p>

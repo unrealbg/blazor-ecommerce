@@ -25,7 +25,10 @@ else if (order is null)
         <p class="tech-eyebrow">Unavailable</p>
         <h2>Order not found</h2>
         <p>The requested order is unavailable or no longer accessible from this account.</p>
-        <a class="tech-button tech-button-primary" href="/account/orders">Back to orders</a>
+        <div class="account-state-actions">
+            <a class="tech-button tech-button-primary" href="/account/orders">Back to orders</a>
+            <a class="tech-button tech-button-ghost" href="/search">Browse hardware</a>
+        </div>
     </section>
 }
 else
@@ -66,6 +69,10 @@ else
                 <strong>@order.ShippingMethodCode</strong>
             </div>
         </div>
+        <div class="account-card-actions">
+            <a class="tech-button tech-button-ghost" href="/account/orders">Back to orders</a>
+            <a class="tech-inline-link" href="/search">Continue shopping →</a>
+        </div>
     </article>
 
     <section class="inventory-panel account-form-card">
@@ -78,7 +85,7 @@ else
 
         @if (paymentIntent is null)
         {
-            <p>No payment intent found for this order.</p>
+            <p class="account-section-note">Payment will appear here once the provider session is created for this order.</p>
         }
         else
         {
@@ -125,7 +132,7 @@ else
 
         @if (shipment is null)
         {
-            <p>No shipment created yet.</p>
+            <p class="account-section-note">Delivery tracking will appear here as soon as the order enters fulfilment.</p>
         }
         else
         {
@@ -152,7 +159,7 @@ else
 
             @if (shipment.Events.Count > 0)
             {
-                <table class="cart-table">
+                <table class="cart-table account-event-table">
                     <thead>
                     <tr>
                         <th>Event</th>
