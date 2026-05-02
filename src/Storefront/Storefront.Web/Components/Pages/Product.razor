@@ -21,8 +21,8 @@
     {
         <section class="tech-empty-panel">
             <p class="tech-eyebrow">Loading</p>
-            <h1>Preparing product details</h1>
-            <p>We are fetching the latest product information from the catalog.</p>
+            <h1>Loading product details</h1>
+            <p>We are fetching the latest price, stock, and product information.</p>
         </section>
     }
     else if (product is null || !product.IsActive || !string.Equals(product.Currency, "EUR", StringComparison.Ordinal))
@@ -30,8 +30,8 @@
         <section class="tech-empty-panel">
             <p class="tech-eyebrow">Unavailable</p>
             <h1>Product not found</h1>
-            <p>The requested product is currently unavailable or no longer part of the live collection.</p>
-            <a class="tech-button tech-button-primary" href="/search">Browse the collection</a>
+            <p>The requested product is currently unavailable or no longer listed.</p>
+            <a class="tech-button tech-button-primary" href="/search">Browse products</a>
         </section>
     }
     else
@@ -74,7 +74,7 @@
 
             <div class="product-copy tech-product-copy">
                 <div class="tech-product-heading">
-                    <p class="tech-eyebrow">@(product.CategoryName ?? product.Brand ?? "Flagship hardware")</p>
+                    <p class="tech-eyebrow">@(product.CategoryName ?? product.Brand ?? "Product")</p>
                     <div class="tech-product-title-row">
                         <h1>@product.Name</h1>
                         <span class="tech-chip @GetStockChipClass()">@GetStockStatusLabel()</span>
@@ -92,7 +92,7 @@
                         {
                             <span class="tech-review-meta">
                                 <RatingStars Value="reviewSummary.AverageRating" />
-                                <span>@reviewSummary.ApprovedReviewCount approved review(s)</span>
+                                <span>@reviewSummary.ApprovedReviewCount review(s)</span>
                             </span>
                         }
                     </div>
@@ -100,7 +100,7 @@
 
                 <p class="tech-product-description">
                     @(string.IsNullOrWhiteSpace(product.Description)
-                        ? "Designed for shoppers who expect premium materials, disciplined detail, and clear technical positioning."
+                        ? "Review price, stock, options, and product details before adding this item to your cart."
                         : product.Description)
                 </p>
 
@@ -129,36 +129,18 @@
                         @rendermode="InteractiveServer" />
 
                     <div class="tech-purchase-notes">
-                        <span>Insured EU shipping</span>
+                        <span>Tracked delivery</span>
                         <span>30-day returns</span>
                         <span>Secure checkout</span>
                     </div>
                 </section>
 
-                <div class="tech-spec-row">
-                    <article class="tech-spec-item">
-                        <span>Fulfilment</span>
-                        <strong>24-48H</strong>
-                        <small>insured EU dispatch</small>
-                    </article>
-                    <article class="tech-spec-item">
-                        <span>Service</span>
-                        <strong>CARE+</strong>
-                        <small>returns and support guidance</small>
-                    </article>
-                    <article class="tech-spec-item">
-                        <span>Packaging</span>
-                        <strong>PREMIUM</strong>
-                        <small>protected presentation</small>
-                    </article>
-                </div>
-
                 @if (optionNames.Count > 0)
                 {
                     <section class="tech-detail-card">
                         <div class="tech-detail-card-header">
-                            <p class="tech-eyebrow">Configuration</p>
-                            <h2>Choose your setup</h2>
+                            <p class="tech-eyebrow">Options</p>
+                            <h2>Choose a variant</h2>
                         </div>
 
                         <div class="tech-option-grid">
@@ -186,7 +168,7 @@
                 <div class="tech-section-header">
                     <div>
                         <p class="tech-eyebrow">Specifications</p>
-                        <h2>Technical details presented with the same clarity as the product itself.</h2>
+                        <h2>Product details</h2>
                     </div>
                 </div>
 
@@ -217,8 +199,8 @@
             <section class="tech-section">
                 <div class="tech-section-header">
                     <div>
-                        <p class="tech-eyebrow">Featured collection</p>
-                        <h2>Products that extend the same material and performance ecosystem.</h2>
+                        <p class="tech-eyebrow">Related products</p>
+                        <h2>You may also like</h2>
                     </div>
                 </div>
 
@@ -245,9 +227,9 @@
                                 }
                             </a>
                             <div class="product-card-copy">
-                                <p class="product-card-kicker">Recommended pairing</p>
+                                <p class="product-card-kicker">Related product</p>
                                 <h3 class="product-card-title"><a href="/product/@related.Slug">@related.Name</a></h3>
-                                <p class="product-card-description">Designed to complement the primary setup without adding visual clutter.</p>
+                                <p class="product-card-description">Open the product page to compare details and availability.</p>
                                 <div class="product-card-meta-row">
                                     <span class="product-card-price">@FormatPrice(related.Amount, related.Currency)</span>
                                     <a class="product-card-cta" href="/product/@related.Slug">View details</a>
@@ -264,14 +246,14 @@
         <section class="tech-detail-card tech-detail-section">
             <div class="tech-section-header">
                 <div>
-                    <p class="tech-eyebrow">Review proof</p>
-                    <h2>Ratings and reviews stay part of the product story, not an afterthought.</h2>
+                    <p class="tech-eyebrow">Reviews</p>
+                    <h2>Customer ratings and reviews</h2>
                 </div>
             </div>
 
             @if (reviewSummary is null || reviewSummary.ApprovedReviewCount == 0)
             {
-                <p class="empty-state tech-empty-state">No approved reviews yet.</p>
+                <p class="empty-state tech-empty-state">No reviews yet.</p>
             }
             else
             {
@@ -279,7 +261,7 @@
                     <div class="tech-review-summary-score">
                         <p class="tech-price-current">@reviewSummary.AverageRating.ToString("0.0")/5</p>
                         <RatingStars Value="reviewSummary.AverageRating" />
-                        <p>@reviewSummary.ApprovedReviewCount approved review(s)</p>
+                        <p>@reviewSummary.ApprovedReviewCount review(s)</p>
                     </div>
                     <div class="tech-review-bars">
                         @foreach (var star in Enumerable.Range(1, 5).Reverse())
@@ -443,7 +425,7 @@
             <div class="tech-section-header">
                 <div>
                     <p class="tech-eyebrow">Product Q&amp;A</p>
-                    <h2>Keep buying questions close to the product, with clear public answers.</h2>
+                    <h2>Questions and answers</h2>
                 </div>
             </div>
 
@@ -453,7 +435,7 @@
             }
             else if (questionPage.Items.Count == 0)
             {
-                <p class="empty-state tech-empty-state">No approved questions yet.</p>
+                <p class="empty-state tech-empty-state">No questions yet.</p>
             }
             else
             {
@@ -738,13 +720,13 @@
         if (selectedVariant is null)
         {
             return product?.IsInStock == true
-                ? "Ready for dispatch with premium post-purchase support."
-                : "Currently unavailable. Check back for the next stock allocation.";
+                ? "Ready to ship."
+                : "Currently unavailable.";
         }
 
         if (!selectedVariant.IsTracked)
         {
-            return "Available for purchase without tracked stock limits.";
+            return "Available for purchase.";
         }
 
         if (selectedVariant.AllowBackorder && selectedVariant.AvailableQuantity <= 0)

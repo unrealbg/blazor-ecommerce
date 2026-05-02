@@ -20,12 +20,12 @@
     <Breadcrumbs Items="breadcrumbs" />
 
     <section class="listing-intro-panel tech-listing-intro">
-        <p class="tech-eyebrow">Collection</p>
+        <p class="tech-eyebrow">Category</p>
         <h1>@categoryTitle</h1>
         <p>@ResolveCategoryDescription(Slug)</p>
         <div class="listing-intro-meta">
             <span>@response.Total product@(response.Total == 1 ? string.Empty : "s") available</span>
-            <span>@(selectedInStock is true ? "In-stock products only" : "All availability states")</span>
+            <span>@(selectedInStock is true ? "In stock only" : "All stock statuses")</span>
         </div>
     </section>
 
@@ -44,8 +44,8 @@
         <div class="listing-main">
             <div class="tech-listing-controls">
                 <div class="tech-listing-controls-copy">
-                    <p class="tech-eyebrow">Refine collection</p>
-                    <h2>Balance brand, price, and availability without crowding the grid.</h2>
+                    <p class="tech-eyebrow">Browse</p>
+                    <h2>Filter, sort, and compare products.</h2>
                 </div>
                 <SortDropdown Options="sortOptions" />
             </div>
@@ -53,10 +53,10 @@
             @if (!string.IsNullOrWhiteSpace(loadErrorMessage))
             {
                 <section class="tech-empty-panel">
-                    <p class="tech-eyebrow">Collection unavailable</p>
+                    <p class="tech-eyebrow">Category unavailable</p>
                     <h2>We could not load this category right now.</h2>
                     <p>@loadErrorMessage</p>
-                    <a class="tech-button tech-button-primary" href="/search">Browse all hardware</a>
+                    <a class="tech-button tech-button-primary" href="/search">Browse all products</a>
                 </section>
             }
             else
@@ -91,8 +91,8 @@
 
                 <ProductGrid
                     Items="response.Items"
-                    EmptyEyebrow="Collection empty"
-                    EmptyTitle="No products are available in this collection right now."
+                    EmptyEyebrow="No products"
+                    EmptyTitle="No products match this category right now."
                     EmptyMessage="Try another category or clear one of the active filters." />
 
                 <Pagination CurrentPage="@response.Page" TotalPages="@response.TotalPages" BuildUrl="BuildPageUrl" />
@@ -187,7 +187,7 @@
                 selectedPage);
 
             response = EmptyResponse();
-            loadErrorMessage = "This collection is temporarily unavailable. Please refresh in a moment.";
+            loadErrorMessage = "This category is temporarily unavailable. Please refresh in a moment.";
         }
 
         selectedBrands = response.AppliedFilters.Brands;
@@ -463,11 +463,11 @@
     {
         return slug.Trim().ToLowerInvariant() switch
         {
-            "audio" => "Listening hardware selected for premium acoustics, quieter materials, and stronger daily comfort.",
-            "workspace" => "Desk systems, keyboards, docks, and displays presented as one coordinated performance environment.",
-            "accessories" => "Power, carry, and finishing pieces chosen to complete the setup without adding visual noise.",
-            "all-products" => "Browse the full premium collection with enough space for each product to carry its own weight.",
-            _ => "Browse this collection with calmer filtering, larger product moments, and clearer product hierarchy.",
+            "audio" => "Headphones, speakers, and listening products.",
+            "workspace" => "Keyboards, docks, displays, and desk products.",
+            "accessories" => "Chargers, carry, and everyday add-ons.",
+            "all-products" => "Browse every product currently available in the store.",
+            _ => "Browse products in this category.",
         };
     }
 

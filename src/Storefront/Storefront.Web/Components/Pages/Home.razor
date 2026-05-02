@@ -11,144 +11,64 @@
 
 <SeoHead Metadata="metadata" JsonLdScripts="jsonLdScripts" />
 
-<div class="tech-home">
-    <section class="tech-hero">
-        <div class="tech-hero-grid">
-            <article class="tech-panel tech-panel-dark tech-hero-primary">
-                <p class="tech-eyebrow tech-eyebrow-light">Flagship launch</p>
-                <h1>Premium hardware for quieter desks, sharper sound, and more deliberate upgrades.</h1>
-                <p class="tech-copy tech-copy-inverse">
-                    Discover flagship audio, workspace systems, and carry essentials chosen for stronger materials,
-                    quieter detailing, and the confidence of a premium European electronics store.
-                </p>
-                <div class="tech-action-row">
-                    <a class="tech-button tech-button-light" href="@HeroHref">@(heroProduct is null ? "Shop flagship collection" : $"Shop {heroProduct.Name}")</a>
-                    <a class="tech-button tech-button-ghost" href="#featured-categories">Browse curated worlds</a>
-                </div>
-                <div class="tech-spec-grid">
-                    <article class="tech-spec-card tech-spec-card-dark">
-                        <span>Materials</span>
-                        <strong>ALLOY</strong>
-                        <small>premium finishes and quieter detailing</small>
-                    </article>
-                    <article class="tech-spec-card tech-spec-card-dark">
-                        <span>Dispatch</span>
-                        <strong>48H</strong>
-                        <small>insured EU shipping on flagship orders</small>
-                    </article>
-                    <article class="tech-spec-card tech-spec-card-dark">
-                        <span>Support</span>
-                        <strong>CARE+</strong>
-                        <small>returns, guidance, and after-purchase care</small>
-                    </article>
-                </div>
-            </article>
-
-            <div class="tech-hero-stack">
-                <article class="tech-panel tech-hero-feature">
-                    <div class="tech-panel-header">
-                        <div>
-                            <p class="tech-eyebrow">Featured hardware</p>
-                            <h2>@(heroProduct?.Name ?? "Signature system")</h2>
-                        </div>
-                        @if (heroProduct?.IsFeatured is true)
-                        {
-                            <span class="tech-chip tech-chip-accent">Featured</span>
-                        }
-                    </div>
-
-                    <a href="@HeroHref" class="tech-hero-media-link">
-                        @if (!string.IsNullOrWhiteSpace(heroProduct?.ImageUrl))
-                        {
-                            <div class="tech-hero-media-shell">
-                                <div class="tech-hero-media-glow" aria-hidden="true"></div>
-                                <div class="tech-hero-placeholder tech-hero-media-fallback" aria-hidden="true">
-                                    <div class="tech-hero-placeholder-device">
-                                        <span class="tech-hero-placeholder-badge">Curated hardware</span>
-                                        <div class="tech-hero-placeholder-silhouette"></div>
-                                        <div class="tech-hero-placeholder-reflection"></div>
-                                    </div>
-                                </div>
-                                <ResponsiveImage
-                                    Source="@heroProduct!.ImageUrl"
-                                    Alt="@heroProduct.Name"
-                                    Preset="MediaImagePreset.ProductHero"
-                                    CssClass="tech-hero-image tech-hero-image-live"
-                                    Priority="true"
-                                    HideOnError="true" />
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="tech-hero-placeholder" aria-hidden="true">
-                                <div class="tech-hero-placeholder-device">
-                                    <span class="tech-hero-placeholder-badge">Curated hardware</span>
-                                    <div class="tech-hero-placeholder-silhouette"></div>
-                                    <div class="tech-hero-placeholder-reflection"></div>
-                                </div>
-                            </div>
-                        }
-                    </a>
-
-                    <div class="tech-hero-feature-copy">
-                        <p class="tech-hero-kicker">@(heroProduct?.CategoryName ?? heroProduct?.Brand ?? "Premium hardware")</p>
-                        <p class="tech-hero-description">
-                            @(heroProduct is null
-                                ? "Calm industrial presentation for products that need more presence per viewport."
-                                : ResolveHeroDescription(heroProduct))
-                        </p>
-                        @if (heroProduct is not null)
-                        {
-                            <div class="tech-price-row">
-                                <span class="tech-price-current">@FormatPrice(heroProduct.Amount, heroProduct.Currency)</span>
-                                @if (heroProduct.CompareAtAmount is > 0m && heroProduct.CompareAtAmount > heroProduct.Amount)
-                                {
-                                    <span class="tech-price-compare">@FormatPrice(heroProduct.CompareAtAmount.Value, heroProduct.Currency)</span>
-                                }
-                            </div>
-                        }
-
-                        <dl class="tech-hero-feature-meta" aria-label="Featured product details">
-                            <div class="tech-hero-feature-meta-item">
-                                <dt>Brand</dt>
-                                <dd>@(heroProduct?.Brand ?? "Curated selection")</dd>
-                            </div>
-                            <div class="tech-hero-feature-meta-item">
-                                <dt>Availability</dt>
-                                <dd>@GetHeroAvailabilityLabel(heroProduct)</dd>
-                            </div>
-                            <div class="tech-hero-feature-meta-item">
-                                <dt>Reference</dt>
-                                <dd>@(heroProduct?.Sku ?? "Flagship edit")</dd>
-                            </div>
-                        </dl>
-
-                        <div class="tech-hero-feature-actions">
-                            <a class="tech-button tech-button-primary" href="@HeroHref">View product</a>
-                            <a class="tech-inline-link" href="@GetHeroSecondaryHref(heroProduct)">@GetHeroSecondaryLabel(heroProduct)</a>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="tech-panel tech-panel-muted tech-hero-note">
-                    <p class="tech-eyebrow">Curated system</p>
-                    <h2>Choose the lead piece first, then complete the setup with intention.</h2>
-                    <p class="tech-copy">
-                        A quieter storefront keeps attention on the products, the materials, and the details that matter once they arrive on your desk.
-                    </p>
-                    <a class="tech-inline-link" href="/search?sort=newest">View the latest hardware →</a>
-                </article>
+<div class="commerce-page home-page">
+    <section class="home-hero">
+        <div class="home-hero-copy">
+            <p class="tech-eyebrow">Online store</p>
+            <h1>Shop tech essentials with clear prices and stock status.</h1>
+            <p class="tech-copy">Browse practical audio, workspace, and everyday accessories with clear prices, stock status, and checkout in EUR.</p>
+            <div class="tech-action-row">
+                <a class="tech-button tech-button-primary" href="/category/all-products">Shop all products</a>
+                <a class="tech-button tech-button-ghost" href="#featured-products">View featured products</a>
             </div>
         </div>
+
+        <article class="home-feature-card">
+            <div class="home-feature-media">
+                <a href="@HeroHref">
+                    @if (!string.IsNullOrWhiteSpace(heroProduct?.ImageUrl))
+                    {
+                        <ResponsiveImage
+                            Source="@heroProduct!.ImageUrl"
+                            Alt="@heroProduct.Name"
+                            Preset="MediaImagePreset.ProductHero"
+                            CssClass="home-feature-image"
+                            Priority="true"
+                            HideOnError="true" />
+                    }
+                    else
+                    {
+                        <div class="product-image-placeholder" aria-hidden="true"></div>
+                    }
+                </a>
+            </div>
+            <div class="home-feature-copy">
+                <p class="tech-eyebrow">Featured product</p>
+                <h2>@(heroProduct?.Name ?? "Browse the catalog")</h2>
+                <p>@(heroProduct is null ? "Products are loading from the catalog." : ResolveHeroDescription(heroProduct))</p>
+                @if (heroProduct is not null)
+                {
+                    <div class="tech-price-row">
+                        <span class="tech-price-current">@FormatPrice(heroProduct.Amount, heroProduct.Currency)</span>
+                        @if (heroProduct.CompareAtAmount is > 0m && heroProduct.CompareAtAmount > heroProduct.Amount)
+                        {
+                            <span class="tech-price-compare">@FormatPrice(heroProduct.CompareAtAmount.Value, heroProduct.Currency)</span>
+                        }
+                    </div>
+                    <p class="tech-inline-meta">@GetHeroAvailabilityLabel(heroProduct)</p>
+                }
+                <a class="tech-inline-link" href="@HeroHref">View details</a>
+            </div>
+        </article>
     </section>
 
-    <section class="tech-section tech-first-catalog-section" id="featured-categories">
+    <section class="tech-section" id="featured-categories">
         <div class="tech-section-header">
             <div>
-                <p class="tech-eyebrow">Curated categories</p>
-                <h2>Three curated worlds for listening, workspace, and everyday carry.</h2>
+                <p class="tech-eyebrow">Categories</p>
+                <h2>Start with the type of product you need.</h2>
             </div>
-            <a class="tech-inline-link" href="/search">View all hardware →</a>
+            <a class="tech-inline-link" href="/search">View all</a>
         </div>
 
         <div class="category-grid">
@@ -165,36 +85,13 @@
         </div>
     </section>
 
-    <section class="tech-value-row" aria-label="Trust and product value signals">
-        <article class="tech-value-card">
-            <p class="tech-eyebrow">Flagship selection</p>
-            <h2>Curated hardware only</h2>
-            <p>Fewer, stronger products chosen for design, build quality, and everyday performance.</p>
-        </article>
-        <article class="tech-value-card">
-            <p class="tech-eyebrow">Insured delivery</p>
-            <h2>Fast EU dispatch</h2>
-            <p>Tracked shipping and signature packaging keep premium orders feeling protected from checkout onward.</p>
-        </article>
-        <article class="tech-value-card">
-            <p class="tech-eyebrow">Returns & care</p>
-            <h2>30-day reassurance</h2>
-            <p>Clear returns and support guidance maintain confidence after the first purchase.</p>
-        </article>
-        <article class="tech-value-card">
-            <p class="tech-eyebrow">Secure checkout</p>
-            <h2>Trusted purchase flow</h2>
-            <p>Calm totals, payment clarity, and dependable order confirmation for higher-ticket products.</p>
-        </article>
-    </section>
-
-    <section class="tech-section" id="signature-products">
+    <section class="tech-section" id="featured-products">
         <div class="tech-section-header">
             <div>
-                <p class="tech-eyebrow">Signature products</p>
-                <h2>A tighter edit of premium hardware for listening, work, and everyday carry.</h2>
+                <p class="tech-eyebrow">Featured</p>
+                <h2>Popular products in stock and ready to compare.</h2>
             </div>
-            <a class="tech-inline-link" href="/search?sort=popular">Browse best sellers →</a>
+            <a class="tech-inline-link" href="/search?sort=popular">Browse best sellers</a>
         </div>
 
         @if (isLoading)
@@ -216,175 +113,25 @@
                 {
                     <ProductCard
                         Product="product"
-                        Badge="@(product.CompareAtAmount.HasValue && product.CompareAtAmount.Value > product.Amount ? "Launch offer" : product.IsFeatured ? "Flagship" : null)" />
+                        Badge="@(product.CompareAtAmount.HasValue && product.CompareAtAmount.Value > product.Amount ? "Sale" : product.IsFeatured ? "Featured" : null)" />
                 }
             </div>
         }
     </section>
 
-    <section class="tech-split-grid">
-        <article class="tech-panel tech-panel-dark">
-            <p class="tech-eyebrow tech-eyebrow-light">Launch campaign</p>
-            <h2>Early access, limited finishes, and reserved bundles presented with restraint.</h2>
-            <p class="tech-copy tech-copy-inverse">
-                Discover new releases, member drops, and carefully timed offers without losing the calm tone of the storefront.
-            </p>
-            <a class="tech-button tech-button-ghost" href="/search?sort=price_desc">Explore launch offers</a>
+    <section class="service-strip" aria-label="Shopping information">
+        <article>
+            <strong>EU delivery</strong>
+            <span>Tracked shipping with clear order updates.</span>
         </article>
-
-        <article class="tech-panel tech-panel-muted">
-            <p class="tech-eyebrow">Editorial block</p>
-            <h2>Stories, setup notes, and pairings that help you choose with more confidence.</h2>
-            <p class="tech-copy">
-                Read product context, compare compatible pieces, and see how the range fits together before you commit to the final setup.
-            </p>
-            <a class="tech-button tech-button-primary" href="/blog">Read the journal</a>
+        <article>
+            <strong>30-day returns</strong>
+            <span>Simple return guidance after purchase.</span>
         </article>
-    </section>
-
-    <section class="tech-section tech-section-dark">
-        <div class="tech-section-header tech-section-header-dark">
-            <div>
-                <p class="tech-eyebrow tech-eyebrow-light">Featured collection</p>
-                <h2>A tighter collection of hardware chosen for material quality, clarity, and daily use.</h2>
-            </div>
-        </div>
-
-        <div class="tech-featured-collection">
-            <article class="tech-collection-hero">
-                <div class="tech-collection-copy">
-                    <p class="tech-chip">Live collection</p>
-                    <h3>@(collectionProducts.FirstOrDefault()?.Name ?? "Studio system")</h3>
-                    <p>
-                        @(collectionProducts.FirstOrDefault() is null
-                            ? "Explore a focused edit of audio, workspace, and carry essentials selected to feel cohesive from first product to final accessory."
-                            : ResolveHeroDescription(collectionProducts.First()))
-                    </p>
-                    <a class="tech-button tech-button-light" href="@(collectionProducts.FirstOrDefault() is null ? "/search" : $"/product/{collectionProducts.First().Slug}")">View collection lead</a>
-                </div>
-
-                @if (!string.IsNullOrWhiteSpace(collectionProducts.FirstOrDefault()?.ImageUrl))
-                {
-                    <div class="tech-collection-media-shell">
-                        <div class="tech-collection-placeholder" aria-hidden="true"></div>
-                        <ResponsiveImage
-                            Source="@collectionProducts.First().ImageUrl"
-                            Alt="@collectionProducts.First().Name"
-                            Preset="MediaImagePreset.ProductHero"
-                            CssClass="tech-collection-image tech-collection-image-live"
-                            HideOnError="true" />
-                    </div>
-                }
-                else
-                {
-                    <div class="tech-collection-placeholder" aria-hidden="true"></div>
-                }
-            </article>
-
-            <div class="tech-collection-stack">
-                @foreach (var product in collectionProducts.Skip(1))
-                {
-                    <article class="tech-collection-card">
-                        <p class="tech-eyebrow tech-eyebrow-light">@((product.CategoryName ?? product.Brand ?? "Collection").ToUpperInvariant())</p>
-                        <h3>@product.Name</h3>
-                        <p>@ResolveHeroDescription(product)</p>
-                        <a class="tech-inline-link tech-inline-link-light" href="@($"/product/{product.Slug}")">Open product →</a>
-                    </article>
-                }
-
-                @if (collectionProducts.Count <= 1)
-                {
-                    <article class="tech-collection-card">
-                        <p class="tech-eyebrow tech-eyebrow-light">System note</p>
-                        <h3>One stronger collection is easier to choose from than a crowded wall of products.</h3>
-                        <p>Return here for future desk systems, paired accessories, and reserved hardware edits.</p>
-                    </article>
-                }
-            </div>
-        </div>
-    </section>
-
-    <section class="tech-ecosystem-grid">
-        <article class="tech-panel tech-ecosystem-copy">
-            <p class="tech-eyebrow">Connected ecosystem</p>
-            <h2>Build around one product you trust, then complete the setup with pieces that belong together.</h2>
-            <p class="tech-copy">
-                The strongest hardware setups feel considered from the first device to the final accessory, with service that continues after delivery.
-            </p>
-            <div class="tech-feature-list">
-                <div>
-                    <strong>Start with the lead piece</strong>
-                    <p>Choose the product you will use most, then add only the accessories that improve the everyday experience.</p>
-                </div>
-                <div>
-                    <strong>Keep the material language consistent</strong>
-                    <p>Quiet finishes, durable construction, and restrained detailing make the range feel cohesive in use and at rest.</p>
-                </div>
-                <div>
-                    <strong>Expect care after checkout</strong>
-                    <p>Delivery updates, returns guidance, and support remain as clear as the products themselves.</p>
-                </div>
-            </div>
+        <article>
+            <strong>Secure checkout</strong>
+            <span>Cart totals and payment steps stay visible.</span>
         </article>
-
-        <article class="tech-panel tech-ecosystem-media">
-            <div class="tech-product-placeholder tech-ecosystem-placeholder" aria-hidden="true">
-                <div class="tech-hero-placeholder-device">
-                    <span class="tech-hero-placeholder-badge">System view</span>
-                    <div class="tech-hero-placeholder-silhouette tech-ecosystem-placeholder-silhouette"></div>
-                    <div class="tech-hero-placeholder-reflection"></div>
-                </div>
-            </div>
-        </article>
-    </section>
-
-    <section class="tech-proof-section">
-        <div class="tech-section-header">
-            <div>
-                <p class="tech-eyebrow">Client perspective</p>
-                <h2>Feedback from teams shaping premium product and retail experiences.</h2>
-            </div>
-        </div>
-
-        <div class="tech-proof-grid">
-            <article class="tech-proof-card">
-                <blockquote>“The collection feels considered from the first screen. Products finally have the space they deserve.”</blockquote>
-                <footer class="tech-proof-attribution">
-                    <strong>Lena Hartmann</strong>
-                    <span>Product Design Director</span>
-                </footer>
-            </article>
-            <article class="tech-proof-card">
-                <blockquote>“Everything from discovery to checkout carries the same calm confidence as the hardware itself.”</blockquote>
-                <footer class="tech-proof-attribution">
-                    <strong>Jonas Weiss</strong>
-                    <span>Retail Experience Lead</span>
-                </footer>
-            </article>
-            <article class="tech-proof-card">
-                <blockquote>“It feels like a premium electronics store, not a crowded catalogue trying to sell everything at once.”</blockquote>
-                <footer class="tech-proof-attribution">
-                    <strong>Marta Iliev</strong>
-                    <span>Commerce Consultant</span>
-                </footer>
-            </article>
-        </div>
-    </section>
-
-    <section class="tech-panel tech-newsletter">
-        <div class="tech-newsletter-copy">
-            <p class="tech-eyebrow">Launch access</p>
-            <h2>Receive release notes, stock alerts, and editorial previews.</h2>
-            <p class="tech-copy">Minimal capture, clear value, and a quieter signup surface that feels integrated with the rest of the storefront.</p>
-        </div>
-        <form class="newsletter-form">
-            <label class="sr-only" for="newsletter-email">Email address</label>
-            <div class="newsletter-form-shell">
-                <input id="newsletter-email" type="email" placeholder="Email address" />
-                <button type="submit">Request access</button>
-            </div>
-            <p class="newsletter-form-note">Release notes only. No noise, no aggressive promotional mailings.</p>
-        </form>
     </section>
 </div>
 
@@ -397,12 +144,11 @@
     private string? loadErrorMessage;
     private StoreProduct? heroProduct;
     private IReadOnlyList<StoreProduct> signatureProducts = [];
-    private IReadOnlyList<StoreProduct> collectionProducts = [];
     private readonly IReadOnlyCollection<HomeCategory> featuredCategories =
     [
-        new("Audio", "Headphones, speakers, and listening gear with flagship acoustics and quieter industrial detailing.", "/category/audio", null, "Listening", "Shop audio"),
-        new("Workspace", "Keyboards, docks, displays, and desk tools presented as one coordinated performance system.", "/category/workspace", null, "Workspace", "Build the desk"),
-        new("Accessories", "Power, carry, and finishing pieces selected to complete the setup without visual noise.", "/category/accessories", null, "Daily carry", "Complete the setup"),
+        new("Audio", "Headphones, speakers, and listening gear.", "/category/audio", null, "Listening", "Shop audio"),
+        new("Workspace", "Keyboards, docks, displays, and desk tools.", "/category/workspace", null, "Desk setup", "Shop workspace"),
+        new("Accessories", "Power, carry, and finishing pieces.", "/category/accessories", null, "Everyday", "Shop accessories"),
     ];
 
     private string HeroHref => heroProduct is null ? "/category/all-products" : $"/product/{heroProduct.Slug}";
@@ -449,7 +195,6 @@
 
                 heroProduct = featuredProducts.FirstOrDefault();
                 signatureProducts = featuredProducts.Take(4).ToArray();
-                collectionProducts = featuredProducts.Skip(1).Take(3).ToArray();
                 loadErrorMessage = null;
                 return;
             }
@@ -473,7 +218,6 @@
 
         heroProduct = null;
         signatureProducts = [];
-        collectionProducts = [];
 
         Logger.LogWarning(
             lastException,
@@ -493,7 +237,7 @@
             ? product.ShortDescription
             : !string.IsNullOrWhiteSpace(product.Description)
                 ? product.Description
-                : "Designed for quieter spaces, stronger daily performance, and longer ownership.";
+                : "A useful everyday product with clear pricing and availability.";
     }
 
     private static string GetHeroAvailabilityLabel(StoreProduct? product)
@@ -510,30 +254,6 @@
             : product.AllowBackorder
                 ? "Backorder available"
                 : "Currently unavailable";
-    }
-
-    private static string GetHeroSecondaryHref(StoreProduct? product)
-    {
-        if (product is null)
-        {
-            return "/search?sort=newest";
-        }
-
-        return !string.IsNullOrWhiteSpace(product.CategorySlug)
-            ? $"/category/{product.CategorySlug}"
-            : !string.IsNullOrWhiteSpace(product.CategoryName)
-                ? $"/search?q={Uri.EscapeDataString(product.CategoryName)}"
-                : "/search?sort=newest";
-    }
-
-    private static string GetHeroSecondaryLabel(StoreProduct? product)
-    {
-        if (string.IsNullOrWhiteSpace(product?.CategoryName))
-        {
-            return "See latest arrivals →";
-        }
-
-        return $"Explore {product.CategoryName} →";
     }
 
     private static string FormatPrice(decimal amount, string currency)
