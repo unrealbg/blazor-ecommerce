@@ -1,63 +1,44 @@
+@layout Storefront.Web.Components.Layout.StoreLayout
 @inherits LayoutComponentBase
 @inject Storefront.Web.Services.Api.IStoreApiClient StoreApiClient
 @inject NavigationManager NavigationManager
 
-<div class="account-shell">
-    <aside class="account-sidebar tech-panel">
-        <div class="account-sidebar-copy">
-            <p class="tech-eyebrow">Private client area</p>
-            <h2>Your profile, delivery details, and purchase history in one quiet client area.</h2>
-            <p>Everything you need after checkout stays inside the same calm product language as the storefront itself.</p>
-        </div>
-        <div class="account-sidebar-highlights" aria-label="Client area highlights">
-            <div class="account-sidebar-highlight">
-                <span>Profile</span>
-                <strong>Checkout-ready details</strong>
+<div class="account-layout account-shell @(isAuthenticated ? "account-layout-authenticated" : "account-layout-guest")">
+    @if (isAuthenticated)
+    {
+        <aside class="account-panel account-sidebar">
+            <div class="account-sidebar-copy">
+                <h2>Account</h2>
+                <p>Manage your profile, addresses and orders.</p>
             </div>
-            <div class="account-sidebar-highlight">
-                <span>Orders</span>
-                <strong>Payment and delivery status</strong>
-            </div>
-            <div class="account-sidebar-highlight">
-                <span>Support</span>
-                <strong>Reviews and product questions</strong>
-            </div>
-        </div>
-        <nav class="account-nav" aria-label="Account navigation">
-            <a class="@GetNavClass("/account/profile")" href="/account/profile">Profile</a>
-            <a class="@GetNavClass("/account/addresses")" href="/account/addresses">Addresses</a>
-            <a class="@GetNavClass("/account/orders")" href="/account/orders">Orders</a>
-            <a class="@GetNavClass("/account/reviews")" href="/account/reviews">Reviews</a>
-            <a class="@GetNavClass("/account/questions")" href="/account/questions">Questions</a>
-            <button type="button" class="account-nav-button account-nav-button-danger" @onclick="LogoutAsync">Sign out</button>
-        </nav>
-        <div class="account-sidebar-actions" aria-label="Quick account actions">
-            <p class="account-sidebar-actions-label">Quick access</p>
-            <div class="account-sidebar-actions-grid">
-                <a class="account-sidebar-action-card" href="/search">
-                    <span>Browse</span>
-                    <strong>Hardware collection</strong>
-                </a>
-                <a class="account-sidebar-action-card" href="/cart">
-                    <span>Bag</span>
-                    <strong>Review selected items</strong>
-                </a>
-            </div>
-        </div>
-        <div class="account-sidebar-note">
-            <strong>Client care</strong>
-            <p>Delivery records, saved details, and support context stay readable, minimal, and consistent with the rest of the product.</p>
-        </div>
-    </aside>
+            <nav class="account-nav" aria-label="Account navigation">
+                <a class="@GetNavClass("/account/profile")" href="/account/profile">Profile</a>
+                <a class="@GetNavClass("/account/addresses")" href="/account/addresses">Addresses</a>
+                <a class="@GetNavClass("/account/orders")" href="/account/orders">Orders</a>
+                <a class="@GetNavClass("/account/reviews")" href="/account/reviews">Reviews</a>
+                <a class="@GetNavClass("/account/questions")" href="/account/questions">Questions</a>
+                <button type="button" class="account-nav-button account-nav-button-danger" @onclick="LogoutAsync">Sign out</button>
+            </nav>
+        </aside>
+    }
     <section class="account-content">
         @Body
     </section>
 </div>
 
 @code {
+    private bool isAuthenticated;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var customer = await StoreApiClient.GetCurrentCustomerAsync(CancellationToken.None);
+        isAuthenticated = customer is not null;
+    }
+
     private async Task LogoutAsync()
     {
         await StoreApiClient.LogoutAsync(CancellationToken.None);
+        isAuthenticated = false;
         NavigationManager.NavigateTo("/account/login", forceLoad: true);
     }
 

@@ -5,41 +5,39 @@
 
 <PageTitle>Order Details</PageTitle>
 
-<section class="tech-panel account-page-intro">
-    <p class="tech-eyebrow">Order details</p>
-    <h1>Review payment, shipping, and fulfilment in the same calm language as the purchase flow.</h1>
-    <p class="tech-copy">Order status, payment progress, and shipment events remain readable without falling into an operational back-office pattern.</p>
-</section>
+<header class="account-page-header account-page-intro">
+    <p class="account-eyebrow">Account</p>
+    <h1>Order details</h1>
+    <p>Review payment, delivery and item information for this order.</p>
+</header>
 
 @if (isLoading)
 {
-    <section class="tech-detail-card account-state-card">
-        <p class="tech-eyebrow">Loading</p>
+    <section class="account-card account-state-card">
         <h2>Preparing order details</h2>
         <p>We are fetching payment and shipment updates for this order.</p>
     </section>
 }
 else if (order is null)
 {
-    <section class="tech-detail-card account-state-card">
-        <p class="tech-eyebrow">Unavailable</p>
+    <section class="account-card account-state-card">
         <h2>Order not found</h2>
         <p>The requested order is unavailable or no longer accessible from this account.</p>
-        <div class="account-state-actions">
-            <a class="tech-button tech-button-primary" href="/account/orders">Back to orders</a>
-            <a class="tech-button tech-button-ghost" href="/search">Browse hardware</a>
+        <div class="account-actions account-state-actions">
+            <a class="account-button account-button-primary" href="/account/orders">Back to orders</a>
+            <a class="account-button account-button-secondary" href="/search">Browse products</a>
         </div>
     </section>
 }
 else
 {
-    <article class="order-card account-order-card">
+    <article class="account-card account-order-card">
         <header class="account-card-header">
             <div>
-                <p class="tech-eyebrow">Order summary</p>
+                <p class="account-eyebrow">Order summary</p>
                 <h2>Order @order.Id</h2>
             </div>
-            <span class="tech-chip tech-chip-muted account-status-chip">@order.Status</span>
+            <span class="account-chip account-chip-muted account-status-chip">@order.Status</span>
         </header>
         <div class="account-detail-grid">
             <div>
@@ -69,16 +67,16 @@ else
                 <strong>@order.ShippingMethodCode</strong>
             </div>
         </div>
-        <div class="account-card-actions">
-            <a class="tech-button tech-button-ghost" href="/account/orders">Back to orders</a>
-            <a class="tech-inline-link" href="/search">Continue shopping →</a>
+        <div class="account-actions account-card-actions">
+            <a class="account-button account-button-secondary" href="/account/orders">Back to orders</a>
+            <a class="account-button account-button-secondary" href="/search">Continue shopping</a>
         </div>
     </article>
 
-    <section class="inventory-panel account-form-card">
-        <div class="tech-detail-card-header">
+    <section class="account-card account-form-card">
+        <div class="account-card-header">
             <div>
-                <p class="tech-eyebrow">Payment</p>
+                <p class="account-eyebrow">Payment</p>
                 <h2>Payment summary</h2>
             </div>
         </div>
@@ -115,17 +113,17 @@ else
 
             @if (RequiresPaymentAction(paymentIntent.Status))
             {
-                <div class="account-card-actions">
-                    <a class="tech-button tech-button-primary" href="@($"/checkout/payment?orderId={order.Id:D}")">Continue payment</a>
+                <div class="account-actions account-card-actions">
+                    <a class="account-button account-button-primary" href="@($"/checkout/payment?orderId={order.Id:D}")">Continue payment</a>
                 </div>
             }
         }
     </section>
 
-    <section class="inventory-panel account-form-card">
-        <div class="tech-detail-card-header">
+    <section class="account-card account-form-card">
+        <div class="account-card-header">
             <div>
-                <p class="tech-eyebrow">Shipment</p>
+                <p class="account-eyebrow">Shipment</p>
                 <h2>Delivery progress</h2>
             </div>
         </div>
@@ -152,8 +150,8 @@ else
             </div>
             @if (!string.IsNullOrWhiteSpace(shipment.TrackingUrl))
             {
-                <div class="account-card-actions">
-                    <a class="tech-inline-link" href="@shipment.TrackingUrl" target="_blank" rel="noopener noreferrer">Track shipment →</a>
+                <div class="account-actions account-card-actions">
+                    <a class="account-button account-button-secondary" href="@shipment.TrackingUrl" target="_blank" rel="noopener noreferrer">Track shipment</a>
                 </div>
             }
 

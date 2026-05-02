@@ -5,51 +5,71 @@
 
 <PageTitle>My Orders</PageTitle>
 
-<section class="tech-panel account-page-intro">
-    <p class="tech-eyebrow">Orders</p>
-    <h1>Review every purchase, payment update, and fulfilment step from one calm order history.</h1>
-    <p class="tech-copy">Totals, shipment progress, and line items stay visible in the same premium language as the storefront.</p>
-</section>
-
 @if (isLoading)
 {
-    <section class="tech-detail-card account-state-card">
-        <p class="tech-eyebrow">Loading</p>
-        <h2>Preparing your order history</h2>
-        <p>We are fetching recent purchases and fulfilment updates.</p>
+    <header class="account-page-header account-page-intro">
+        <p class="account-eyebrow">Account</p>
+        <h1>Orders</h1>
+        <p>View your order history and delivery status.</p>
+    </header>
+
+    <section class="account-card account-state-card">
+        <h2>Loading orders</h2>
+        <p>Fetching your order history.</p>
     </section>
 }
 else if (!isAuthenticated)
 {
-    <section class="tech-detail-card account-state-card">
-        <p class="tech-eyebrow">Sign in required</p>
-        <h2>Review your previous purchases</h2>
-        <p>Sign in to view totals, payment status, and shipment progress.</p>
-        <div class="account-state-actions">
-            <a class="tech-button tech-button-primary" href="/account/login">Sign in</a>
-            <a class="tech-button tech-button-ghost" href="/account/register">Create account</a>
+    <section class="account-card account-empty-state">
+        <div class="account-empty-state-header">
+            <p class="account-eyebrow">Account</p>
+            <h1>Orders</h1>
+            <p>View your order history and delivery status.</p>
         </div>
-        <p class="account-state-support">Your private account keeps purchases, delivery status, and follow-up care in one place.</p>
+        <div class="account-empty-prompt">
+            <h2>Sign in to view orders</h2>
+            <p>Use your account to see order history, totals and delivery status.</p>
+        </div>
+        <div class="account-empty-actions">
+            <a class="account-button account-button-primary" href="/account/login">Sign in</a>
+            <a class="account-button account-button-secondary" href="/account/register">Create account</a>
+        </div>
+        <ul class="account-benefit-list" aria-label="Order options after sign in">
+            <li class="account-benefit-item">Review recent orders</li>
+            <li class="account-benefit-item">Check payment and delivery status</li>
+            <li class="account-benefit-item">Open order details and line items</li>
+        </ul>
     </section>
 }
 else if (orders.Count == 0)
 {
-    <section class="tech-detail-card account-state-card">
-        <p class="tech-eyebrow">No orders yet</p>
+    <header class="account-page-header account-page-intro">
+        <p class="account-eyebrow">Account</p>
+        <h1>Orders</h1>
+        <p>View your order history and delivery status.</p>
+    </header>
+
+    <section class="account-card account-state-card">
         <h2>Your order history will appear here.</h2>
         <p>Once you place an order, payment details and shipment progress will be available in this area.</p>
-        <div class="account-state-actions">
-            <a class="tech-button tech-button-primary" href="/search">Browse hardware</a>
-            <a class="tech-button tech-button-ghost" href="/cart">Open bag</a>
+        <div class="account-actions account-state-actions">
+            <a class="account-button account-button-primary" href="/search">Browse products</a>
+            <a class="account-button account-button-secondary" href="/cart">Open cart</a>
         </div>
     </section>
 }
 else
 {
-    <section class="tech-detail-card account-overview-card">
+    <header class="account-page-header account-page-intro">
+        <p class="account-eyebrow">Account</p>
+        <h1>Orders</h1>
+        <p>View your order history and delivery status.</p>
+    </header>
+
+    <section class="account-card account-overview-card">
         <div class="account-card-header">
             <div>
-                <p class="tech-eyebrow">Order snapshot</p>
+                <p class="account-eyebrow">Order snapshot</p>
                 <h2>Your recent purchase history</h2>
             </div>
         </div>
@@ -72,13 +92,13 @@ else
     <div class="order-list">
         @foreach (var order in orders)
         {
-            <article class="order-card account-order-card">
+            <article class="account-card account-order-card">
                 <header class="account-card-header">
                     <div>
-                        <p class="tech-eyebrow">Order overview</p>
+                        <p class="account-eyebrow">Order overview</p>
                         <h2>Order @order.Id</h2>
                     </div>
-                    <span class="tech-chip tech-chip-muted account-status-chip">@order.Status</span>
+                    <span class="account-chip account-chip-muted account-status-chip">@order.Status</span>
                 </header>
                 <div class="account-detail-grid">
                     <div>
@@ -94,9 +114,9 @@ else
                         <strong>@order.Lines.Count line@(order.Lines.Count == 1 ? string.Empty : "s")</strong>
                     </div>
                 </div>
-                <div class="account-card-actions">
-                    <a class="tech-button tech-button-primary" href="@($"/account/orders/{order.Id:D}")">Open order</a>
-                    <a class="tech-inline-link" href="/search">Continue shopping →</a>
+                <div class="account-actions account-card-actions">
+                    <a class="account-button account-button-primary" href="@($"/account/orders/{order.Id:D}")">Open order</a>
+                    <a class="account-button account-button-secondary" href="/search">Continue shopping</a>
                 </div>
                 <ul class="account-order-lines">
                     @foreach (var line in order.Lines)
