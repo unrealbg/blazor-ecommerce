@@ -12,8 +12,8 @@
 <div class="tech-checkout-page">
     <section class="tech-page-intro">
         <p class="tech-eyebrow">Checkout</p>
-        <h1>Complete the order with clear delivery details and secure payment readiness.</h1>
-        <p>Everything is arranged to keep totals, shipping, and customer details easy to verify at a glance.</p>
+        <h1>Checkout</h1>
+        <p>Enter contact, shipping, billing, and delivery details before payment.</p>
     </section>
 
     <CheckoutProgressHeader CurrentStep="2" Steps="checkoutSteps" />
@@ -62,10 +62,10 @@
                     <section class="tech-detail-card">
                         <div class="tech-detail-card-header">
                             <p class="tech-eyebrow">Contact</p>
-                            <h2>Customer contact details</h2>
+                            <h2>Contact details</h2>
                         </div>
 
-                        <p class="tech-inline-meta">We only use this for order updates, shipping coordination, and payment communication.</p>
+                        <p class="tech-inline-meta">Used for order updates and payment communication.</p>
 
                         <div class="form-grid tech-form-grid">
                             <label class="tech-field tech-field-full">
@@ -81,7 +81,7 @@
                             <h2>Delivery address</h2>
                         </div>
 
-                        <p class="tech-inline-meta">Use the destination where the order should be delivered and signed for.</p>
+                        <p class="tech-inline-meta">Where the order should be delivered.</p>
 
                         <div class="form-grid tech-form-grid">
                             <label class="tech-field">
@@ -121,7 +121,7 @@
                             <h2>Billing address</h2>
                         </div>
 
-                        <p class="tech-inline-meta">Enter the address used for invoicing and payment verification.</p>
+                        <p class="tech-inline-meta">Used for invoicing and payment verification.</p>
 
                         <div class="form-grid tech-form-grid">
                             <label class="tech-field">
@@ -158,10 +158,10 @@
                     <section class="tech-detail-card">
                         <div class="tech-detail-card-header">
                             <p class="tech-eyebrow">Delivery method</p>
-                            <h2>Select shipping</h2>
+                            <h2>Shipping method</h2>
                         </div>
 
-                        <p class="tech-inline-meta">Choose the service level that matches the destination and timing you need.</p>
+                        <p class="tech-inline-meta">Choose an available delivery option.</p>
 
                         @if (isLoadingQuotes)
                         {
@@ -225,14 +225,14 @@
                         Subtotal="@subtotalAmount"
                         Currency="@currency"
                         Eyebrow="At a glance"
-                        Title="Order overview"
+                        Title="Cart summary"
                         ShowPrimaryAction="false"
                         ShowSecondaryAction="false" />
 
                     <section class="tech-detail-card tech-summary-card">
                         <div class="tech-detail-card-header">
                             <p class="tech-eyebrow">Order summary</p>
-                            <h2>Final totals</h2>
+                            <h2>Totals</h2>
                         </div>
 
                         <div class="tech-summary-list">
@@ -275,7 +275,7 @@
                             </div>
                         </div>
 
-                        <p class="tech-inline-meta tech-summary-note">Payment confirmation begins after the order is created and shipping is locked in.</p>
+                        <p class="tech-inline-meta tech-summary-note">You will continue to payment after placing the order.</p>
 
                         <button class="tech-button tech-button-primary tech-button-block" type="submit" disabled="@isSubmitting">Place order</button>
                     </section>

@@ -28,7 +28,7 @@
     </a>
 
     <div class="product-card-copy">
-        <p class="product-card-kicker">@(CategoryName ?? Brand ?? "Premium hardware")</p>
+        <p class="product-card-kicker">@(CategoryName ?? Brand ?? "Product")</p>
         <h2 class="product-card-title">
             <a href="@Href">@Name</a>
         </h2>
@@ -112,14 +112,14 @@
         !string.IsNullOrWhiteSpace(Product?.ShortDescription) ? Product!.ShortDescription! :
         !string.IsNullOrWhiteSpace(Product?.Description) ? Product!.Description! :
         !string.IsNullOrWhiteSpace(Item?.Description) ? Item!.Description! :
-        "Engineered for calmer spaces, stronger everyday performance, and longer ownership.";
+        "Open the product page to compare details, price, and availability.";
 
     private string? ResolvedBadge =>
         !string.IsNullOrWhiteSpace(Badge) ? Badge :
-        CompareAtAmount is > 0m && CompareAtAmount > PriceAmount ? "Launch offer" :
+        CompareAtAmount is > 0m && CompareAtAmount > PriceAmount ? "Sale" :
         Product?.IsFeatured is true ? "Featured" : null;
 
-    private string StockLabel => IsInStock ? "In stock" : "Currently unavailable";
+    private string StockLabel => IsInStock ? "In stock" : "Out of stock";
 
     private string StockClass => IsInStock ? "in-stock" : "unavailable";
 

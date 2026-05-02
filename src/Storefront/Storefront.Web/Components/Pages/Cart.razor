@@ -11,9 +11,9 @@
 
 <div class="tech-cart-page">
     <section class="tech-page-intro">
-        <p class="tech-eyebrow">Bag</p>
-        <h1>Your selected hardware, ready for a calm checkout.</h1>
-        <p>Review quantities, pricing, and access codes before moving to secure payment.</p>
+        <p class="tech-eyebrow">Cart</p>
+        <h1>Your cart</h1>
+        <p>Review items, quantities, discounts, and totals before checkout.</p>
     </section>
 
     <CheckoutProgressHeader CurrentStep="1" Steps="checkoutSteps" />
@@ -22,7 +22,7 @@
     {
         <section class="tech-empty-panel">
             <p class="tech-eyebrow">Loading</p>
-            <h2>Loading your bag</h2>
+            <h2>Loading your cart</h2>
             <p>We are syncing your latest cart state.</p>
         </section>
     }
@@ -30,18 +30,18 @@
     {
         <section class="tech-empty-panel">
             <p class="tech-eyebrow">Bag unavailable</p>
-            <h2>We could not load your bag right now.</h2>
+            <h2>We could not load your cart right now.</h2>
             <p>@loadErrorMessage</p>
-            <a class="tech-button tech-button-primary" href="/search">Browse the collection</a>
+            <a class="tech-button tech-button-primary" href="/search">Browse products</a>
         </section>
     }
     else if (cart is null || cart.Lines.Count == 0)
     {
         <section class="tech-empty-panel">
             <p class="tech-eyebrow">Empty bag</p>
-            <h2>Your bag is currently empty.</h2>
-            <p>Add a product from the collection to continue to checkout.</p>
-            <a class="tech-button tech-button-primary" href="/search">Browse hardware</a>
+            <h2>Your cart is empty.</h2>
+            <p>Add a product before continuing to checkout.</p>
+            <a class="tech-button tech-button-primary" href="/search">Browse products</a>
         </section>
     }
     else
@@ -63,11 +63,11 @@
             <div class="tech-cart-main">
                 <section class="tech-detail-card tech-cart-coupon">
                     <div class="tech-detail-card-header">
-                        <p class="tech-eyebrow">Promotion</p>
-                        <h2>Apply a private access or loyalty code</h2>
+                        <p class="tech-eyebrow">Discount</p>
+                        <h2>Coupon code</h2>
                     </div>
 
-                    <p class="tech-inline-meta">Promotions stay secondary so the order summary remains clear and easy to scan.</p>
+                    <p class="tech-inline-meta">Apply a coupon before checkout.</p>
 
                     <div class="form-grid tech-form-grid">
                         <label class="tech-field">
@@ -93,8 +93,8 @@
                 <section class="tech-detail-card tech-cart-lines">
                     <div class="tech-section-header">
                         <div>
-                            <p class="tech-eyebrow">Selected products</p>
-                            <h2>@cart.Lines.Count item@(cart.Lines.Count == 1 ? string.Empty : "s") ready for checkout.</h2>
+                            <p class="tech-eyebrow">Items</p>
+                            <h2>@cart.Lines.Count item@(cart.Lines.Count == 1 ? string.Empty : "s") in your cart</h2>
                         </div>
                     </div>
 
@@ -118,7 +118,7 @@
                                 </div>
 
                                 <div class="tech-cart-line-copy">
-                                    <p class="tech-eyebrow">@(string.IsNullOrWhiteSpace(line.VariantName) ? "Configured product" : line.VariantName)</p>
+                                    <p class="tech-eyebrow">@(string.IsNullOrWhiteSpace(line.VariantName) ? "Product" : line.VariantName)</p>
                                     <h3>@line.ProductName</h3>
                                     @if (!string.IsNullOrWhiteSpace(line.SelectedOptionsJson))
                                     {
@@ -205,16 +205,16 @@
                         </ul>
                     }
 
-                    <p class="tech-inline-meta tech-summary-note">Insured EU shipping, secure checkout, and order confirmation after purchase.</p>
+                    <p class="tech-inline-meta tech-summary-note">Shipping and taxes are confirmed during checkout.</p>
 
-                    <a class="tech-button tech-button-primary tech-button-block" href="/checkout">Continue to secure checkout</a>
+                    <a class="tech-button tech-button-primary tech-button-block" href="/checkout">Continue to checkout</a>
                 </section>
 
                 <MiniCartDrawer
                     Items="BuildMiniCartItems()"
                     Subtotal="@totalAmount"
                     Currency="@cart.Currency"
-                    Eyebrow="At a glance"
+                    Eyebrow="Cart"
                     Title="Order overview"
                     PrimaryActionHref="/checkout"
                     PrimaryActionLabel="Continue to checkout"
@@ -332,7 +332,7 @@
         return cart?.Lines
             .Select(line => new MiniCartDrawer.MiniCartLine(
                 line.ProductName,
-                line.VariantName ?? "Configured product",
+                line.VariantName ?? "Product",
                 line.LineTotalAmount,
                 line.Currency,
                 line.ImageUrl))
