@@ -6,80 +6,76 @@
 
 <PageTitle>Account Profile</PageTitle>
 
-<section class="tech-panel account-page-intro">
-    <p class="tech-eyebrow">Profile</p>
-    <h1>Keep your client details ready for faster checkout, delivery updates, and follow-up support.</h1>
-    <p class="tech-copy">Your core contact details stay here so every future order feels simpler, calmer, and easier to manage.</p>
-</section>
-
 @if (isLoading)
 {
-    <section class="tech-detail-card account-state-card">
-        <p class="tech-eyebrow">Loading</p>
-        <h2>Preparing your account profile</h2>
-        <p>We are fetching your current details and checkout preferences.</p>
+    <header class="account-page-header account-page-intro">
+        <p class="account-eyebrow">Account</p>
+        <h1>Profile</h1>
+        <p>Manage your personal details and checkout contact information.</p>
+    </header>
+
+    <section class="account-card account-state-card">
+        <h2>Loading profile</h2>
+        <p>Fetching your account details.</p>
     </section>
 }
 else if (!isAuthenticated)
 {
-    <section class="tech-detail-card account-state-card">
-        <p class="tech-eyebrow">Sign in required</p>
-        <h2>Access your private client area</h2>
-        <p>Sign in to review saved details, delivery information, and previous orders.</p>
-        <div class="account-state-actions">
-            <a class="tech-button tech-button-primary" href="/account/login">Sign in</a>
-            <a class="tech-button tech-button-ghost" href="/account/register">Create account</a>
+    <section class="account-card account-empty-state">
+        <div class="account-empty-state-header">
+            <p class="account-eyebrow">Account</p>
+            <h1>Profile</h1>
+            <p>Manage your personal details and checkout contact information.</p>
         </div>
-        <p class="account-state-support">A private account keeps orders, saved addresses, and support history inside the same storefront experience.</p>
+        <div class="account-empty-prompt">
+            <h2>Sign in to manage your profile</h2>
+            <p>Use your account to view and update saved profile information.</p>
+        </div>
+        <div class="account-empty-actions">
+            <a class="account-button account-button-primary" href="/account/login">Sign in</a>
+            <a class="account-button account-button-secondary" href="/account/register">Create account</a>
+        </div>
+        <ul class="account-benefit-list" aria-label="Profile options after sign in">
+            <li class="account-benefit-item">Review your saved contact details</li>
+            <li class="account-benefit-item">Update your name and phone number</li>
+            <li class="account-benefit-item">Keep checkout contact information current</li>
+        </ul>
     </section>
 }
 else
 {
-    <section class="tech-detail-card account-form-card">
-        <div class="tech-detail-card-header">
-            <div>
-                <p class="tech-eyebrow">Client details</p>
-                <h2>Personal information</h2>
-            </div>
-        </div>
+    <header class="account-page-header account-page-intro">
+        <p class="account-eyebrow">Account</p>
+        <h1>Profile</h1>
+        <p>Manage your personal details and checkout contact information.</p>
+    </header>
 
-        <div class="account-detail-grid account-detail-grid-emphasis">
-            <div>
-                <span>Receipts</span>
-                <strong>@profileModel.Email</strong>
-            </div>
-            <div>
-                <span>Updates</span>
-                <strong>@(string.IsNullOrWhiteSpace(profileModel.PhoneNumber) ? "Email only" : profileModel.PhoneNumber)</strong>
-            </div>
-            <div>
-                <span>Checkout</span>
-                <strong>Saved for faster completion</strong>
-            </div>
-        </div>
+    <section class="account-card account-form-card">
+        <h2>Personal details</h2>
 
-        <EditForm Model="profileModel" OnValidSubmit="SaveAsync">
-            <div class="form-grid tech-form-grid">
-                <label class="tech-field tech-field-full">
+        <EditForm Model="profileModel" OnValidSubmit="SaveAsync" class="account-form">
+            <div class="account-form-grid">
+                <label class="account-field account-field-full">
                     <span>Email</span>
                     <input value="@profileModel.Email" disabled />
                 </label>
-                <label class="tech-field">
+                <label class="account-field">
                     <span>First name</span>
                     <InputText @bind-Value="profileModel.FirstName" />
                 </label>
-                <label class="tech-field">
+                <label class="account-field">
                     <span>Last name</span>
                     <InputText @bind-Value="profileModel.LastName" />
                 </label>
-                <label class="tech-field tech-field-full">
+                <label class="account-field account-field-full">
                     <span>Phone</span>
                     <InputText @bind-Value="profileModel.PhoneNumber" />
                 </label>
             </div>
             <div class="account-inline-actions">
-                <button class="tech-button tech-button-primary" type="submit" disabled="@isSaving">Save profile</button>
-                <p class="account-inline-note">Used for order updates, delivery contact, and smoother future checkout.</p>
+                <button class="account-button account-button-primary" type="submit" disabled="@isSaving">
+                    @(isSaving ? "Saving..." : "Save changes")
+                </button>
             </div>
         </EditForm>
 

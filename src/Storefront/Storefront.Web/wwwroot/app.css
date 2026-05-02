@@ -129,6 +129,7 @@ img {
 .main-footer p,
 .tech-copy,
 .tech-inline-meta,
+.account-meta,
 .empty-state {
     margin: 0;
 }
@@ -427,7 +428,8 @@ img {
 .tech-answer-list,
 .account-auth-benefits,
 .account-order-lines,
-.account-answer-list {
+.account-answer-list,
+.account-benefit-list {
     margin: 0;
     padding: 0;
     list-style: none;
@@ -604,6 +606,7 @@ img {
 
 .tech-action-row,
 .cart-actions,
+.account-actions,
 .account-state-actions,
 .account-inline-actions,
 .account-card-actions,
@@ -701,8 +704,7 @@ img {
 .tech-spec-groups,
 .tech-review-summary,
 .service-strip,
-.account-detail-grid,
-.account-sidebar-highlights {
+.account-detail-grid {
     display: grid;
     gap: 1rem;
 }
@@ -835,7 +837,8 @@ img {
 }
 
 .product-card-stock,
-.tech-chip {
+.tech-chip,
+.account-chip {
     display: inline-flex;
     align-items: center;
     width: fit-content;
@@ -849,19 +852,22 @@ img {
 }
 
 .product-card-stock.in-stock,
-.tech-chip-success {
+.tech-chip-success,
+.account-chip-success {
     border-color: #b7e4cc;
     background: #ecfdf3;
     color: var(--success);
 }
 
 .product-card-stock.unavailable,
-.tech-chip-muted {
+.tech-chip-muted,
+.account-chip-muted {
     background: #f2f4f7;
     color: var(--muted);
 }
 
-.tech-chip-accent {
+.tech-chip-accent,
+.account-chip-accent {
     border-color: #b7e4df;
     background: #ecfdfa;
     color: var(--accent-strong);
@@ -1516,52 +1522,103 @@ img {
     color: var(--muted);
 }
 
+.account-layout,
 .account-shell {
     position: relative;
+    width: min(100%, 1120px);
+    max-width: 100%;
+    margin-inline: auto;
+    grid-template-columns: minmax(0, 1fr);
 }
 
+.account-content {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.account-layout-authenticated .account-content {
+    max-width: 860px;
+}
+
+.account-layout-guest {
+    width: min(100%, 760px);
+}
+
+.account-layout-guest .account-content {
+    max-width: 760px;
+    margin-inline: auto;
+}
+
+.account-panel,
+.account-sidebar,
+.account-card,
+.account-page-header {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+}
+
+.account-panel,
 .account-sidebar {
-    align-content: start;
-}
-
-.account-sidebar-copy,
-.account-sidebar-note,
-.account-sidebar-actions,
-.account-sidebar-actions-grid,
-.account-sidebar-action-card,
-.account-sidebar-highlight,
-.account-detail-grid div,
-.account-auth-benefits li,
-.account-answer-item {
     display: grid;
-    gap: 0.35rem;
+    align-content: start;
+    gap: 0.75rem;
+    min-width: 0;
+    padding: 0.9rem;
 }
 
-.account-sidebar-note,
-.account-sidebar-actions,
-.account-answer-item {
-    border-top: 1px solid var(--border);
-    padding-top: 0.85rem;
+.account-sidebar-copy {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.account-sidebar-copy h2,
+.account-page-header h1,
+.account-card h2 {
+    margin: 0;
+    line-height: 1.2;
+}
+
+.account-sidebar-copy h2 {
+    font-size: 1.15rem;
+}
+
+.account-sidebar-copy p,
+.account-page-header p,
+.account-card p {
+    margin: 0;
+    color: var(--muted);
 }
 
 .account-nav {
-    display: grid;
-    gap: 0.4rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
 .account-nav-link,
-.account-nav button,
-.account-sidebar-action-card {
-    display: flex;
+.account-nav-button {
+    display: inline-flex;
     align-items: center;
-    justify-content: flex-start;
-    min-height: 2.5rem;
+    justify-content: center;
+    min-height: 2.35rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--surface);
-    color: var(--text);
+    color: var(--muted-strong);
     padding: 0 0.75rem;
     font-weight: 700;
+    white-space: nowrap;
+}
+
+.account-nav-link:hover,
+.account-nav-link:focus-visible,
+.account-nav-button:hover,
+.account-nav-button:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent-strong);
 }
 
 .account-nav-link.active {
@@ -1570,7 +1627,264 @@ img {
     color: var(--accent-strong);
 }
 
-.account-sidebar-highlight,
+.account-nav-button-danger {
+    color: var(--danger);
+}
+
+.account-page-header {
+    display: grid;
+    gap: 0.3rem;
+    padding: 0.9rem 1rem;
+}
+
+.account-page-header h1 {
+    font-size: 1.55rem;
+}
+
+.account-eyebrow {
+    color: var(--muted-strong);
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.account-card,
+.account-state-card,
+.account-form-card {
+    display: grid;
+    gap: 0.85rem;
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    padding: 0.95rem 1rem;
+}
+
+.account-card h2,
+.account-state-card h2,
+.account-form-card h2 {
+    font-size: 1.15rem;
+}
+
+.account-card h3 {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.3;
+}
+
+.account-empty-state {
+    width: min(100%, 680px);
+    justify-self: center;
+    padding: 1.1rem;
+}
+
+.account-empty-state,
+.account-empty-state-header,
+.account-benefit-list {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.account-empty-state-header {
+    gap: 0.35rem;
+}
+
+.account-empty-state-header h1 {
+    margin: 0;
+    font-size: 1.55rem;
+    line-height: 1.15;
+}
+
+.account-empty-state-header h2 {
+    font-size: 1.25rem;
+}
+
+.account-empty-prompt {
+    display: grid;
+    gap: 0.25rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.75rem;
+}
+
+.account-empty-prompt h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 1.25;
+}
+
+.account-empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    width: auto;
+}
+
+.account-empty-actions .account-button {
+    width: auto;
+    min-width: 8.25rem;
+}
+
+.account-benefit-item {
+    display: grid;
+    grid-template-columns: 1.1rem minmax(0, 1fr);
+    align-items: start;
+    gap: 0.5rem;
+    min-width: 0;
+    color: var(--muted-strong);
+    font-size: 0.95rem;
+    padding: 0.1rem 0;
+}
+
+.account-benefit-item::before {
+    content: "\2713";
+    display: inline-grid;
+    width: 1rem;
+    height: 1rem;
+    margin-top: 0.18rem;
+    place-items: center;
+    border-radius: 999px;
+    background: #ecfdf3;
+    color: var(--success);
+    font-size: 0.7rem;
+    font-weight: 900;
+}
+
+.account-meta {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.account-form,
+.account-form-grid,
+.account-card-meta,
+.account-auth-benefits li,
+.account-answer-item,
+.account-detail-grid div {
+    display: grid;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.account-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.account-field {
+    display: grid;
+    gap: 0.35rem;
+    min-width: 0;
+    color: var(--muted-strong);
+    font-weight: 700;
+}
+
+.account-field span {
+    font-size: 0.9rem;
+}
+
+.account-field input,
+.account-field select,
+.account-field textarea {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    padding: 0.55rem 0.65rem;
+}
+
+.account-field input:focus,
+.account-field select:focus,
+.account-field textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--focus);
+    outline: none;
+}
+
+.account-checkbox-row {
+    min-width: 0;
+}
+
+.account-field-full {
+    grid-column: 1 / -1;
+}
+
+.account-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    padding: 0 0.9rem;
+    font-weight: 800;
+}
+
+.account-button-primary {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #ffffff;
+}
+
+.account-button-primary:hover,
+.account-button-primary:focus-visible {
+    border-color: var(--accent-strong);
+    background: var(--accent-strong);
+    color: #ffffff;
+}
+
+.account-button-secondary:hover,
+.account-button-secondary:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent-strong);
+}
+
+.account-button-danger {
+    border-color: #f3b8b1;
+    color: var(--danger);
+}
+
+.account-button-danger:hover,
+.account-button-danger:focus-visible {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.account-order-card,
+.account-overview-card {
+    align-content: start;
+}
+
+.account-order-lines,
+.account-answer-list {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.account-order-lines {
+    border-top: 1px solid var(--border);
+    padding-top: 0.85rem;
+    color: var(--muted);
+}
+
+.account-card-header,
+.account-card-meta,
+.account-detail-grid,
+.account-detail-grid div {
+    min-width: 0;
+}
+
+.account-detail-grid strong {
+    overflow-wrap: anywhere;
+}
+
+.account-answer-item {
+    border-top: 1px solid var(--border);
+    padding-top: 0.85rem;
+}
+
 .account-auth-benefits li,
 .account-detail-grid div {
     border: 1px solid var(--border);
@@ -1579,13 +1893,15 @@ img {
     padding: 0.75rem;
 }
 
-.account-sidebar-highlight span,
-.account-sidebar-action-card span,
 .account-detail-grid span {
     color: var(--muted);
     font-size: 0.78rem;
     font-weight: 700;
     text-transform: uppercase;
+}
+
+.account-card .status-message {
+    color: #1d4ed8;
 }
 
 .account-card-meta {
@@ -1604,6 +1920,7 @@ img {
 .blog-list {
     display: grid;
     gap: 1rem;
+    min-width: 0;
 }
 
 .blog-card-image,
@@ -1732,12 +2049,12 @@ img {
 @media (min-width: 640px) {
     .service-strip,
     .tech-review-summary,
-    .account-sidebar-highlights,
     .account-detail-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .tech-form-grid,
+    .account-form-grid,
     .form-grid,
     .tech-option-grid,
     .tech-toolbar {
@@ -1773,8 +2090,18 @@ img {
         grid-template-columns: 16rem minmax(0, 1fr);
     }
 
-    .account-shell {
-        grid-template-columns: 17rem minmax(0, 1fr);
+    .account-layout-authenticated {
+        grid-template-columns: 240px minmax(0, 860px);
+        justify-content: center;
+    }
+
+    .account-layout-guest {
+        grid-template-columns: minmax(0, 760px);
+        justify-content: center;
+    }
+
+    .account-nav {
+        display: grid;
     }
 
     .tech-cart-layout,
@@ -1860,13 +2187,24 @@ img {
 
     .tech-button,
     .btn-primary,
-    .btn-secondary {
+    .btn-secondary,
+    .account-button {
         width: 100%;
     }
 
     .price-filter-form input,
     .price-filter-form button,
     .price-filter-form a {
+        width: 100%;
+    }
+
+    .account-empty-actions {
+        width: 100%;
+    }
+
+    .account-empty-actions .account-button {
+        flex: 1 1 0;
+        min-width: 0;
         width: 100%;
     }
 

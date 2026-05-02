@@ -5,65 +5,85 @@
 
 <PageTitle>My Reviews</PageTitle>
 
-<section class="tech-panel account-page-intro">
-    <p class="tech-eyebrow">Reviews</p>
-    <h1>Review your submitted ratings, moderation status, and verified purchase notes in one place.</h1>
-    <p class="tech-copy">Your product feedback remains readable and close to the rest of the storefront, not hidden behind a utility screen.</p>
-</section>
-
 @if (isLoading)
 {
-    <section class="tech-detail-card account-state-card">
-        <p class="tech-eyebrow">Loading</p>
-        <h2>Preparing your reviews</h2>
+    <header class="account-page-header account-page-intro">
+        <p class="account-eyebrow">Account</p>
+        <h1>Reviews</h1>
+        <p>Manage your product reviews.</p>
+    </header>
+
+    <section class="account-card account-state-card">
+        <h2>Loading reviews</h2>
         <p>We are fetching submitted ratings and moderation status.</p>
     </section>
 }
 else if (!isAuthenticated)
 {
-    <section class="tech-detail-card account-state-card">
-        <p class="tech-eyebrow">Sign in required</p>
-        <h2>Access your submitted reviews</h2>
-        <p>Sign in to manage feedback and see moderation status.</p>
-        <div class="account-state-actions">
-            <a class="tech-button tech-button-primary" href="/account/login">Sign in</a>
-            <a class="tech-button tech-button-ghost" href="/account/register">Create account</a>
+    <section class="account-card account-empty-state">
+        <div class="account-empty-state-header">
+            <p class="account-eyebrow">Account</p>
+            <h1>Reviews</h1>
+            <p>Manage your product reviews.</p>
         </div>
-        <p class="account-state-support">Reviews, verified purchases, and moderation updates stay connected to your client history.</p>
+        <div class="account-empty-prompt">
+            <h2>Sign in to manage reviews</h2>
+            <p>Use your account to see submitted reviews and moderation status.</p>
+        </div>
+        <div class="account-empty-actions">
+            <a class="account-button account-button-primary" href="/account/login">Sign in</a>
+            <a class="account-button account-button-secondary" href="/account/register">Create account</a>
+        </div>
+        <ul class="account-benefit-list" aria-label="Review options after sign in">
+            <li class="account-benefit-item">View submitted product reviews</li>
+            <li class="account-benefit-item">Check review status</li>
+            <li class="account-benefit-item">Open reviewed products</li>
+        </ul>
     </section>
 }
 else if (reviews.Count == 0)
 {
-    <section class="tech-detail-card account-state-card">
-        <p class="tech-eyebrow">Nothing submitted yet</p>
+    <header class="account-page-header account-page-intro">
+        <p class="account-eyebrow">Account</p>
+        <h1>Reviews</h1>
+        <p>Manage your product reviews.</p>
+    </header>
+
+    <section class="account-card account-state-card">
         <h2>Your product reviews will appear here.</h2>
         <p>Once you review a product, the rating and moderation status will be visible in this area.</p>
-        <div class="account-state-actions">
-            <a class="tech-button tech-button-primary" href="/account/orders">Review recent orders</a>
-            <a class="tech-button tech-button-ghost" href="/search">Browse hardware</a>
+        <div class="account-actions account-state-actions">
+            <a class="account-button account-button-primary" href="/account/orders">Review recent orders</a>
+            <a class="account-button account-button-secondary" href="/search">Browse products</a>
         </div>
     </section>
 }
 else
 {
+    <header class="account-page-header account-page-intro">
+        <p class="account-eyebrow">Account</p>
+        <h1>Reviews</h1>
+        <p>Manage your product reviews.</p>
+    </header>
+
     <div class="order-list">
         @foreach (var review in reviews)
         {
-            <article class="order-card account-order-card">
+            <article class="account-card account-order-card">
                 <header class="account-card-header">
                     <div>
-                        <p class="tech-eyebrow">Product review</p>
+                        <p class="account-eyebrow">Product review</p>
                         <h2><a href="/product/@review.ProductSlug">@review.ProductName</a></h2>
                     </div>
                     <div class="account-card-meta">
-                        <span class="tech-chip tech-chip-muted account-status-chip">@review.Status</span>
+                        <span class="account-chip account-chip-muted account-status-chip">@review.Status</span>
                         @if (review.IsVerifiedPurchase)
                         {
-                            <span class="tech-chip tech-chip-success">Verified purchase</span>
+                            <span class="account-chip account-chip-success">Verified purchase</span>
                         }
                     </div>
                 </header>
-                <p class="tech-inline-meta">@review.CreatedAtUtc.ToString("yyyy-MM-dd")</p>
+                <p class="account-meta">@review.CreatedAtUtc.ToString("yyyy-MM-dd")</p>
                 <RatingStars Value="review.Rating" />
                 @if (!string.IsNullOrWhiteSpace(review.Title))
                 {
@@ -73,8 +93,8 @@ else
                 {
                     <p>@review.Body</p>
                 }
-                <div class="account-card-actions">
-                    <a class="tech-inline-link" href="/product/@review.ProductSlug">Open product →</a>
+                <div class="account-actions account-card-actions">
+                    <a class="account-button account-button-secondary" href="/product/@review.ProductSlug">Open product</a>
                 </div>
             </article>
         }

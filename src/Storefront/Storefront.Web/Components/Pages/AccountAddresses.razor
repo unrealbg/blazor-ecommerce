@@ -5,44 +5,58 @@
 
 <PageTitle>My Addresses</PageTitle>
 
-<section class="tech-panel account-page-intro">
-    <p class="tech-eyebrow">Addresses</p>
-    <h1>Keep delivery and billing details ready for a faster, calmer checkout.</h1>
-    <p class="tech-copy">Saved addresses stay close at hand for future orders, support requests, and a more deliberate checkout flow.</p>
-</section>
-
 @if (isLoading)
 {
-    <section class="tech-detail-card account-state-card">
-        <p class="tech-eyebrow">Loading</p>
-        <h2>Preparing your saved addresses</h2>
-        <p>We are fetching your current billing and delivery details.</p>
+    <header class="account-page-header account-page-intro">
+        <p class="account-eyebrow">Account</p>
+        <h1>Addresses</h1>
+        <p>Manage your saved delivery and billing addresses.</p>
+    </header>
+
+    <section class="account-card account-state-card">
+        <h2>Loading addresses</h2>
+        <p>Fetching your saved addresses.</p>
     </section>
 }
 else if (!isAuthenticated)
 {
-    <section class="tech-detail-card account-state-card">
-        <p class="tech-eyebrow">Sign in required</p>
-        <h2>Manage saved addresses</h2>
-        <p>Sign in to keep billing and shipping details ready for faster checkout.</p>
-        <div class="account-state-actions">
-            <a class="tech-button tech-button-primary" href="/account/login">Sign in</a>
-            <a class="tech-button tech-button-ghost" href="/account/register">Create account</a>
+    <section class="account-card account-empty-state">
+        <div class="account-empty-state-header">
+            <p class="account-eyebrow">Account</p>
+            <h1>Addresses</h1>
+            <p>Manage your saved delivery and billing addresses.</p>
         </div>
-        <p class="account-state-support">Saved delivery details make later checkout calmer and more predictable.</p>
+        <div class="account-empty-prompt">
+            <h2>Sign in to manage addresses</h2>
+            <p>Use your account to view, add and update saved addresses.</p>
+        </div>
+        <div class="account-empty-actions">
+            <a class="account-button account-button-primary" href="/account/login">Sign in</a>
+            <a class="account-button account-button-secondary" href="/account/register">Create account</a>
+        </div>
+        <ul class="account-benefit-list" aria-label="Address options after sign in">
+            <li class="account-benefit-item">Add delivery and billing addresses</li>
+            <li class="account-benefit-item">Edit saved address details</li>
+            <li class="account-benefit-item">Choose default shipping and billing addresses</li>
+        </ul>
     </section>
 }
 else
 {
+    <header class="account-page-header account-page-intro">
+        <p class="account-eyebrow">Account</p>
+        <h1>Addresses</h1>
+        <p>Manage your saved delivery and billing addresses.</p>
+    </header>
+
     @if (addressModels.Count == 0)
     {
-        <section class="tech-detail-card account-state-card">
-            <p class="tech-eyebrow">No saved addresses</p>
+        <section class="account-card account-state-card">
             <h2>Add your first delivery address</h2>
             <p>Once saved, your preferred billing and shipping details will appear here.</p>
-            <div class="account-state-actions">
-                <a class="tech-button tech-button-primary" href="#new-address">Add address</a>
-                <a class="tech-button tech-button-ghost" href="/checkout">Go to checkout</a>
+            <div class="account-actions account-state-actions">
+                <a class="account-button account-button-primary" href="#new-address">Add address</a>
+                <a class="account-button account-button-secondary" href="/checkout">Go to checkout</a>
             </div>
         </section>
     }
@@ -51,61 +65,61 @@ else
         <div class="address-list">
             @foreach (var address in addressModels)
             {
-                <EditForm Model="address" OnValidSubmit="@(() => UpdateAddressAsync(address))" class="tech-detail-card account-form-card">
-                    <div class="tech-detail-card-header">
+                <EditForm Model="address" OnValidSubmit="@(() => UpdateAddressAsync(address))" class="account-card account-form-card account-form">
+                    <div class="account-card-header">
                         <div>
-                            <p class="tech-eyebrow">Saved address</p>
+                            <p class="account-eyebrow">Saved address</p>
                             <h2>@address.Label</h2>
                         </div>
                         <div class="account-card-meta">
                             @if (address.IsDefaultShipping)
                             {
-                                <span class="tech-chip tech-chip-accent">Default shipping</span>
+                                <span class="account-chip account-chip-accent">Default shipping</span>
                             }
                             @if (address.IsDefaultBilling)
                             {
-                                <span class="tech-chip tech-chip-muted">Default billing</span>
+                                <span class="account-chip account-chip-muted">Default billing</span>
                             }
                         </div>
                     </div>
-                    <div class="form-grid tech-form-grid">
-                        <label class="tech-field">
+                    <div class="account-form-grid">
+                        <label class="account-field">
                             <span>Label</span>
                             <InputText @bind-Value="address.Label" />
                         </label>
-                        <label class="tech-field">
+                        <label class="account-field">
                             <span>First name</span>
                             <InputText @bind-Value="address.FirstName" />
                         </label>
-                        <label class="tech-field">
+                        <label class="account-field">
                             <span>Last name</span>
                             <InputText @bind-Value="address.LastName" />
                         </label>
-                        <label class="tech-field">
+                        <label class="account-field">
                             <span>Company</span>
                             <InputText @bind-Value="address.Company" />
                         </label>
-                        <label class="tech-field">
+                        <label class="account-field">
                             <span>Street 1</span>
                             <InputText @bind-Value="address.Street1" />
                         </label>
-                        <label class="tech-field">
+                        <label class="account-field">
                             <span>Street 2</span>
                             <InputText @bind-Value="address.Street2" />
                         </label>
-                        <label class="tech-field">
+                        <label class="account-field">
                             <span>City</span>
                             <InputText @bind-Value="address.City" />
                         </label>
-                        <label class="tech-field">
+                        <label class="account-field">
                             <span>Postal code</span>
                             <InputText @bind-Value="address.PostalCode" />
                         </label>
-                        <label class="tech-field">
+                        <label class="account-field">
                             <span>Country code</span>
                             <InputText @bind-Value="address.CountryCode" />
                         </label>
-                        <label class="tech-field">
+                        <label class="account-field">
                             <span>Phone</span>
                             <InputText @bind-Value="address.Phone" />
                         </label>
@@ -118,61 +132,61 @@ else
                             <span>Default billing</span>
                         </label>
                     </div>
-                    <div class="address-actions account-card-actions">
-                        <button class="tech-button tech-button-primary" type="submit">Save address</button>
-                        <button class="account-link-button account-link-button-danger" type="button" @onclick="() => DeleteAddressAsync(address.Id)">Delete address</button>
+                    <div class="account-actions address-actions account-card-actions">
+                        <button class="account-button account-button-primary" type="submit">Save address</button>
+                        <button class="account-button account-button-danger" type="button" @onclick="() => DeleteAddressAsync(address.Id)">Delete address</button>
                     </div>
                 </EditForm>
             }
         </div>
     }
 
-    <section class="tech-detail-card account-form-card" id="new-address">
-        <div class="tech-detail-card-header">
+    <section class="account-card account-form-card" id="new-address">
+        <div class="account-card-header">
             <div>
-                <p class="tech-eyebrow">Add address</p>
+                <p class="account-eyebrow">Add address</p>
                 <h2>New delivery or billing address</h2>
             </div>
         </div>
-        <EditForm Model="newAddress" OnValidSubmit="AddAddressAsync">
-            <div class="form-grid tech-form-grid">
-                <label class="tech-field">
+        <EditForm Model="newAddress" OnValidSubmit="AddAddressAsync" class="account-form">
+            <div class="account-form-grid">
+                <label class="account-field">
                     <span>Label</span>
                     <InputText @bind-Value="newAddress.Label" />
                 </label>
-                <label class="tech-field">
+                <label class="account-field">
                     <span>First name</span>
                     <InputText @bind-Value="newAddress.FirstName" />
                 </label>
-                <label class="tech-field">
+                <label class="account-field">
                     <span>Last name</span>
                     <InputText @bind-Value="newAddress.LastName" />
                 </label>
-                <label class="tech-field">
+                <label class="account-field">
                     <span>Company</span>
                     <InputText @bind-Value="newAddress.Company" />
                 </label>
-                <label class="tech-field">
+                <label class="account-field">
                     <span>Street 1</span>
                     <InputText @bind-Value="newAddress.Street1" />
                 </label>
-                <label class="tech-field">
+                <label class="account-field">
                     <span>Street 2</span>
                     <InputText @bind-Value="newAddress.Street2" />
                 </label>
-                <label class="tech-field">
+                <label class="account-field">
                     <span>City</span>
                     <InputText @bind-Value="newAddress.City" />
                 </label>
-                <label class="tech-field">
+                <label class="account-field">
                     <span>Postal code</span>
                     <InputText @bind-Value="newAddress.PostalCode" />
                 </label>
-                <label class="tech-field">
+                <label class="account-field">
                     <span>Country code</span>
                     <InputText @bind-Value="newAddress.CountryCode" />
                 </label>
-                <label class="tech-field">
+                <label class="account-field">
                     <span>Phone</span>
                     <InputText @bind-Value="newAddress.Phone" />
                 </label>
@@ -185,8 +199,8 @@ else
                     <span>Default billing</span>
                 </label>
             </div>
-            <div class="account-card-actions">
-                <button class="tech-button tech-button-primary" type="submit">Add address</button>
+            <div class="account-actions account-card-actions">
+                <button class="account-button account-button-primary" type="submit">Add address</button>
             </div>
         </EditForm>
     </section>
