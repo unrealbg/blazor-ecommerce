@@ -1,14 +1,12 @@
 @using Storefront.Web.Services.Media
 
-<article class="category-card">
+<article class="@CardClass">
     <a class="category-card-link" href="@Href">
-        <div class="category-card-media">
-            @if (!string.IsNullOrWhiteSpace(ImageUrl))
-            {
+        @if (!string.IsNullOrWhiteSpace(ImageUrl))
+        {
+            <div class="category-card-media">
                 <div class="category-card-image-frame">
-                    <div class="category-card-placeholder" aria-hidden="true">
-                        <div class="category-card-placeholder-glow"></div>
-                    </div>
+                    <div class="category-card-placeholder" aria-hidden="true"></div>
                     <ResponsiveImage
                         Source="@ImageUrl"
                         Alt="@Name"
@@ -16,14 +14,8 @@
                         CssClass="category-card-image category-card-image-live"
                         HideOnError="true" />
                 </div>
-            }
-            else
-            {
-                <div class="category-card-placeholder" aria-hidden="true">
-                    <div class="category-card-placeholder-glow"></div>
-                </div>
-            }
-        </div>
+            </div>
+        }
         <div class="category-card-copy">
             <p class="category-card-kicker">@Eyebrow</p>
             <h3>@Name</h3>
@@ -54,4 +46,8 @@
 
     [Parameter]
     public string CtaLabel { get; set; } = "Explore collection";
+
+    private string CardClass => string.IsNullOrWhiteSpace(ImageUrl)
+        ? "category-card category-card-compact"
+        : "category-card";
 }

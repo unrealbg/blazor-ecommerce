@@ -11,22 +11,27 @@
 
 <SeoHead Metadata="metadata" JsonLdScripts="jsonLdScripts" />
 
-<div class="commerce-page home-page">
+<div class="commerce-page storefront-home">
     <section class="home-hero">
         <div class="home-hero-copy">
-            <p class="tech-eyebrow">Online store</p>
-            <h1>Shop tech essentials with clear prices and stock status.</h1>
-            <p class="tech-copy">Browse practical audio, workspace, and everyday accessories with clear prices, stock status, and checkout in EUR.</p>
-            <div class="tech-action-row">
-                <a class="tech-button tech-button-primary" href="/category/all-products">Shop all products</a>
-                <a class="tech-button tech-button-ghost" href="#featured-products">View featured products</a>
+            <p class="eyebrow">Tech essentials</p>
+            <h1>Find the gear you need, fast.</h1>
+            <p class="body-copy">Shop audio, workspace, and everyday accessories with live stock and EUR pricing.</p>
+            <div class="button-row">
+                <a class="button button-primary" href="/category/all-products">Shop all products</a>
+                <a class="button button-secondary" href="#featured-products">View featured products</a>
             </div>
+            <nav class="hero-quick-links" aria-label="Popular categories">
+                <a href="/category/audio">Audio</a>
+                <a href="/category/workspace">Workspace</a>
+                <a href="/category/accessories">Accessories</a>
+            </nav>
         </div>
 
-        <article class="home-feature-card">
-            <div class="home-feature-media">
+        <article class="home-feature-card" aria-label="Featured product">
+            <div class="home-feature-media @(HasHeroImage ? null : "home-feature-media-placeholder")">
                 <a href="@HeroHref">
-                    @if (!string.IsNullOrWhiteSpace(heroProduct?.ImageUrl))
+                    @if (HasHeroImage)
                     {
                         <ResponsiveImage
                             Source="@heroProduct!.ImageUrl"
@@ -38,37 +43,73 @@
                     }
                     else
                     {
-                        <div class="product-image-placeholder" aria-hidden="true"></div>
+                        <div class="home-feature-placeholder" aria-hidden="true">
+                            <span class="home-feature-placeholder-mark"></span>
+                        </div>
                     }
                 </a>
             </div>
             <div class="home-feature-copy">
-                <p class="tech-eyebrow">Featured product</p>
+                <p class="eyebrow">Featured pick</p>
                 <h2>@(heroProduct?.Name ?? "Browse the catalog")</h2>
                 <p>@(heroProduct is null ? "Products are loading from the catalog." : ResolveHeroDescription(heroProduct))</p>
                 @if (heroProduct is not null)
                 {
-                    <div class="tech-price-row">
-                        <span class="tech-price-current">@FormatPrice(heroProduct.Amount, heroProduct.Currency)</span>
+                    <div class="price-row">
+                        <span class="price-current">@FormatPrice(heroProduct.Amount, heroProduct.Currency)</span>
                         @if (heroProduct.CompareAtAmount is > 0m && heroProduct.CompareAtAmount > heroProduct.Amount)
                         {
-                            <span class="tech-price-compare">@FormatPrice(heroProduct.CompareAtAmount.Value, heroProduct.Currency)</span>
+                            <span class="price-compare">@FormatPrice(heroProduct.CompareAtAmount.Value, heroProduct.Currency)</span>
                         }
                     </div>
-                    <p class="tech-inline-meta">@GetHeroAvailabilityLabel(heroProduct)</p>
+                    <p class="inline-meta">@GetHeroAvailabilityLabel(heroProduct)</p>
                 }
-                <a class="tech-inline-link" href="@HeroHref">View details</a>
+                <a class="inline-link" href="@HeroHref">View details</a>
             </div>
         </article>
     </section>
 
-    <section class="tech-section" id="featured-categories">
-        <div class="tech-section-header">
+    <section class="storefront-section" id="featured-products">
+        <div class="section-header">
             <div>
-                <p class="tech-eyebrow">Categories</p>
-                <h2>Start with the type of product you need.</h2>
+                <p class="eyebrow">Featured</p>
+                <h2>Products worth comparing</h2>
             </div>
-            <a class="tech-inline-link" href="/search">View all</a>
+            <a class="inline-link" href="/search?sort=popular">Browse best sellers</a>
+        </div>
+
+        @if (isLoading)
+        {
+            <p class="empty-state store-empty-state">Loading products...</p>
+        }
+        else if (!string.IsNullOrWhiteSpace(loadErrorMessage))
+        {
+            <p class="empty-state store-empty-state">@loadErrorMessage</p>
+        }
+        else if (signatureProducts.Count == 0)
+        {
+            <p class="empty-state store-empty-state">No products available yet.</p>
+        }
+        else
+        {
+            <div class="product-grid home-product-grid">
+                @foreach (var product in signatureProducts)
+                {
+                    <ProductCard
+                        Product="product"
+                        Badge="@(product.CompareAtAmount.HasValue && product.CompareAtAmount.Value > product.Amount ? "Sale" : product.IsFeatured ? "Featured" : null)" />
+                }
+            </div>
+        }
+    </section>
+
+    <section class="storefront-section" id="featured-categories">
+        <div class="section-header">
+            <div>
+                <p class="eyebrow">Categories</p>
+                <h2>Shop by category</h2>
+            </div>
+            <a class="inline-link" href="/search">View all</a>
         </div>
 
         <div class="category-grid">
@@ -83,40 +124,6 @@
                     CtaLabel="@category.CtaLabel" />
             }
         </div>
-    </section>
-
-    <section class="tech-section" id="featured-products">
-        <div class="tech-section-header">
-            <div>
-                <p class="tech-eyebrow">Featured</p>
-                <h2>Popular products in stock and ready to compare.</h2>
-            </div>
-            <a class="tech-inline-link" href="/search?sort=popular">Browse best sellers</a>
-        </div>
-
-        @if (isLoading)
-        {
-            <p class="empty-state tech-empty-state">Loading products...</p>
-        }
-        else if (!string.IsNullOrWhiteSpace(loadErrorMessage))
-        {
-            <p class="empty-state tech-empty-state">@loadErrorMessage</p>
-        }
-        else if (signatureProducts.Count == 0)
-        {
-            <p class="empty-state tech-empty-state">No products available yet.</p>
-        }
-        else
-        {
-            <div class="product-grid">
-                @foreach (var product in signatureProducts)
-                {
-                    <ProductCard
-                        Product="product"
-                        Badge="@(product.CompareAtAmount.HasValue && product.CompareAtAmount.Value > product.Amount ? "Sale" : product.IsFeatured ? "Featured" : null)" />
-                }
-            </div>
-        }
     </section>
 
     <section class="service-strip" aria-label="Shopping information">
@@ -152,6 +159,8 @@
     ];
 
     private string HeroHref => heroProduct is null ? "/category/all-products" : $"/product/{heroProduct.Slug}";
+
+    private bool HasHeroImage => !string.IsNullOrWhiteSpace(heroProduct?.ImageUrl);
 
     protected override void OnInitialized()
     {
